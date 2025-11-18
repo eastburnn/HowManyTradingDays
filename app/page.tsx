@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { domine } from "./fonts";
 import ShareButton from "@/components/ShareButton";
+import FAQ from "@/components/FAQ";
 
 /* ---------------------------------------------
    DATE + HOLIDAY UTILITIES
@@ -444,6 +445,9 @@ export default function HomePage() {
             automatically and not shown here.
           </p>
         </section>
+
+        {/* FAQ */}
+        <FAQ />
 
         {/* FOOTER */}
         <footer className="mt-4 text-[10px] text-slate-500 text-center">
