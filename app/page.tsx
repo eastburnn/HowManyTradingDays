@@ -334,7 +334,7 @@ export default function HomePage() {
             How Many Trading Days
           </h1>
           <p className="text-sm text-slate-400">
-            U.S. stock market trading days remaining in {year}
+            Remaining U.S. stock market trading days in {year}
           </p>
         </header>
 
@@ -344,7 +344,7 @@ export default function HomePage() {
             ref={cardRef}
             className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-8 sm:p-8 flex flex-col items-center gap-3"
           >
-            <p className="text-s uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Trading Days Left in {year}
             </p>
 
