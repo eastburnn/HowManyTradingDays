@@ -103,6 +103,28 @@ function observedFixedHoliday(
   return d;
 }
 
+function getEasternTime() {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+}
+
+function isAfterMarketCloseET() {
+  const nowET = getEasternTime();
+  const close = new Date(nowET);
+  close.setHours(16, 0, 0, 0); // 4:00 PM ET
+
+  return nowET > close;
+}
+
+function isSameDay(d1: Date, d2: Date): boolean {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
+
 /* ---------------------------------------------
    COMPUTE HOLIDAYS FOR A GIVEN YEAR
 ----------------------------------------------*/
@@ -111,7 +133,12 @@ function getUsStockMarketHolidays(year: number): Holiday[] {
   const holidays: Holiday[] = [];
 
   const newYears = observedFixedHoliday(year, 0, 1);
-  if (newYears) holidays.push({ date: newYears, name: "New Year's Day", type: "closed" });
+  if (newYears)
+    holidays.push({
+      date: newYears,
+      name: "New Year's Day",
+      type: "closed",
+    });
 
   holidays.push({
     date: nthWeekdayOfMonth(year, 0, 1, 3),
@@ -223,6 +250,7 @@ function calculateTradingDays(fromDate: Date) {
   const endOfYear = new Date(year, 11, 31);
 
   const allHolidays = getUsStockMarketHolidays(year);
+  const afterClose = isAfterMarketCloseET();
 
   const holidayMap = new Map<
     string,
@@ -257,8 +285,16 @@ function calculateTradingDays(fromDate: Date) {
     }
 
     if (dow !== 0 && dow !== 6) {
-      if (!hInfo) fullDays += 1;
-      else if (hInfo.type === "half-day") halfDays += 1;
+      const isToday = isSameDay(cursor, today);
+
+      // If today is a trading day but the market is already closed (after 4pm ET),
+      // skip counting today in the "days remaining" total.
+      if (isToday && afterClose) {
+        // do not count today
+      } else {
+        if (!hInfo) fullDays += 1;
+        else if (hInfo.type === "half-day") halfDays += 1;
+      }
     }
 
     cursor = addDays(cursor, 1);
@@ -340,7 +376,7 @@ export default function HomePage() {
               <div className="flex flex-wrap justify-center items-center text-[10px] text-slate-500 gap-2 sm:gap-2 text-center pt-3 border-t border-slate-800">
                 <span>Weekdays when markets are open</span>
                 <span className="text-slate-700 mx-0">|</span>
-                <span>Includes today</span>
+                <span>Includes today if before 4pm ET</span>
                 <span className="text-slate-700 mx-0">|</span>
                 <span>Half days are 0.5</span>
               </div>
