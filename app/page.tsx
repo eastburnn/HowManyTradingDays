@@ -450,8 +450,41 @@ export default function HomePage() {
         <FAQ />
 
         {/* FOOTER */}
-        <footer className="mt-4 text-[10px] text-slate-500 text-center">
-          HowManyTradingDays.com · U.S. equity markets only · For informational purposes only.
+        <footer className="mt-4 text-[10px] text-slate-500 text-center space-y-1">
+          <p>
+            HowManyTradingDays.com · U.S. equity markets only · For informational purposes only.
+          </p>
+
+          {/* NEW LINE BELOW */}
+          <p className="flex items-center justify-center gap-2 text-[10px] text-slate-500">
+            Made by{" "}
+            <a
+              href="https://www.itschrisray.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-slate-400 hover:text-slate-300"
+            >
+              itschrisray.com
+            </a>
+
+            {/* Divider dot */}
+            <span className="text-slate-700">•</span>
+
+            {/* X Profile (with your X logo image) */}
+            <a
+              href="https://x.com/itschrisray"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:opacity-80 transition"
+            >
+              <img
+                src="/twitter.png"  // replace this with your actual local logo filename
+                alt="X Logo"
+                className="h-3 w-3 opacity-70"
+              />
+              <span className="text-slate-400 hover:text-slate-300">@itschrisray</span>
+            </a>
+          </p>
         </footer>
       </div>
     </main>
