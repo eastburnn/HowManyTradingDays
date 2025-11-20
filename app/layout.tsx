@@ -18,7 +18,7 @@ const GA_MEASUREMENT_ID = "G-4CY0XQWF9B";
 export const metadata: Metadata = {
   metadataBase: new URL("https://howmanytradingdays.com"),
   title: "How Many Trading Days",
-  description: "U.S. trading days remaining this year",
+  description: "See how many trading days are left for the stock market this year.",
 
   openGraph: {
     title: "How Many Trading Days",
