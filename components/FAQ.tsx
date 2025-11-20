@@ -9,6 +9,11 @@ const faqs = [
       "Most years have around 252 trading days once weekends and stock-market holidays are removed. The exact number changes depending on where holidays fall. This site calculates the precise number remaining for the current calendar year.",
   },
   {
+    question: "How many trading days are in a typical month?",
+    answer:
+      "Most months have between 19 and 22 trading days. The exact number depends on where weekends and market holidays fall. Months containing major holidays—such as July, November, or December tend to have fewer trading days. This site only calculates the count for the full calendar year, but monthly totals follow the same pattern of excluding weekends and full U.S. stock-market holidays.",
+  },
+  {
     question: "Which days is the U.S. stock market closed?",
     answer:
       "We follow the standard NYSE/Nasdaq holiday schedule: New Year’s Day, Martin Luther King Jr. Day, Presidents’ Day, Good Friday, Memorial Day, Juneteenth National Independence Day, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead.",
