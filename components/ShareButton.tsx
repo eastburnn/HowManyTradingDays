@@ -107,7 +107,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       const drawH = Math.round(img.height * scale);
 
       const dx = Math.round((canvas.width - drawW) / 2);
-      const dy = Math.round(contentTop + (contentHeight - drawH) / 2);
+      const dy = Math.round(contentTop + (contentHeight - drawH) / 2) + 16;
 
       ctx.drawImage(img, dx, dy, drawW, drawH);
 
