@@ -407,7 +407,7 @@ export default function HomePage() {
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
             Live countdown of how many U.S. stock market trading days are left in {year}.
             Includes weekdays if it’s before 4pm ET; excludes weekends,
-            full holidays, and counts scheduled early-close days as 0.5.
+            full holidays, and counts early-close days as 0.5.
           </p>
         </header>
 
