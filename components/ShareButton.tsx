@@ -22,18 +22,15 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
     const node = cardRef.current;
 
-    // --- NEW: export-only style stripping for the entire subtree ---
-    // This kills mobile-only border/ring/shadow/filter artifacts that html-to-image sometimes captures.
+    // --- export-only style stripping for the entire subtree (keeps mobile clean) ---
     const patched = new Map<HTMLElement, string>();
     const elements = Array.from(node.querySelectorAll<HTMLElement>("*"));
     elements.unshift(node);
 
     const patchSubtree = () => {
       for (const el of elements) {
-        // store original inline style so we can revert safely
         patched.set(el, el.getAttribute("style") || "");
 
-        // wipe common artifact sources
         el.style.border = "0";
         el.style.outline = "0";
         el.style.boxShadow = "none";
@@ -54,11 +51,18 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
     patchSubtree();
 
     try {
-      // Capture the card as it appears (no border/shadow/filter artifacts)
+      // Sharper exports: bump pixelRatio more aggressively on mobile
+      const isMobile =
+        typeof window !== "undefined" &&
+        window.matchMedia &&
+        window.matchMedia("(max-width: 640px)").matches;
+
+      const pixelRatio = isMobile ? 3 : 2;
+
       const dataUrl = await toPng(node, {
         cacheBust: true,
         backgroundColor: "#020617",
-        pixelRatio: 2,
+        pixelRatio,
         style: {
           borderRadius: "0px",
           overflow: "hidden",
@@ -73,7 +77,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         img.onerror = reject;
       });
 
-      // Keep your device-independent aspect ratio setup
       const TARGET_ASPECT = 1.85; // width / height
       const footerSpace = 72;
       const topPadding = 28;
@@ -86,6 +89,10 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       const ctx = canvas.getContext("2d")!;
       if (!ctx) throw new Error("Canvas context not available");
 
+      // Sharper downsampling / drawing (helps edges/text a bit)
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -96,18 +103,17 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       const fitScale = contentHeight / img.height;
       const scale = Math.min(preferredScale, fitScale);
 
-      // draw cleanly (integer coords)
       const drawW = Math.round(img.width * scale);
       const drawH = Math.round(img.height * scale);
 
       const dx = Math.round((canvas.width - drawW) / 2);
       const dy = Math.round(contentTop + (contentHeight - drawH) / 2);
 
-      ctx.imageSmoothingEnabled = true;
       ctx.drawImage(img, dx, dy, drawW, drawH);
 
-      // watermark: smaller on mobile by width
-      const watermarkSize = Math.max(14, Math.min(18, Math.round(canvas.width / 45)));
+      // Watermark: smaller on mobile, keep desktop roughly the same
+      // (mobile canvas width tends to be smaller -> this will reduce font size)
+      const watermarkSize = Math.max(12, Math.min(18, Math.round(canvas.width / 55)));
 
       await document.fonts.load(`${watermarkSize}px Domine`);
       ctx.font = `${watermarkSize}px Domine`;
@@ -122,7 +128,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
       return { finalDataUrl, file };
     } finally {
-      // Always restore even if capture fails
       restoreSubtree();
     }
   };
