@@ -23,7 +23,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
     const node = cardRef.current;
 
-    // Capture the card as it appears
+    // Capture the card as it appears (but remove its border for export)
     const dataUrl = await toPng(node, {
       cacheBust: true,
       backgroundColor: "#020617", // Tailwind slate-950
@@ -32,6 +32,10 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         // ensure exported image is rectangular even if card has rounded corners
         borderRadius: "0px",
         overflow: "hidden",
+
+        // IMPORTANT: prevent the card's own border from looking odd when we pad/scale
+        border: "none",
+        boxShadow: "none",
       },
     });
 
@@ -44,24 +48,45 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       img.onerror = reject;
     });
 
+    /**
+     * EXPORT TUNING
+     * - Make the final export more square by adding vertical padding
+     * - Scale the card up a bit so it fills the canvas (bigger text / presence)
+     */
+    const verticalPadding = Math.round(img.height * 0.22); // smaller padding than before
+    const scaleUp = 1.08; // makes the card/content feel larger in the exported image
+
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.height = img.height + verticalPadding * 2;
+
     const ctx = canvas.getContext("2d")!;
+    if (!ctx) throw new Error("Canvas context not available");
 
-    // Draw the card
-    ctx.drawImage(img, 0, 0);
+    // Background
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Ensure Domine is available and draw watermark with it
-    await document.fonts.load("14px Domine");
-    ctx.font = "16px Domine";
-    ctx.fillStyle = "rgba(200, 200, 200, 0.9)";
+    // Draw the card scaled up and centered (cropped slightly if needed)
+    const drawW = img.width * scaleUp;
+    const drawH = img.height * scaleUp;
+
+    const dx = (canvas.width - drawW) / 2;
+    const dy = verticalPadding + (img.height - drawH) / 2;
+
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+
+    // Draw a clean border around the FULL exported image (matches new size)
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.35)"; // slate-ish
+    ctx.lineWidth = 2; // slightly thicker so it looks intentional when shared
+    ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+    // Ensure Domine is available and draw watermark
+    await document.fonts.load("16px Domine");
+    ctx.font = "18px Domine"; // slightly larger watermark to match the new composition
+    ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
     ctx.textAlign = "center";
-    ctx.fillText(
-      "HowManyTradingDays.com",
-      canvas.width / 2,
-      canvas.height - 12
-    );
+    ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
 
     const finalDataUrl = canvas.toDataURL("image/png");
 
@@ -86,7 +111,10 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
       const navAny = navigator as any;
 
-      if (navigator.share && (!navAny.canShare || navAny.canShare({ files: [file] }))) {
+      if (
+        navigator.share &&
+        (!navAny.canShare || navAny.canShare({ files: [file] }))
+      ) {
         await navigator.share(shareData);
       } else {
         // Fallback: download if share not supported
@@ -159,7 +187,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
             {mode === "share" ? "Preparing..." : "Share"}
           </span>
 
-          {/* Three-node share icon */}
+          {/* Share icon */}
           <svg
             className="w-4 h-4 text-slate-300 group-hover:text-white transition"
             fill="none"
@@ -221,11 +249,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       </div>
 
       {error && <p className="text-[10px] text-red-400">{error}</p>}
-      {!error && (
-        <p className="text-[10px] text-slate-500">
-          Share or save an image of the card.
-        </p>
-      )}
     </div>
   );
 }

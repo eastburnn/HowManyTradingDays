@@ -403,15 +403,12 @@ export default function HomePage() {
             How Many Trading Days
           </h1>
 
-          <p className="text-sm text-slate-400">
-            Remaining U.S. stock market trading days in {year}
-          </p>
-
           {/* Small, keyword-rich helper line for SEO + clarity */}
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Live countdown of how many trading days are left this year for U.S.
-            markets (NYSE/Nasdaq), excluding weekends, market holidays, and
-            counting scheduled half days as 0.5.
+            Live countdown of how many U.S. stock market trading days are left this
+            year. Includes today if markets are open and it’s before 4:00 p.m.
+            Eastern Time; excludes weekends, full holidays, and counts scheduled
+            early-close days as 0.5.
           </p>
         </header>
 
@@ -445,17 +442,6 @@ export default function HomePage() {
                   {halfDays}
                 </span>
                 <span>half days</span>
-              </div>
-            </div>
-
-            {/* INLINE RULES */}
-            <div className="flex flex-col w-full mt-3">
-              <div className="flex flex-wrap justify-center items-center text-[10px] text-slate-500 gap-2 sm:gap-2 text-center pt-3 border-t border-slate-800">
-                <span>Weekdays when markets are open</span>
-                <span className="text-slate-700 mx-0">|</span>
-                <span>Includes today if before 4pm ET</span>
-                <span className="text-slate-700 mx-0">|</span>
-                <span>Half days are 0.5</span>
               </div>
             </div>
           </div>
