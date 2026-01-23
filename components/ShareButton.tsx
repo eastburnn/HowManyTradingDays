@@ -15,7 +15,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
   const isWorking = mode !== null;
 
-  // Shared function to generate the final watermarked PNG
   const generateImage = async () => {
     if (!cardRef.current) {
       throw new Error("Card element not found");
@@ -23,91 +22,109 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
     const node = cardRef.current;
 
-    // Capture the card as it appears (but remove its border for export)
-    const dataUrl = await toPng(node, {
-      cacheBust: true,
-      backgroundColor: "#020617", // Tailwind slate-950
-      pixelRatio: 2,
-      style: {
-        // ensure exported image is rectangular even if card has rounded corners
-        borderRadius: "0px",
-        overflow: "hidden",
+    // --- NEW: export-only style stripping for the entire subtree ---
+    // This kills mobile-only border/ring/shadow/filter artifacts that html-to-image sometimes captures.
+    const patched = new Map<HTMLElement, string>();
+    const elements = Array.from(node.querySelectorAll<HTMLElement>("*"));
+    elements.unshift(node);
 
-        // IMPORTANT: prevent the card's own border from looking odd when we pad/scale
-        border: "none",
-        boxShadow: "none",
-      },
-    });
+    const patchSubtree = () => {
+      for (const el of elements) {
+        // store original inline style so we can revert safely
+        patched.set(el, el.getAttribute("style") || "");
 
-    // Load into an Image so we can draw to canvas
-    const img = new Image();
-    img.src = dataUrl;
+        // wipe common artifact sources
+        el.style.border = "0";
+        el.style.outline = "0";
+        el.style.boxShadow = "none";
+        el.style.filter = "none";
+        (el.style as any).backdropFilter = "none";
+        el.style.transform = "none";
+      }
+    };
 
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = reject;
-    });
+    const restoreSubtree = () => {
+      for (const [el, style] of patched.entries()) {
+        if (style) el.setAttribute("style", style);
+        else el.removeAttribute("style");
+      }
+      patched.clear();
+    };
 
-    /**
-     * EXPORT TUNING (DEVICE-INDEPENDENT)
-     * Force a single aspect ratio for the final exported image, regardless of device.
-     */
-    const TARGET_ASPECT = 1.85; // width / height (higher = more rectangular/shorter)
-    const footerSpace = 72; // reserved space at bottom for watermark breathing room
-    const topPadding = 28; // keeps content from hugging top
-    const preferredScale = 1.08; // make content slightly larger in export
+    patchSubtree();
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
+    try {
+      // Capture the card as it appears (no border/shadow/filter artifacts)
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        backgroundColor: "#020617",
+        pixelRatio: 2,
+        style: {
+          borderRadius: "0px",
+          overflow: "hidden",
+        },
+      });
 
-    // Force the same export aspect ratio everywhere
-    const targetHeight = Math.round(canvas.width / TARGET_ASPECT);
-    canvas.height = Math.max(targetHeight, 200); // safety floor
+      const img = new Image();
+      img.src = dataUrl;
 
-    const ctx = canvas.getContext("2d")!;
-    if (!ctx) throw new Error("Canvas context not available");
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+      });
 
-    // Background
-    ctx.fillStyle = "#020617";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Keep your device-independent aspect ratio setup
+      const TARGET_ASPECT = 1.85; // width / height
+      const footerSpace = 72;
+      const topPadding = 28;
+      const preferredScale = 1.08;
 
-    // Compute the drawable area for the card (exclude footer space)
-    const contentTop = topPadding;
-    const contentBottom = canvas.height - footerSpace;
-    const contentHeight = Math.max(0, contentBottom - contentTop);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = Math.max(Math.round(canvas.width / TARGET_ASPECT), 200);
 
-    // Scale to fit content area (keeps consistent composition even if mobile capture is tall)
-    const fitScale = contentHeight / img.height;
-    const scale = Math.min(preferredScale, fitScale);
+      const ctx = canvas.getContext("2d")!;
+      if (!ctx) throw new Error("Canvas context not available");
 
-    // Draw with integer coords + slight bleed to avoid edge artifacts (mobile side gray lines)
-    const bleed = 3; // px
-    const drawW = Math.round(img.width * scale);
-    const drawH = Math.round(img.height * scale);
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const dx = Math.round((canvas.width - drawW) / 2) - bleed;
-    const dy = Math.round(contentTop + (contentHeight - drawH) / 2) - bleed;
+      const contentTop = topPadding;
+      const contentBottom = canvas.height - footerSpace;
+      const contentHeight = Math.max(0, contentBottom - contentTop);
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(img, dx, dy, drawW + bleed * 2, drawH + bleed * 2);
+      const fitScale = contentHeight / img.height;
+      const scale = Math.min(preferredScale, fitScale);
 
-    // Watermark: slightly smaller on mobile by scaling with canvas width
-    const watermarkSize = Math.max(14, Math.min(18, Math.round(canvas.width / 45)));
+      // draw cleanly (integer coords)
+      const drawW = Math.round(img.width * scale);
+      const drawH = Math.round(img.height * scale);
 
-    await document.fonts.load(`${watermarkSize}px Domine`);
-    ctx.font = `${watermarkSize}px Domine`;
-    ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
-    ctx.textAlign = "center";
-    ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
+      const dx = Math.round((canvas.width - drawW) / 2);
+      const dy = Math.round(contentTop + (contentHeight - drawH) / 2);
 
-    const finalDataUrl = canvas.toDataURL("image/png");
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, dx, dy, drawW, drawH);
 
-    const blob = await (await fetch(finalDataUrl)).blob();
-    const file = new File([blob], "trading-days.png", {
-      type: "image/png",
-    });
+      // watermark: smaller on mobile by width
+      const watermarkSize = Math.max(14, Math.min(18, Math.round(canvas.width / 45)));
 
-    return { finalDataUrl, file };
+      await document.fonts.load(`${watermarkSize}px Domine`);
+      ctx.font = `${watermarkSize}px Domine`;
+      ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
+      ctx.textAlign = "center";
+      ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
+
+      const finalDataUrl = canvas.toDataURL("image/png");
+
+      const blob = await (await fetch(finalDataUrl)).blob();
+      const file = new File([blob], "trading-days.png", { type: "image/png" });
+
+      return { finalDataUrl, file };
+    } finally {
+      // Always restore even if capture fails
+      restoreSubtree();
+    }
   };
 
   const handleShare = async () => {
@@ -117,10 +134,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
     try {
       const { finalDataUrl, file } = await generateImage();
 
-      const shareData: ShareData = {
-        files: [file],
-      };
-
+      const shareData: ShareData = { files: [file] };
       const navAny = navigator as any;
 
       if (
@@ -129,7 +143,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       ) {
         await navigator.share(shareData);
       } else {
-        // Fallback: download if share not supported
         const link = document.createElement("a");
         link.href = finalDataUrl;
         link.download = "trading-days.png";
@@ -146,7 +159,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         message?.toLowerCase()?.includes("cancel");
 
       if (isUserCancel) {
-        console.log("Share cancelled by user");
         setError(null);
       } else {
         console.error(err);
@@ -178,9 +190,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
   return (
     <div className="w-full flex flex-col items-center gap-1">
-      {/* Buttons row */}
       <div className="flex items-center gap-2">
-        {/* SHARE BUTTON */}
         <button
           onClick={handleShare}
           disabled={isWorking}
@@ -199,7 +209,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
             {mode === "share" ? "Preparing..." : "Share"}
           </span>
 
-          {/* Share icon */}
           <svg
             className="w-4 h-4 text-slate-300 group-hover:text-white transition"
             fill="none"
@@ -217,7 +226,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
           <span className="absolute inset-0 rounded-xl bg-slate-400/10 opacity-0 group-hover:opacity-100 transition pointer-events-none" />
         </button>
 
-        {/* SAVE BUTTON */}
         <button
           onClick={handleSave}
           disabled={isWorking}
@@ -236,7 +244,6 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
             {mode === "save" ? "Preparing..." : "Save"}
           </span>
 
-          {/* Download icon */}
           <svg
             className="w-4 h-4 text-slate-300 group-hover:text-white transition"
             fill="none"
