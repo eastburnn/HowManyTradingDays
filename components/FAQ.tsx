@@ -4,6 +4,11 @@ import React from "react";
 
 const faqs = [
   {
+    question: "What does this website show?",
+    answer:
+      "This website shows how many U.S. stock market trading days are left in the current calendar year. The live counter updates automatically and includes weekdays when markets are open, counts scheduled early-close days as half days, and excludes weekends and full market holidays. The site also lists upcoming market holidays and their associated dates.",
+  },
+  {
     question:
       "How many trading days are there in a typical year for U.S. markets?",
     answer:
