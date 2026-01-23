@@ -49,16 +49,20 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
     });
 
     /**
-     * EXPORT TUNING
-     * - Make the final export more square by adding vertical padding
-     * - Scale the card up a bit so it fills the canvas (bigger text / presence)
+     * EXPORT TUNING (DEVICE-INDEPENDENT)
+     * Force a single aspect ratio for the final exported image, regardless of device.
      */
-    const verticalPadding = Math.round(img.height * 0.22); // smaller padding than before
-    const scaleUp = 1.08; // makes the card/content feel larger in the exported image
+    const TARGET_ASPECT = 1.85; // width / height (higher = more rectangular/shorter)
+    const footerSpace = 72; // reserved space at bottom for watermark breathing room
+    const topPadding = 28; // keeps content from hugging top
+    const preferredScale = 1.08; // make content slightly larger in export
 
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
-    canvas.height = img.height + verticalPadding * 2;
+
+    // Force the same export aspect ratio everywhere
+    const targetHeight = Math.round(canvas.width / TARGET_ASPECT);
+    canvas.height = Math.max(targetHeight, 200); // safety floor
 
     const ctx = canvas.getContext("2d")!;
     if (!ctx) throw new Error("Canvas context not available");
@@ -67,24 +71,27 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw the card scaled up and centered (cropped slightly if needed)
-    const drawW = img.width * scaleUp;
-    const drawH = img.height * scaleUp;
+    // Compute the drawable area for the card (exclude footer space)
+    const contentTop = topPadding;
+    const contentBottom = canvas.height - footerSpace;
+    const contentHeight = Math.max(0, contentBottom - contentTop);
+
+    // Scale to fit content area (keeps consistent composition even if mobile capture is tall)
+    const fitScale = contentHeight / img.height;
+    const scale = Math.min(preferredScale, fitScale);
+
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
 
     const dx = (canvas.width - drawW) / 2;
-    const dy = verticalPadding + (img.height - drawH) / 2;
+    const dy = contentTop + (contentHeight - drawH) / 2;
 
     ctx.drawImage(img, dx, dy, drawW, drawH);
 
-    // Draw a clean border around the FULL exported image (matches new size)
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.35)"; // slate-ish
-    ctx.lineWidth = 2; // slightly thicker so it looks intentional when shared
-    ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
-
     // Ensure Domine is available and draw watermark
     await document.fonts.load("16px Domine");
-    ctx.font = "18px Domine"; // slightly larger watermark to match the new composition
-    ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
+    ctx.font = "18px Domine"; // keep your current size
+    ctx.fillStyle = "rgba(200, 200, 200, 0.6)"; // keep your current transparency
     ctx.textAlign = "center";
     ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
 
