@@ -80,18 +80,23 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
     const fitScale = contentHeight / img.height;
     const scale = Math.min(preferredScale, fitScale);
 
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
+    // Draw with integer coords + slight bleed to avoid edge artifacts (mobile side gray lines)
+    const bleed = 3; // px
+    const drawW = Math.round(img.width * scale);
+    const drawH = Math.round(img.height * scale);
 
-    const dx = (canvas.width - drawW) / 2;
-    const dy = contentTop + (contentHeight - drawH) / 2;
+    const dx = Math.round((canvas.width - drawW) / 2) - bleed;
+    const dy = Math.round(contentTop + (contentHeight - drawH) / 2) - bleed;
 
-    ctx.drawImage(img, dx, dy, drawW, drawH);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, dx, dy, drawW + bleed * 2, drawH + bleed * 2);
 
-    // Ensure Domine is available and draw watermark
-    await document.fonts.load("16px Domine");
-    ctx.font = "18px Domine"; // keep your current size
-    ctx.fillStyle = "rgba(200, 200, 200, 0.6)"; // keep your current transparency
+    // Watermark: slightly smaller on mobile by scaling with canvas width
+    const watermarkSize = Math.max(14, Math.min(18, Math.round(canvas.width / 45)));
+
+    await document.fonts.load(`${watermarkSize}px Domine`);
+    ctx.font = `${watermarkSize}px Domine`;
+    ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
     ctx.textAlign = "center";
     ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
 
