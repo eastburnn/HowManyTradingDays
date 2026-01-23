@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Script from "next/script";
 import { domine } from "./fonts";
 import ShareButton from "@/components/ShareButton";
 import FAQ from "@/components/FAQ";
@@ -114,7 +115,6 @@ function isAfterMarketCloseET() {
   const nowET = getEasternTime();
   const close = new Date(nowET);
   close.setHours(16, 0, 0, 0); // 4:00 PM ET
-
   return nowET > close;
 }
 
@@ -323,10 +323,78 @@ export default function HomePage() {
 
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  // Mirror your FAQ content here so we can generate FAQPage JSON-LD (helps Google understand the Q&A)
+  const faqItems = [
+    {
+      question:
+        "How many trading days are there in a typical year for U.S. markets?",
+      answer:
+        "Most years have around 252 trading days once weekends and stock-market holidays are removed. The exact number changes depending on where holidays fall. This site calculates the precise number remaining for the current calendar year.",
+    },
+    {
+      question: "How many trading days are in a typical month?",
+      answer:
+        "Most months have between 19 and 22 trading days. The exact number depends on where weekends and market holidays fall. Months containing major holidays—such as July, November, or December—tend to have fewer trading days. This site only calculates the count for the full calendar year, but monthly totals follow the same pattern of excluding weekends and full U.S. stock-market holidays.",
+    },
+    {
+      question: "Which days is the U.S. stock market closed?",
+      answer:
+        "We follow the standard NYSE/Nasdaq holiday schedule: New Year’s Day, Martin Luther King Jr. Day, Presidents’ Day, Good Friday, Memorial Day, Juneteenth National Independence Day, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead.",
+    },
+    {
+      question: "Does this site include half trading days?",
+      answer:
+        "Yes. Scheduled early-close days—such as the day after Thanksgiving, Christmas Eve in some years, or the day before Independence Day—are counted as 0.5 trading days. Full holidays are counted as 0, and normal weekdays when the market is open are counted as 1.",
+    },
+    {
+      question: "How many trading days are left in the year?",
+      answer:
+        "The main counter at the top of the page shows the remaining U.S. stock-market trading days in the current calendar year. It includes weekdays when markets are open, partial days as 0.5, and excludes weekends and full-day holidays.",
+    },
+    {
+      question:
+        "Why does the number sometimes end in .5 instead of a whole number?",
+      answer:
+        "A .5 at the end means there is at least one remaining scheduled half day (early close). For example, if the only remaining session is an early-close day, the counter will show 0.5 trading days left.",
+    },
+    {
+      question: "Do you count today as a trading day?",
+      answer:
+        "If today is a weekday and U.S. markets are open, we count it as a trading day until 4:00 p.m. Eastern Time (the normal close). After 4:00 p.m. ET, today is treated as finished and no longer included in the remaining-days count. If today is a weekend or full-day market holiday, it is not counted.",
+    },
+    {
+      question: "Which markets and time zone does this site use?",
+      answer:
+        "This site is based on regular-session hours for the major U.S. equity exchanges (such as NYSE and Nasdaq) and uses U.S. Eastern Time. It does not track extended hours, futures markets, or cryptocurrencies.",
+    },
+    {
+      question: "How often is the countdown updated?",
+      answer:
+        "The countdown is recalculated every time you load or refresh the page, using your current date and time converted to U.S. Eastern Time. There’s no manual input—everything updates automatically.",
+    },
+  ];
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqItems.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
+      {/* FAQ structured data (JSON-LD) */}
+      <Script id="faq-jsonld" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(faqJsonLd)}
+      </Script>
+
       <div className="max-w-xl w-full flex flex-col items-center gap-10 py-12">
-        
         {/* TITLE */}
         <header className="text-center space-y-2">
           <h1
@@ -334,8 +402,16 @@ export default function HomePage() {
           >
             How Many Trading Days
           </h1>
+
           <p className="text-sm text-slate-400">
             Remaining U.S. stock market trading days in {year}
+          </p>
+
+          {/* Small, keyword-rich helper line for SEO + clarity */}
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            Live countdown of how many trading days are left this year for U.S.
+            markets (NYSE/Nasdaq), excluding weekends, market holidays, and
+            counting scheduled half days as 0.5.
           </p>
         </header>
 
@@ -409,9 +485,7 @@ export default function HomePage() {
                   className="flex items-start justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium text-slate-100">
-                      {h.name}
-                    </span>
+                    <span className="font-medium text-slate-100">{h.name}</span>
                     <span className="text-xs text-slate-400">
                       {formatDisplayDate(h.isoDate)}
                     </span>
@@ -440,9 +514,9 @@ export default function HomePage() {
           )}
 
           <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-            Calendar is based on standard NYSE/Nasdaq U.S. stock market
-            holidays and common 1 p.m. early closes. Weekends are handled
-            automatically and not shown here.
+            Calendar is based on standard NYSE/Nasdaq U.S. stock market holidays
+            and common 1 p.m. early closes. Weekends are handled automatically
+            and not shown here.
           </p>
         </section>
 
@@ -452,7 +526,8 @@ export default function HomePage() {
         {/* FOOTER */}
         <footer className="mt-4 text-[10px] text-slate-500 text-center space-y-1">
           <p>
-            HowManyTradingDays.com · U.S. equity markets only · For informational purposes only.
+            HowManyTradingDays.com · U.S. equity markets only · For informational
+            purposes only.
           </p>
 
           {/* NEW LINE BELOW */}
@@ -478,11 +553,13 @@ export default function HomePage() {
               className="inline-flex items-center gap-1 hover:opacity-80 transition"
             >
               <img
-                src="/twitter.png"  // replace this with your actual local logo filename
+                src="/twitter.png" // replace this with your actual local logo filename
                 alt="X Logo"
                 className="h-3 w-3 opacity-70"
               />
-              <span className="text-slate-400 hover:text-slate-300">@itschrisray</span>
+              <span className="text-slate-400 hover:text-slate-300">
+                @itschrisray
+              </span>
             </a>
           </p>
         </footer>

@@ -4,7 +4,8 @@ import React from "react";
 
 const faqs = [
   {
-    question: "How many trading days are there in a typical year for U.S. markets?",
+    question:
+      "How many trading days are there in a typical year for U.S. markets?",
     answer:
       "Most years have around 252 trading days once weekends and stock-market holidays are removed. The exact number changes depending on where holidays fall. This site calculates the precise number remaining for the current calendar year.",
   },
@@ -29,7 +30,8 @@ const faqs = [
       "The main counter at the top of the page shows the remaining U.S. stock-market trading days in the current calendar year. It includes weekdays when markets are open, partial days as 0.5, and excludes weekends and full-day holidays.",
   },
   {
-    question: "Why does the number sometimes end in .5 instead of a whole number?",
+    question:
+      "Why does the number sometimes end in .5 instead of a whole number?",
     answer:
       "A .5 at the end means there is at least one remaining scheduled half day (early close). For example, if the only remaining session is an early-close day, the counter will show 0.5 trading days left.",
   },
@@ -50,6 +52,14 @@ const faqs = [
   },
 ];
 
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
 export default function FAQ() {
   return (
     <section className="w-full border-t border-slate-800 pt-8">
@@ -58,26 +68,44 @@ export default function FAQ() {
       </h2>
       <p className="text-xs text-slate-400 mb-4">
         Quick answers to how we count U.S. stock market trading days and what’s
-        included in the numbers you see above.
+        included in the numbers above.
       </p>
 
       <div className="space-y-3">
-        {faqs.map((item) => (
-          <details
-            key={item.question}
-            className="group rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-slate-100">
-              <span>{item.question}</span>
-              <span className="ml-3 text-xs text-slate-500 transition-transform group-open:rotate-90">
-                ›
-              </span>
-            </summary>
-            <p className="mt-2 text-xs leading-relaxed text-slate-300">
-              {item.answer}
-            </p>
-          </details>
-        ))}
+        {faqs.map((item) => {
+          const id = slugify(item.question);
+
+          return (
+            <details
+              key={item.question}
+              className="group rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
+            >
+              <summary
+                className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-slate-100"
+                aria-controls={`${id}-answer`}
+              >
+                {/* Make the question a real heading for SEO/semantics */}
+                <h3 id={id} className="text-sm font-medium text-slate-100">
+                  {item.question}
+                </h3>
+
+                <span
+                  aria-hidden="true"
+                  className="ml-3 text-xs text-slate-500 transition-transform group-open:rotate-90"
+                >
+                  ›
+                </span>
+              </summary>
+
+              <p
+                id={`${id}-answer`}
+                className="mt-2 text-xs leading-relaxed text-slate-300"
+              >
+                {item.answer}
+              </p>
+            </details>
+          );
+        })}
       </div>
     </section>
   );
