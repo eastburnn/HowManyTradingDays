@@ -514,6 +514,43 @@ export default function HomePage() {
           </p>
         </section>
 
+        {/* QUICK ANSWERS */}
+        <section className="w-full border-t border-slate-800 pt-8">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-100 mb-2">
+            Quick Answers
+          </h2>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-100">
+                How many trading days in a year?
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                Most years have about <span className="font-semibold text-slate-100">252</span> U.S. stock market trading days,
+                depending on weekends and holidays.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-100">
+                What are the trading days in a year?
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">
+              Trading days in a year are the weekdays when U.S. stock markets are open, excluding weekends and official market holidays.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-100">
+                How many trading days are left in the year?
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                The live counter at the top of this page shows the exact remaining total for the current year.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* FAQ */}
         <FAQ />
 

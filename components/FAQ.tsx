@@ -4,18 +4,24 @@ import React from "react";
 
 const faqs = [
   {
+    // EXACT MATCH for the keyword you care about most
+    question: "How many trading days in a year?",
+    answer:
+      "For U.S. markets, most years have about 252 trading days after removing weekends and full market holidays. The exact total can vary slightly by year depending on how holidays fall. This site shows the live count of trading days remaining in the current calendar year.",
+  },
+  {
+    // Another variant you showed: "market days in a year"
+    question: "How many market days are in a year?",
+    answer:
+      "People usually mean U.S. stock-market trading days. Most years have about 252 market (trading) days, depending on weekends and the NYSE/Nasdaq holiday schedule. This site calculates the live remaining total for the current year.",
+  },
+  {
     question: "What does this website show?",
     answer:
       "This website shows how many U.S. stock market trading days are left in the current calendar year. The live counter updates automatically and includes weekdays when markets are open, counts scheduled early-close days as half days, and excludes weekends and full market holidays. The site also lists upcoming market holidays and their associated dates.",
   },
   {
-    question:
-      "How many trading days are there in a typical year for U.S. markets?",
-    answer:
-      "Most years have around 252 trading days once weekends and stock-market holidays are removed. The exact number changes depending on where holidays fall. This site calculates the precise number remaining for the current calendar year.",
-  },
-  {
-    question: "How many trading days are in a typical month?",
+    question: "How many trading days in a month?",
     answer:
       "Most months have between 19 and 22 trading days. The exact number depends on where weekends and market holidays fall. Months containing major holidays—such as July, November, or December—tend to have fewer trading days. This site only calculates the count for the full calendar year, but monthly totals follow the same pattern of excluding weekends and full U.S. stock-market holidays.",
   },
@@ -35,8 +41,7 @@ const faqs = [
       "The main counter at the top of the page shows the remaining U.S. stock-market trading days in the current calendar year. It includes weekdays when markets are open, partial days as 0.5, and excludes weekends and full-day holidays.",
   },
   {
-    question:
-      "Why does the number sometimes end in .5 instead of a whole number?",
+    question: "Why does the number sometimes end in .5 instead of a whole number?",
     answer:
       "A .5 at the end means there is at least one remaining scheduled half day (early close). For example, if the only remaining session is an early-close day, the counter will show 0.5 trading days left.",
   },
@@ -66,15 +71,35 @@ function slugify(s: string) {
 }
 
 export default function FAQ() {
+  // FAQPage structured data (helps Google parse Q/A even when collapsed)
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: f.answer,
+      },
+    })),
+  };
+
   return (
     <section className="w-full border-t border-slate-800 pt-8">
       <h2 className="text-base sm:text-lg font-semibold text-slate-100 mb-2">
         Frequently Asked Questions
       </h2>
+
       <p className="text-xs text-slate-400 mb-4">
-        Quick answers to how we count U.S. stock market trading days and what’s
-        included in the numbers above.
+        Quick answers to how we count U.S. stock market trading days and what’s included in the numbers above.
       </p>
+
+      {/* JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
       <div className="space-y-3">
         {faqs.map((item) => {
