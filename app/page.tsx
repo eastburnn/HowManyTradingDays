@@ -5,6 +5,7 @@ import Script from "next/script";
 import { domine } from "./fonts";
 import ShareButton from "@/components/ShareButton";
 import FAQ from "@/components/FAQ";
+import FiscalAd from "@/components/FiscalAd";
 
 /* ---------------------------------------------
    DATE + HOLIDAY UTILITIES
@@ -450,6 +451,14 @@ export default function HomePage() {
         <div className="w-full flex justify-center -mt-8">
           <ShareButton cardRef={cardRef} />
         </div>
+
+        {/* FISCAL.AI AD (directly below live counter, above upcoming holidays) */}
+        <aside
+          className="w-full -mt-2"
+          aria-label="Sponsored content"
+        >
+          <FiscalAd href="https://fiscal.ai/?via=welcome" />
+        </aside>
 
         {/* UPCOMING HOLIDAYS */}
         <section className="w-full">
