@@ -90,7 +90,7 @@ export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
             className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]"
           />
           <p className="text-[11px] sm:text-xs text-white leading-snug">
-            <span className="font-semibold">Use code WELCOME15</span> for{" "}
+            <span className="font-semibold">Use WELCOME15</span> for{" "}
             <span className="font-semibold">
               15% off your first 11 months
             </span>
