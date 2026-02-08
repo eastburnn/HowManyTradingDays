@@ -390,10 +390,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
-      {/* FAQ structured data (JSON-LD) */}
-      <Script id="faq-jsonld" type="application/ld+json" strategy="afterInteractive">
-        {JSON.stringify(faqJsonLd)}
-      </Script>
 
       <div className="max-w-xl w-full flex flex-col items-center gap-10 py-12">
         {/* TITLE */}
