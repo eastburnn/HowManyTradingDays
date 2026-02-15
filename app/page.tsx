@@ -453,7 +453,7 @@ export default function HomePage() {
           className="w-full -mt-2"
           aria-label="Sponsored content"
         >
-          <FiscalAd href="https://fiscal.ai/?via=welcome" />
+          <FiscalAd href="https://fiscal.ai/pricing/?via=welcome" />
         </aside>
 
         {/* UPCOMING HOLIDAYS */}
