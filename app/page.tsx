@@ -32,7 +32,10 @@ function stripTime(d: Date): Date {
 }
 
 function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatDisplayDate(isoDate: string): string {
@@ -324,72 +327,9 @@ export default function HomePage() {
 
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // Mirror your FAQ content here so we can generate FAQPage JSON-LD (helps Google understand the Q&A)
-  const faqItems = [
-    {
-      question:
-        "How many trading days are there in a typical year for U.S. markets?",
-      answer:
-        "Most years have around 252 trading days once weekends and stock-market holidays are removed. The exact number changes depending on where holidays fall. This site calculates the precise number remaining for the current calendar year.",
-    },
-    {
-      question: "How many trading days are in a typical month?",
-      answer:
-        "Most months have between 19 and 22 trading days. The exact number depends on where weekends and market holidays fall. Months containing major holidays—such as July, November, or December—tend to have fewer trading days. This site only calculates the count for the full calendar year, but monthly totals follow the same pattern of excluding weekends and full U.S. stock-market holidays.",
-    },
-    {
-      question: "Which days is the U.S. stock market closed?",
-      answer:
-        "We follow the standard NYSE/Nasdaq holiday schedule: New Year’s Day, Martin Luther King Jr. Day, Presidents’ Day, Good Friday, Memorial Day, Juneteenth National Independence Day, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead.",
-    },
-    {
-      question: "Does this site include half trading days?",
-      answer:
-        "Yes. Scheduled early-close days—such as the day after Thanksgiving, Christmas Eve in some years, or the day before Independence Day—are counted as 0.5 trading days. Full holidays are counted as 0, and normal weekdays when the market is open are counted as 1.",
-    },
-    {
-      question: "How many trading days are left in the year?",
-      answer:
-        "The main counter at the top of the page shows the remaining U.S. stock-market trading days in the current calendar year. It includes weekdays when markets are open, partial days as 0.5, and excludes weekends and full-day holidays.",
-    },
-    {
-      question:
-        "Why does the number sometimes end in .5 instead of a whole number?",
-      answer:
-        "A .5 at the end means there is at least one remaining scheduled half day (early close). For example, if the only remaining session is an early-close day, the counter will show 0.5 trading days left.",
-    },
-    {
-      question: "Do you count today as a trading day?",
-      answer:
-        "If today is a weekday and U.S. markets are open, we count it as a trading day until 4:00 p.m. Eastern Time (the normal close). After 4:00 p.m. ET, today is treated as finished and no longer included in the remaining-days count. If today is a weekend or full-day market holiday, it is not counted.",
-    },
-    {
-      question: "Which markets and time zone does this site use?",
-      answer:
-        "This site is based on regular-session hours for the major U.S. equity exchanges (such as NYSE and Nasdaq) and uses U.S. Eastern Time. It does not track extended hours, futures markets, or cryptocurrencies.",
-    },
-    {
-      question: "How often is the countdown updated?",
-      answer:
-        "The countdown is recalculated every time you load or refresh the page, using your current date and time converted to U.S. Eastern Time. There’s no manual input—everything updates automatically.",
-    },
-  ];
-
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqItems.map((item) => ({
-      "@type": "Question",
-      name: item.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: item.answer,
-      },
-    })),
-  };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
+    <main className="flex-1 flex items-center justify-center px-4">
 
       <div className="max-w-xl w-full flex flex-col items-center gap-10 py-12">
         {/* TITLE */}
@@ -447,6 +387,34 @@ export default function HomePage() {
         <div className="w-full flex justify-center -mt-8">
           <ShareButton cardRef={cardRef} />
         </div>
+
+        {/* CALCULATOR CTA */}
+        <a
+          href="/calculator"
+          className="
+            group w-full flex items-center justify-between
+            rounded-lg border border-slate-800 bg-slate-900/70
+            px-4 py-3 -mt-4
+            hover:border-slate-700 hover:bg-slate-900
+            transition-all duration-150 active:scale-[0.99]
+          "
+        >
+          <div className="flex items-center gap-3">
+            <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <line x1="8" y1="7" x2="16" y2="7" />
+              <line x1="8" y1="11" x2="16" y2="11" />
+              <line x1="8" y1="15" x2="12" y2="15" />
+            </svg>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-100">Trading Days Calculator</span>
+              <span className="text-xs text-slate-500">See how many trading days remain until a specific date</span>
+            </div>
+          </div>
+          <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
 
         {/* FISCAL.AI AD (directly below live counter, above upcoming holidays) */}
         <aside
@@ -550,46 +518,6 @@ export default function HomePage() {
         {/* FAQ */}
         <FAQ />
 
-        {/* FOOTER */}
-        <footer className="mt-4 text-[10px] text-slate-500 text-center space-y-1">
-          <p>
-            HowManyTradingDays.com · U.S. equity markets only · For informational
-            purposes only.
-          </p>
-
-          {/* NEW LINE BELOW */}
-          <p className="flex items-center justify-center gap-2 text-[10px] text-slate-500">
-            Made by{" "}
-            <a
-              href="https://www.itschrisray.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-slate-400 hover:text-slate-300"
-            >
-              itschrisray.com
-            </a>
-
-            {/* Divider dot */}
-            <span className="text-slate-700">•</span>
-
-            {/* X Profile (with your X logo image) */}
-            <a
-              href="https://x.com/itschrisray"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:opacity-80 transition"
-            >
-              <img
-                src="/twitter.png" // replace this with your actual local logo filename
-                alt="X Logo"
-                className="h-3 w-3 opacity-70"
-              />
-              <span className="text-slate-400 hover:text-slate-300">
-                @itschrisray
-              </span>
-            </a>
-          </p>
-        </footer>
       </div>
     </main>
   );
