@@ -95,7 +95,7 @@ export default function Navbar() {
             {open && (
               <div
                 role="menu"
-                className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/40 py-1.5 z-50"
+                className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-52 rounded-xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/40 py-1.5 z-50"
               >
                 {REFERENCE_LINKS.map(({ label, href }) => {
                   const isActive = pathname === href || pathname.startsWith(href + "/");
