@@ -8,6 +8,7 @@ const LINKS = [
   { label: "Days in a Year", href: "/trading-days-in-a-year" },
   { label: "Holidays", href: "/stock-market-holidays" },
   { label: "Calculator", href: "/calculator" },
+  { label: "API", href: "/api-docs" },
   { label: "About", href: "/about" },
 ];
 
