@@ -14,7 +14,7 @@ type Target = {
   label: string;
   kicker: string;
   target: Date; // in ET wall-clock terms
-  secondary: string;
+  secondary: string[]; // short lines that each fit without wrapping
 };
 
 function computeTarget(): Target {
@@ -30,16 +30,16 @@ function computeTarget(): Target {
       kicker: "Closes in",
       target,
       secondary: status.isEarlyClose
-        ? "Today is an early-close session — trading ends at 1:00 p.m. ET"
-        : "Today's regular session ends at 4:00 p.m. ET",
+        ? ["Early close today — session ends at 1:00 p.m. ET"]
+        : ["Today's regular session ends at 4:00 p.m. ET"],
     };
   }
 
   const [y, m, d] = status.nextOpenISO.split("-").map(Number);
   const target = new Date(y, m - 1, d, 9, 30, 0, 0);
   const dayLabel = target.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
+    weekday: "short",
+    month: "short",
     day: "numeric",
   });
 
@@ -48,12 +48,16 @@ function computeTarget(): Target {
   else if (status.reason === "before-open") why = "Pre-market";
   else if (status.reason !== "after-close") why = `Closed for ${status.reason}`;
 
+  const lines = [];
+  if (why) lines.push(why);
+  lines.push(`Next session: ${dayLabel} \u00b7 9:30 a.m. ET`);
+
   return {
     status,
     label: "U.S. markets are closed",
     kicker: "Opens in",
     target,
-    secondary: `${why ? `${why} — n` : "N"}ext session: ${dayLabel} at 9:30 a.m. ET`,
+    secondary: lines,
   };
 }
 
@@ -140,7 +144,13 @@ export default function MarketCountdown() {
         <span className="text-base sm:text-lg text-slate-400 mb-1 sm:mb-1.5">s</span>
       </div>
 
-      <p className="text-xs text-slate-400 text-center max-w-sm">{t.secondary}</p>
+      <div className="flex flex-col items-center gap-0.5">
+        {t.secondary.map((line) => (
+          <p key={line} className="text-xs text-slate-400 text-center whitespace-nowrap">
+            {line}
+          </p>
+        ))}
+      </div>
     </section>
   );
 }
