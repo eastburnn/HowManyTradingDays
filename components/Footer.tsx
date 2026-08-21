@@ -43,33 +43,22 @@ function LinkColumn({
 export default function Footer() {
   return (
     <footer className="w-full border-t border-slate-800 bg-slate-950 mt-auto">
-      <div className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
-        {/* Top: brand + link columns */}
-        <div className="flex flex-col sm:flex-row justify-between gap-8">
-          {/* Brand */}
-          <div className="flex flex-col gap-2 max-w-[220px]">
-            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img src="/favicon.ico" alt="" className="h-5 w-5" />
-              <span className={`${domine.className} text-sm font-semibold text-slate-100`}>
-                How Many Trading Days
-              </span>
-            </Link>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Live reference for U.S. stock market trading days, holidays, and market hours.
-            </p>
-          </div>
-
-          {/* Links */}
-          <div className="flex gap-10 sm:gap-12">
-            <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
-            <LinkColumn heading="Site" links={SITE_LINKS} />
-          </div>
-        </div>
-
-        {/* Bottom: legal row */}
-        <div className="border-t border-slate-800/70 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-slate-500">
-          <p>U.S. equity markets only &middot; For informational purposes only.</p>
-          <p className="flex items-center gap-1.5">
+      <div className="max-w-xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between gap-6 sm:gap-8">
+        {/* Brand + legal */}
+        <div className="flex flex-col gap-2 max-w-[240px]">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src="/favicon.ico" alt="" className="h-5 w-5" />
+            <span className={`${domine.className} text-sm font-semibold text-slate-100`}>
+              How Many Trading Days
+            </span>
+          </Link>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Live reference for U.S. stock market trading days, holidays, and market hours.
+          </p>
+          <p className="text-[10px] text-slate-600 leading-relaxed">
+            U.S. equity markets only &middot; For informational purposes only.
+          </p>
+          <p className="flex items-center gap-1.5 text-[10px] text-slate-500">
             Made by{" "}
             <a
               href="https://www.itschrisray.com"
@@ -92,6 +81,12 @@ export default function Footer() {
               </span>
             </a>
           </p>
+        </div>
+
+        {/* Links */}
+        <div className="flex gap-10 sm:gap-12">
+          <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
+          <LinkColumn heading="Site" links={SITE_LINKS} />
         </div>
       </div>
     </footer>
