@@ -70,8 +70,8 @@ export default function TradingDaysInAYearPage() {
 
         {/* HEADER + DIRECT ANSWER */}
         <header className="space-y-2">
-          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
-            How Many Trading Days Are in a Year?
+          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight`}>
+            How Many Trading Days <span className="whitespace-nowrap">Are in a Year?</span>
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             A typical year has about <span className="font-semibold text-slate-200">252</span> U.S.
