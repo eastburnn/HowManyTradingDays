@@ -10,9 +10,12 @@ const REFERENCE_LINKS = [
   { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
 ];
 
-const LINKS = [
+const BEFORE_DROPDOWN = [
   { label: "Home", href: "/" },
   { label: "Calculator", href: "/calculator" },
+];
+
+const AFTER_DROPDOWN = [
   { label: "API", href: "/api-docs" },
   { label: "About", href: "/about" },
 ];
@@ -62,9 +65,11 @@ export default function Navbar() {
 
         {/* Nav links */}
         <div className="flex items-center gap-0.5 sm:gap-1">
-          <Link href="/" className={linkClass(pathname === "/")}>
-            Home
-          </Link>
+          {BEFORE_DROPDOWN.map(({ label, href }) => (
+            <Link key={href} href={href} className={linkClass(pathname === href)}>
+              {label}
+            </Link>
+          ))}
 
           {/* Reference dropdown */}
           <div className="relative" ref={menuRef}>
@@ -114,7 +119,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {LINKS.slice(1).map(({ label, href }) => (
+          {AFTER_DROPDOWN.map(({ label, href }) => (
             <Link key={href} href={href} className={linkClass(pathname === href)}>
               {label}
             </Link>

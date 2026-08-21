@@ -37,6 +37,26 @@ function CodeBlock({ children }: { children: string }) {
   );
 }
 
+function Expandable({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-slate-800 bg-slate-900/40">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-slate-200 hover:text-slate-100 transition-colors">
+        {label}
+        <svg
+          className="w-3.5 h-3.5 text-slate-500 transition-transform duration-150 group-open:rotate-180 flex-shrink-0 ml-3"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </summary>
+      <div className="px-4 pb-4 flex flex-col gap-3">{children}</div>
+    </details>
+  );
+}
+
 export default function ApiDocsPage() {
   return (
     <main className="flex-1 flex items-start justify-center px-4">
@@ -59,15 +79,18 @@ export default function ApiDocsPage() {
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
             GET /api/trading-days
           </h2>
+          <CodeBlock>{`https://howmanytradingdays.com/api/trading-days`}</CodeBlock>
           <p className="text-sm text-slate-400 leading-relaxed">
             Trading-day totals, month-by-month counts, and the full holiday calendar for a year.
             Defaults to the current year; pass <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">?year=2027</code>{" "}
             for any year from 1950 to 2100. For the current year, <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">remaining</code>{" "}
             holds the live days-left count.
           </p>
-          <CodeBlock>{`# curl
+
+          <Expandable label="Code examples & sample response">
+            <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/trading-days?year=2026`}</CodeBlock>
-          <CodeBlock>{`// JavaScript (browser or Node — CORS is enabled)
+            <CodeBlock>{`// JavaScript (browser or Node — CORS is enabled)
 const res = await fetch(
   "https://howmanytradingdays.com/api/trading-days?year=2026"
 );
@@ -76,15 +99,15 @@ const data = await res.json();
 console.log(data.tradingDays);           // 251
 console.log(data.remaining.tradingDays); // days left (current year only)
 console.log(data.holidays[0]);           // { date, name, status }`}</CodeBlock>
-          <CodeBlock>{`# Python
+            <CodeBlock>{`# Python
 import requests
 
 data = requests.get(
     "https://howmanytradingdays.com/api/trading-days", params={"year": 2026}
 ).json()
 print(data["tradingDays"])  # 251`}</CodeBlock>
-          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
-          <CodeBlock>{`{
+            <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
+            <CodeBlock>{`{
   "year": 2026,
   "tradingDays": 251,
   "tradingDaysHalfDayAdjusted": 250,
@@ -101,6 +124,7 @@ print(data["tradingDays"])  # 251`}</CodeBlock>
   ],
   "source": "https://howmanytradingdays.com"
 }`}</CodeBlock>
+          </Expandable>
         </section>
 
         {/* MARKET STATUS ENDPOINT */}
@@ -108,21 +132,24 @@ print(data["tradingDays"])  # 251`}</CodeBlock>
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
             GET /api/market-status
           </h2>
+          <CodeBlock>{`https://howmanytradingdays.com/api/market-status`}</CodeBlock>
           <p className="text-sm text-slate-400 leading-relaxed">
             Whether U.S. equity markets are open right now, based on regular session hours
             (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
           </p>
-          <CodeBlock>{`# curl
+
+          <Expandable label="Code examples & sample response">
+            <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
-          <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
+            <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
 const res = await fetch("https://howmanytradingdays.com/api/market-status");
 const { isOpen, isEarlyClose, closesAtET } = await res.json();
 
 badge.textContent = isOpen
   ? \`Market open — closes \${closesAtET} ET\`
   : "Market closed";`}</CodeBlock>
-          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
-          <CodeBlock>{`{
+            <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
+            <CodeBlock>{`{
   "isOpen": true,
   "isTradingDay": true,
   "isEarlyClose": false,
@@ -133,6 +160,7 @@ badge.textContent = isOpen
   "timezone": "America/New_York",
   "source": "https://howmanytradingdays.com"
 }`}</CodeBlock>
+          </Expandable>
         </section>
 
         {/* NOTES */}
@@ -159,6 +187,16 @@ badge.textContent = isOpen
             ← Back to the live counter
           </Link>
         </div>
+
+        {/* DISCLAIMER */}
+        <p className="text-[10px] text-slate-600 leading-relaxed">
+          Disclaimer: This API and its data are provided free of charge, &quot;as is,&quot; without
+          warranty of any kind — including accuracy, completeness, availability, or fitness for any
+          purpose. Nothing here is financial, investment, or trading advice. You are solely
+          responsible for how you use this API and for any decisions or outcomes that result. By
+          using it, you agree that HowManyTradingDays.com and its creator bear no liability for any
+          loss or damage arising from its use, its unavailability, or any errors in its data.
+        </p>
       </div>
     </main>
   );
