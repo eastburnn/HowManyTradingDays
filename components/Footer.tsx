@@ -11,6 +11,8 @@ export default function Footer() {
           <span className="text-slate-700">&bull;</span>
           <a href="/api-docs" className="text-slate-400 hover:text-slate-300 transition-colors">Free API</a>
           <span className="text-slate-700">&bull;</span>
+          <a href="/about" className="text-slate-400 hover:text-slate-300 transition-colors">About</a>
+          <span className="text-slate-700">&bull;</span>
           <a href="/privacy" className="text-slate-400 hover:text-slate-300 transition-colors">Privacy</a>
         </p>
 
