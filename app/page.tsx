@@ -226,7 +226,7 @@ export default function HomePage() {
           className="w-full -mt-2 -mb-4"
           aria-label="Sponsored content"
         >
-          <FiscalAd href="https://fiscal.ai/pricing/?via=welcome" />
+          <FiscalAd href="https://fiscal.ai/company/NasdaqGS-GOOGL/?via=welcome" />
         </aside>
 
         {/* UPCOMING HOLIDAYS */}
