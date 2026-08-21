@@ -163,6 +163,26 @@ export default function StockMarketHolidaysPage() {
           </p>
         </section>
 
+        {/* STOCK VS BOND MARKET */}
+        <section className="border-t border-slate-800 pt-6 space-y-3">
+          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
+            Stock market vs. bank and bond market holidays
+          </h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            The exchange calendar is not the same as the federal holiday calendar. Stocks
+            trade normally on{" "}
+            <Link href="/is-the-stock-market-open/columbus-day" className="text-blue-300 hover:text-blue-200 transition-colors">Columbus Day</Link>{" "}
+            and{" "}
+            <Link href="/is-the-stock-market-open/veterans-day" className="text-blue-300 hover:text-blue-200 transition-colors">Veterans Day</Link>{" "}
+            even though banks, post offices, and the bond market are closed. The reverse is
+            also true: markets close for{" "}
+            <Link href="/is-the-stock-market-open/good-friday" className="text-blue-300 hover:text-blue-200 transition-colors">Good Friday</Link>,
+            which is not a federal holiday at all. The bond market follows SIFMA&apos;s
+            recommended schedule, which adds those two extra closures and several early
+            closes beyond what the stock exchanges observe.
+          </p>
+        </section>
+
         {/* PER-HOLIDAY PAGES */}
         <section className="border-t border-slate-800 pt-6 space-y-3">
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>

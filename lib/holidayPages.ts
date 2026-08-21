@@ -38,6 +38,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     blurb: [
       "U.S. stock markets are closed on New Year's Day. It is one of the ten official NYSE and Nasdaq holidays.",
       "When January 1 falls on a Saturday, the exchanges do not observe a substitute day off — markets simply reopen the following Monday. When it falls on a Sunday, markets are closed the following Monday instead.",
+      "That Saturday rule makes New Year's Day the only holiday that can disappear from the market calendar entirely — in those years the exchanges observe nine holidays instead of ten. New Year's Eve, by contrast, is always a full trading session when it falls on a weekday.",
     ],
     bondMarketClosed: true,
   },
@@ -48,6 +49,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => nthWeekdayOfMonth(y, 0, 1, 3),
     blurb: [
       "U.S. stock markets are closed on Martin Luther King Jr. Day, observed on the third Monday of January. The NYSE and Nasdaq have observed the holiday since 1998.",
+      "It was the most recently added market holiday for over two decades, until Juneteenth joined the calendar in 2022. Because it always falls on a Monday, it creates a guaranteed three-day weekend — the first market break of every year after New Year's Day.",
     ],
     bondMarketClosed: true,
   },
@@ -58,6 +60,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => nthWeekdayOfMonth(y, 1, 1, 3),
     blurb: [
       "U.S. stock markets are closed on Presidents' Day (Washington's Birthday), observed on the third Monday of February.",
+      "It is the only market holiday in February and, like MLK Day, always falls on a Monday. After Presidents' Day, the next scheduled closure is Good Friday, which can be anywhere from five to nine weeks later depending on when Easter falls.",
     ],
     bondMarketClosed: true,
   },
@@ -89,6 +92,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => lastWeekdayOfMonth(y, 4, 1),
     blurb: [
       "U.S. stock markets are closed on Memorial Day, observed on the last Monday of May. It marks the unofficial start of summer and is a full market holiday.",
+      "Unlike Thanksgiving or Independence Day, Memorial Day has no early-close session attached to it — the Friday before is a normal full trading day ending at 4:00 p.m. ET.",
     ],
     bondMarketClosed: true,
   },
@@ -99,6 +103,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => observedFixedHoliday(y, 5, 19),
     blurb: [
       "U.S. stock markets are closed for Juneteenth National Independence Day (June 19). It became a federal holiday in 2021, and the NYSE and Nasdaq began observing it in 2022 — making it the newest holiday on the market calendar.",
+      "It was the first holiday added to the exchange calendar since Martin Luther King Jr. Day in 1998. When June 19 falls on a Saturday the market closes the Friday before, and when it falls on a Sunday the closure moves to Monday, June 20.",
     ],
     bondMarketClosed: true,
   },
@@ -109,6 +114,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => observedFixedHoliday(y, 6, 4),
     blurb: [
       "U.S. stock markets are closed on Independence Day. In addition, when July 3 falls on a weekday, the market closes early at 1:00 p.m. ET the day before the holiday.",
+      "When July 4 lands on a Saturday, the market closes Friday, July 3 instead; when it lands on a Sunday, the closure moves to Monday, July 5. Combined with the early close, the holiday typically produces one of the quietest trading stretches of the summer.",
     ],
     bondMarketClosed: true,
   },
@@ -119,6 +125,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => nthWeekdayOfMonth(y, 8, 1, 1),
     blurb: [
       "U.S. stock markets are closed on Labor Day, observed on the first Monday of September. It is a full market holiday on both the NYSE and Nasdaq.",
+      "Labor Day marks the start of the longest holiday-free stretch on the market calendar: there are no scheduled closures in September or October, so the next full holiday after it is Thanksgiving, nearly three months later.",
     ],
     bondMarketClosed: true,
   },
@@ -164,6 +171,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     blurb: [
       "U.S. stock markets are closed on Thanksgiving Day, the fourth Thursday of November.",
       "The following day (Black Friday), markets are open but close early at 1:00 p.m. ET.",
+      "Because Thanksgiving is pinned to the fourth Thursday, its date ranges only from November 22 to 28, and the holiday always produces the same shape of week: full sessions Monday through Wednesday, closed Thursday, and a half day Friday.",
     ],
     bondMarketClosed: true,
   },
@@ -194,6 +202,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => observedFixedHoliday(y, 11, 25),
     blurb: [
       "U.S. stock markets are closed on Christmas Day. When December 25 falls on a Saturday, the holiday is observed the Friday before; when it falls on a Sunday, markets close the following Monday.",
+      "In most years the closure pairs with a 1:00 p.m. ET early close on Christmas Eve, and the sessions between Christmas and New Year's are typically among the lightest-volume of the year — the stretch associated with the so-called Santa Claus rally.",
     ],
     bondMarketClosed: true,
   },

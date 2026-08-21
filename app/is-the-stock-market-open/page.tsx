@@ -87,6 +87,33 @@ export default function IsMarketOpenPage() {
           </p>
         </section>
 
+        {/* HOW THE CALENDAR WORKS */}
+        <section className="border-t border-slate-800 pt-6 space-y-3">
+          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
+            When is the market closed?
+          </h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            U.S. stock markets are open Monday through Friday, except for ten scheduled
+            holidays each year — New Year&apos;s Day, Martin Luther King Jr. Day,
+            Presidents&apos; Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
+            Labor Day, Thanksgiving, and Christmas. When one of these falls on a weekend,
+            the closure moves to the nearest weekday (Friday before a Saturday holiday,
+            Monday after a Sunday one).
+          </p>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            A few sessions each year also end early at 1:00 p.m. ET instead of 4:00 p.m. —
+            typically the day after Thanksgiving, Christmas Eve, and July 3 when they land on
+            weekdays. Note that the stock market&apos;s schedule differs from the bank
+            calendar: on federal holidays like{" "}
+            <Link href="/is-the-stock-market-open/veterans-day" className="text-blue-300 hover:text-blue-200 transition-colors">Veterans Day</Link>{" "}
+            and{" "}
+            <Link href="/is-the-stock-market-open/columbus-day" className="text-blue-300 hover:text-blue-200 transition-colors">Columbus Day</Link>,
+            banks close but stocks trade normally. See the{" "}
+            <Link href="/stock-market-holidays" className="text-blue-300 hover:text-blue-200 transition-colors">full holiday schedule</Link>{" "}
+            for exact dates.
+          </p>
+        </section>
+
         {/* PER-HOLIDAY ANSWERS */}
         <section className="border-t border-slate-800 pt-6 space-y-3">
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
