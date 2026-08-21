@@ -10,6 +10,8 @@ export default function Footer() {
           <a href="/trading-days-in-a-year" className="text-slate-400 hover:text-slate-300 transition-colors">Days in a Year</a>
           <span className="text-slate-700">&bull;</span>
           <a href="/api-docs" className="text-slate-400 hover:text-slate-300 transition-colors">Free API</a>
+          <span className="text-slate-700">&bull;</span>
+          <a href="/privacy" className="text-slate-400 hover:text-slate-300 transition-colors">Privacy</a>
         </p>
 
         <p>
