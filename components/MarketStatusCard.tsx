@@ -12,7 +12,7 @@ function formatCountdown(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-function describe(status: MarketStatus): { label: string; detail: string } {
+function describe(status: MarketStatus): { word: string; detail: string } {
   const nowET = new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
   );
@@ -22,7 +22,7 @@ function describe(status: MarketStatus): { label: string; detail: string } {
     const closeMin = status.isEarlyClose ? 13 * 60 : 16 * 60;
     const closeLabel = status.isEarlyClose ? "1:00 p.m." : "4:00 p.m.";
     return {
-      label: "U.S. markets are open",
+      word: "open",
       detail: `Closes in ${formatCountdown(closeMin - minutesNow)} (${closeLabel} ET${status.isEarlyClose ? " — early close" : ""})`,
     };
   }
@@ -43,7 +43,7 @@ function describe(status: MarketStatus): { label: string; detail: string } {
   else if (status.reason === "before-open") why = "Pre-market";
   else why = status.reason; // holiday name
 
-  return { label: "U.S. markets are closed", detail: `${why} · ${opensLabel}` };
+  return { word: "closed", detail: `${why} · ${opensLabel}` };
 }
 
 export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boolean }) {
@@ -66,7 +66,7 @@ export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boo
     );
   }
 
-  const { label, detail } = describe(status);
+  const { word, detail } = describe(status);
 
   const inner = (
     <>
@@ -83,7 +83,7 @@ export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boo
         </span>
         <div className="flex flex-col min-w-0">
           <span className={`text-sm font-medium ${status.isOpen ? "text-emerald-200" : "text-slate-100"}`}>
-            {label}
+            U.S. markets are <span className="font-bold">{word}</span>
           </span>
           <span className="text-xs text-slate-400 truncate">{detail}</span>
         </div>
