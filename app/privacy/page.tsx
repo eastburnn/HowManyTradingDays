@@ -152,7 +152,7 @@ export default function PrivacyPage() {
 
         <div className="border-t border-slate-800 pt-6">
           <Link href="/" className="text-sm text-blue-300 hover:text-blue-200 transition-colors font-medium">
-            ← Back to the live counter
+            ← Back to Home
           </Link>
         </div>
       </div>
