@@ -104,7 +104,7 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Always Accurate</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Holidays like Good Friday and Memorial Day are computed algorithmically - no hardcoded dates that go stale.
+              Holidays are computed algorithmically, and historical counts back to 1990 account for unscheduled closures like 9/11 and Hurricane Sandy.
             </p>
           </div>
 
