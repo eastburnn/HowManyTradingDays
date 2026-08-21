@@ -385,3 +385,59 @@ export function getMarketStatus(now: Date = new Date()): MarketStatus {
     nextOpenISO: toISODate(cursor),
   };
 }
+
+/* ---------------------------------------------
+   SINGLE-DATE STATUS + TRADING-DAY OFFSETS
+----------------------------------------------*/
+
+export type DayInfo = {
+  dateISO: string;
+  weekday: string;
+  isTradingDay: boolean;
+  isEarlyClose: boolean;
+  holidayName: string | null; // set when the date is a market holiday or early close
+};
+
+export function getDayInfo(d: Date): DayInfo {
+  const day = stripTime(d);
+  const iso = toISODate(day);
+  const dow = day.getDay();
+
+  const holiday = getUsStockMarketHolidays(day.getFullYear()).find(
+    (h) => toISODate(h.date) === iso
+  );
+
+  const isWeekend = dow === 0 || dow === 6;
+  const isClosedHoliday = holiday?.type === "closed";
+
+  return {
+    dateISO: iso,
+    weekday: day.toLocaleDateString("en-US", { weekday: "long" }),
+    isTradingDay: !isWeekend && !isClosedHoliday,
+    isEarlyClose: !isWeekend && holiday?.type === "half-day",
+    holidayName: !isWeekend && holiday ? holiday.name.replace(" (early close)", "") : null,
+  };
+}
+
+/**
+ * Move n trading days from `start` (n > 0 forward, n < 0 backward).
+ * Counts trading days strictly after/before the start date, so
+ * addTradingDays(trade date, 1) gives a T+1 settlement date.
+ */
+export function addTradingDays(start: Date, n: number): Date {
+  let cursor = stripTime(start);
+  const step = n >= 0 ? 1 : -1;
+  let remaining = Math.abs(n);
+
+  // n === 0: the nearest trading day on or after start
+  if (remaining === 0) {
+    while (!getDayInfo(cursor).isTradingDay) cursor = addDays(cursor, 1);
+    return cursor;
+  }
+
+  while (remaining > 0) {
+    cursor = addDays(cursor, step);
+    if (getDayInfo(cursor).isTradingDay) remaining -= 1;
+  }
+  return cursor;
+}

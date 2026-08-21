@@ -186,6 +186,89 @@ badge.textContent = isOpen
 }`}</CodeBlock>
         </EndpointCard>
 
+        {/* COUNT ENDPOINT */}
+        <EndpointCard
+          path="/api/count"
+          url="https://howmanytradingdays.com/api/count?from=2026-11-02&to=2026-12-31"
+          description={
+            <>
+              Count trading days between any two dates (inclusive) — the{" "}
+              <Link href="/calculator" className="text-blue-300 hover:text-blue-200 transition-colors">calculator</Link>,
+              as an API. Both <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">from</code> and{" "}
+              <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">to</code> are required, as YYYY-MM-DD.
+            </>
+          }
+        >
+          <CodeBlock>{`# curl
+curl "https://howmanytradingdays.com/api/count?from=2026-11-02&to=2026-12-31"`}</CodeBlock>
+          <p className="text-sm text-slate-400 leading-relaxed">Sample response (early closes count as 0.5):</p>
+          <CodeBlock>{`{
+  "from": "2026-11-02",
+  "to": "2026-12-31",
+  "tradingDays": 41,
+  "fullDays": 40,
+  "halfDays": 2,
+  "calendarDays": 59,
+  "source": "https://howmanytradingdays.com"
+}`}</CodeBlock>
+        </EndpointCard>
+
+        {/* IS-TRADING-DAY ENDPOINT */}
+        <EndpointCard
+          path="/api/is-trading-day"
+          url="https://howmanytradingdays.com/api/is-trading-day?date=2026-11-27"
+          description={
+            <>
+              Check whether a specific date is a trading session — and if so, when it closes.
+              Also returns the previous and next trading days.{" "}
+              <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">date</code> defaults
+              to today (ET).
+            </>
+          }
+        >
+          <CodeBlock>{`# curl
+curl "https://howmanytradingdays.com/api/is-trading-day?date=2026-11-27"`}</CodeBlock>
+          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
+          <CodeBlock>{`{
+  "date": "2026-11-27",
+  "weekday": "Friday",
+  "isTradingDay": true,
+  "isEarlyClose": true,
+  "holiday": "Day After Thanksgiving",
+  "closesAtET": "13:00",
+  "previousTradingDay": "2026-11-25",
+  "nextTradingDay": "2026-11-30",
+  "source": "https://howmanytradingdays.com"
+}`}</CodeBlock>
+        </EndpointCard>
+
+        {/* OFFSET ENDPOINT */}
+        <EndpointCard
+          path="/api/offset"
+          url="https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"
+          description={
+            <>
+              Add (or subtract) trading days from a date — useful for settlement math:{" "}
+              <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">days=1</code> from
+              a trade date gives the T+1 settlement date, automatically skipping weekends and
+              holidays. <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">days</code> may
+              be negative; range ±1000.
+            </>
+          }
+        >
+          <CodeBlock>{`# curl — T+2 from a Friday lands on Tuesday
+curl "https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"`}</CodeBlock>
+          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
+          <CodeBlock>{`{
+  "date": "2026-08-21",
+  "tradingDaysAdded": 2,
+  "result": "2026-08-25",
+  "resultWeekday": "Tuesday",
+  "resultIsEarlyClose": false,
+  "source": "https://howmanytradingdays.com"
+}`}</CodeBlock>
+        </EndpointCard>
+
         {/* NOTES */}
         <section className="space-y-3 border-t border-slate-800 pt-6">
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>Notes</h2>

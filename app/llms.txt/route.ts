@@ -82,6 +82,9 @@ No API key required. CORS enabled. Free for personal and commercial use; attribu
 
 - GET https://howmanytradingdays.com/api/trading-days — trading-day totals, month-by-month counts, holiday calendar, and (for the current year) remaining days. Optional ?year= parameter (1950-2100). Example fields: tradingDays, tradingDaysHalfDayAdjusted, weekdays, marketHolidays, earlyCloseSessions, remaining, months[], holidays[].
 - GET https://howmanytradingdays.com/api/market-status — whether U.S. equity markets are open right now. Example fields: isOpen, isTradingDay, isEarlyClose, closesAtET, closedReason, nextSessionDate, opensAtET.
+- GET https://howmanytradingdays.com/api/count?from=YYYY-MM-DD&to=YYYY-MM-DD — count trading days between two dates (inclusive). Example fields: tradingDays, fullDays, halfDays, calendarDays.
+- GET https://howmanytradingdays.com/api/is-trading-day?date=YYYY-MM-DD — whether a date is a trading session (defaults to today ET). Example fields: isTradingDay, isEarlyClose, holiday, closesAtET, previousTradingDay, nextTradingDay.
+- GET https://howmanytradingdays.com/api/offset?date=YYYY-MM-DD&days=N — add or subtract N trading days from a date (settlement math, e.g. days=1 gives the T+1 settlement date). Example fields: result, resultWeekday, resultIsEarlyClose.
 
 ## Conventions and scope
 
