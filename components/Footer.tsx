@@ -1,54 +1,98 @@
+import Link from "next/link";
+import { domine } from "@/app/fonts";
+
+const REFERENCE_LINKS = [
+  { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },
+  { label: "Trading Days by Year", href: "/trading-days-by-year" },
+  { label: "Stock Market Holidays", href: "/stock-market-holidays" },
+  { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
+];
+
+const SITE_LINKS = [
+  { label: "Calculator", href: "/calculator" },
+  { label: "Free API", href: "/api-docs" },
+  { label: "About", href: "/about" },
+  { label: "Privacy", href: "/privacy" },
+];
+
+function LinkColumn({
+  heading,
+  links,
+}: {
+  heading: string;
+  links: { label: string; href: string }[];
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+        {heading}
+      </span>
+      {links.map(({ label, href }) => (
+        <Link
+          key={href}
+          href={href}
+          className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default function Footer() {
   return (
     <footer className="w-full border-t border-slate-800 bg-slate-950 mt-auto">
-      <div className="max-w-xl mx-auto px-4 py-6 flex flex-col items-center gap-2 text-[10px] text-slate-500 text-center">
-        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-          <a href="/stock-market-holidays" className="text-slate-400 hover:text-slate-300 transition-colors">Market Holidays</a>
-          <span className="text-slate-700">&bull;</span>
-          <a href="/is-the-stock-market-open" className="text-slate-400 hover:text-slate-300 transition-colors">Is the Market Open?</a>
-          <span className="text-slate-700">&bull;</span>
-          <a href="/trading-days-in-a-year" className="text-slate-400 hover:text-slate-300 transition-colors">Days in a Year</a>
-          <span className="text-slate-700">&bull;</span>
-          <a href="/api-docs" className="text-slate-400 hover:text-slate-300 transition-colors">Free API</a>
-          <span className="text-slate-700">&bull;</span>
-          <a href="/about" className="text-slate-400 hover:text-slate-300 transition-colors">About</a>
-          <span className="text-slate-700">&bull;</span>
-          <a href="/privacy" className="text-slate-400 hover:text-slate-300 transition-colors">Privacy</a>
-        </p>
+      <div className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
+        {/* Top: brand + link columns */}
+        <div className="flex flex-col sm:flex-row justify-between gap-8">
+          {/* Brand */}
+          <div className="flex flex-col gap-2 max-w-[220px]">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <img src="/favicon.ico" alt="" className="h-5 w-5" />
+              <span className={`${domine.className} text-sm font-semibold text-slate-100`}>
+                How Many Trading Days
+              </span>
+            </Link>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Live reference for U.S. stock market trading days, holidays, and market hours.
+            </p>
+          </div>
 
-        <p>
-          HowManyTradingDays.com &middot; U.S. equity markets only &middot; For informational purposes only.
-        </p>
+          {/* Links */}
+          <div className="flex gap-10 sm:gap-12">
+            <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
+            <LinkColumn heading="Site" links={SITE_LINKS} />
+          </div>
+        </div>
 
-        <p className="flex items-center justify-center gap-2">
-          Made by{" "}
-          <a
-            href="https://www.itschrisray.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline text-slate-400 hover:text-slate-300 transition-colors"
-          >
-            itschrisray.com
-          </a>
-
-          <span className="text-slate-700">&bull;</span>
-
-          <a
-            href="https://x.com/itschrisray"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-          >
-            <img
-              src="/twitter.png"
-              alt="X Logo"
-              className="h-3 w-3 opacity-70"
-            />
-            <span className="text-slate-400 hover:text-slate-300 transition-colors">
-              @itschrisray
-            </span>
-          </a>
-        </p>
+        {/* Bottom: legal row */}
+        <div className="border-t border-slate-800/70 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-slate-500">
+          <p>U.S. equity markets only &middot; For informational purposes only.</p>
+          <p className="flex items-center gap-1.5">
+            Made by{" "}
+            <a
+              href="https://www.itschrisray.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              Chris Ray
+            </a>
+            <span className="text-slate-700">&bull;</span>
+            <a
+              href="https://x.com/itschrisray"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+            >
+              <img src="/twitter.png" alt="" className="h-2.5 w-2.5 opacity-70" />
+              <span className="text-slate-400 hover:text-slate-300 transition-colors">
+                @itschrisray
+              </span>
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );
