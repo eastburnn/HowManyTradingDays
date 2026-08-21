@@ -28,6 +28,15 @@ const faqs: FaqItem[] = [
     },
   },
   {
+    question: "Have there ever been unscheduled stock market closures?",
+    answer:
+      "Yes — beyond the scheduled holiday calendar, U.S. markets have closed 11 times since 1990 for emergencies and national days of mourning: four days after the September 11 attacks, two days for Hurricane Sandy in 2012, and single days honoring Presidents Nixon, Reagan, Ford, George H. W. Bush, and Carter. Our historical counts account for all of them.",
+    link: {
+      href: "/trading-days-by-year",
+      label: "See every unscheduled closure since 1990",
+    },
+  },
+  {
     question: "How are half days (early closes) counted?",
     answer:
       "Scheduled early-close sessions — such as the day after Thanksgiving, Christmas Eve in some years, or the day before Independence Day — end at 1:00 p.m. ET and are counted as 0.5 trading days. That's why the counter sometimes ends in .5: at least one remaining session is an early close.",
