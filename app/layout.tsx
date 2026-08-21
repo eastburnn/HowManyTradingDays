@@ -78,6 +78,19 @@ export default function RootLayout({
     <html lang="en">
       {/* Google Analytics */}
       <head>
+        {/* WebSite structured data — tells Google the site name to show in results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "How Many Trading Days",
+              alternateName: "HowManyTradingDays.com",
+              url: "https://howmanytradingdays.com/",
+            }),
+          }}
+        />
         <Script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
