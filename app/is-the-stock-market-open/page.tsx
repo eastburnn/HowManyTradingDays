@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import MarketStatusCard from "@/components/MarketStatusCard";
+import MarketCountdown from "@/components/MarketCountdown";
 import { HOLIDAY_PAGES } from "@/lib/holidayPages";
 
 export const revalidate = 86400;
@@ -51,8 +51,8 @@ export default function IsMarketOpenPage() {
           </p>
         </header>
 
-        {/* LIVE STATUS */}
-        <MarketStatusCard linkToHub={false} />
+        {/* LIVE STATUS + COUNTDOWN */}
+        <MarketCountdown />
 
         {/* MARKET HOURS */}
         <section className="space-y-3">
