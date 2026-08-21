@@ -204,10 +204,40 @@ badge.textContent = isOpen
           </ul>
         </section>
 
-        {/* CTA */}
-        <div className="border-t border-slate-800 pt-6">
-          <Link href="/" className="text-sm text-blue-300 hover:text-blue-200 transition-colors font-medium">
-            ← Back to the live counter
+        {/* CTA LINKS */}
+        <div className="grid grid-cols-2 gap-3 border-t border-slate-800 pt-6">
+          <Link
+            href="/"
+            className="group flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
+          >
+            <div className="flex items-center gap-2.5">
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+              </svg>
+              <span className="text-sm font-medium text-slate-100">Live Counter</span>
+            </div>
+            <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+
+          <Link
+            href="/calculator"
+            className="group flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
+          >
+            <div className="flex items-center gap-2.5">
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="8" y1="7" x2="16" y2="7" />
+                <line x1="8" y1="11" x2="16" y2="11" />
+                <line x1="8" y1="15" x2="12" y2="15" />
+              </svg>
+              <span className="text-sm font-medium text-slate-100">Calculator</span>
+            </div>
+            <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </Link>
         </div>
 
