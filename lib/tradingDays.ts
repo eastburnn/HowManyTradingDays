@@ -177,6 +177,7 @@ export function countTradingDaysBetween(from: Date, to: Date) {
   }
 
   const afterClose = isAfterMarketCloseET();
+  const realToday = stripTime(new Date());
   let fullDays = 0;
   let halfDays = 0;
 
@@ -187,10 +188,12 @@ export function countTradingDaysBetween(from: Date, to: Date) {
     const hInfo = holidayMap.get(iso);
 
     if (dow !== 0 && dow !== 6) {
+      // Skip today only when it's genuinely the current date and the
+      // market has already closed — a past start date always counts.
       const isToday =
-        cursor.getFullYear() === start.getFullYear() &&
-        cursor.getMonth() === start.getMonth() &&
-        cursor.getDate() === start.getDate();
+        cursor.getFullYear() === realToday.getFullYear() &&
+        cursor.getMonth() === realToday.getMonth() &&
+        cursor.getDate() === realToday.getDate();
 
       if (isToday && afterClose) {
         // skip
@@ -312,4 +315,73 @@ export function getMonthlyStats(year: number): MonthStats[] {
   }
 
   return months;
+}
+
+/* ---------------------------------------------
+   LIVE MARKET STATUS
+----------------------------------------------*/
+
+export type MarketStatus = {
+  isOpen: boolean;
+  isTradingDay: boolean; // today (ET) is a session day
+  isEarlyClose: boolean; // today's session closes at 1 p.m. ET
+  reason: string; // "open" | "before-open" | "after-close" | "weekend" | holiday name
+  closeTimeET: string; // "16:00" or "13:00" (today's close, if a trading day)
+  nextOpenISO: string; // ISO date of the next session day (today if before open)
+};
+
+export function getMarketStatus(now: Date = new Date()): MarketStatus {
+  const nowET = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  const todayET = stripTime(nowET);
+  const iso = toISODate(todayET);
+  const dow = todayET.getDay();
+
+  const holidayMap = new Map<string, Holiday>();
+  for (const h of getUsStockMarketHolidays(todayET.getFullYear())) {
+    holidayMap.set(toISODate(h.date), h);
+  }
+  // Include next January in case we're at year end
+  for (const h of getUsStockMarketHolidays(todayET.getFullYear() + 1)) {
+    holidayMap.set(toISODate(h.date), h);
+  }
+
+  const todayHoliday = holidayMap.get(iso);
+  const isWeekend = dow === 0 || dow === 6;
+  const isClosedHoliday = todayHoliday?.type === "closed";
+  const isTradingDay = !isWeekend && !isClosedHoliday;
+  const isEarlyClose = isTradingDay && todayHoliday?.type === "half-day";
+  const closeTimeET = isEarlyClose ? "13:00" : "16:00";
+
+  const minutes = nowET.getHours() * 60 + nowET.getMinutes();
+  const openMin = 9 * 60 + 30;
+  const closeMin = isEarlyClose ? 13 * 60 : 16 * 60;
+
+  const isOpen = isTradingDay && minutes >= openMin && minutes < closeMin;
+
+  let reason = "open";
+  if (isWeekend) reason = "weekend";
+  else if (isClosedHoliday) reason = todayHoliday!.name;
+  else if (minutes < openMin) reason = "before-open";
+  else if (minutes >= closeMin) reason = "after-close";
+
+  // Next session day (today if the market hasn't opened yet)
+  let cursor = new Date(todayET.getTime());
+  if (!isTradingDay || minutes >= closeMin) cursor = addDays(cursor, 1);
+  for (let i = 0; i < 15; i++) {
+    const cDow = cursor.getDay();
+    const cHol = holidayMap.get(toISODate(cursor));
+    if (cDow !== 0 && cDow !== 6 && cHol?.type !== "closed") break;
+    cursor = addDays(cursor, 1);
+  }
+
+  return {
+    isOpen,
+    isTradingDay,
+    isEarlyClose,
+    reason,
+    closeTimeET,
+    nextOpenISO: toISODate(cursor),
+  };
 }

@@ -6,6 +6,7 @@ import { domine } from "./fonts";
 import ShareButton from "@/components/ShareButton";
 import FAQ from "@/components/FAQ";
 import FiscalAd from "@/components/FiscalAd";
+import MarketStatusCard from "@/components/MarketStatusCard";
 import {
   type HolidayType,
   stripTime,
@@ -184,6 +185,11 @@ export default function HomePage() {
         {/* SHARE BUTTON */}
         <div className="w-full flex justify-center -mt-8">
           <ShareButton cardRef={cardRef} />
+        </div>
+
+        {/* LIVE MARKET STATUS */}
+        <div className="w-full -mt-4">
+          <MarketStatusCard />
         </div>
 
         {/* CALCULATOR CTA */}

@@ -73,16 +73,27 @@ export default function CalculatorPage() {
   const todayISO = toISODate(today);
 
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [customStart, setCustomStart] = useState<boolean>(false);
+  const [startDate, setStartDate] = useState<string>("");
 
   const quickOptions = useMemo(() => getQuickSelectOptions(today), [today]);
+
+  // Effective start: custom start date if set, otherwise today
+  const effectiveStart = useMemo(() => {
+    if (customStart && startDate) {
+      const [y, m, d] = startDate.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return today;
+  }, [customStart, startDate, today]);
 
   const result = useMemo(() => {
     if (!selectedDate) return null;
     const [y, m, d] = selectedDate.split("-").map(Number);
     const targetDate = new Date(y, m - 1, d);
-    if (targetDate < today) return null;
-    return countTradingDaysBetween(today, targetDate);
-  }, [selectedDate, today]);
+    if (targetDate < effectiveStart) return null;
+    return countTradingDaysBetween(effectiveStart, targetDate);
+  }, [selectedDate, effectiveStart]);
 
   return (
     <main className="flex-1 flex items-center justify-center px-4">
@@ -96,20 +107,53 @@ export default function CalculatorPage() {
             Trading Days Calculator
           </h1>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Select a target date to see how many U.S. stock market trading days and calendar days remain from today.
+            Count U.S. stock market trading days and calendar days between today — or any start date — and a target date.
           </p>
         </header>
 
         {/* DATE PICKER */}
         <section className="w-full">
           <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 flex flex-col gap-5">
+            {/* START DATE (optional) */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">
+                Counting from{" "}
+                <span className="text-slate-300 font-medium">
+                  {customStart && startDate ? formatDisplayDate(startDate) : "today"}
+                </span>
+              </span>
+              <button
+                onClick={() => {
+                  if (customStart) setStartDate("");
+                  setCustomStart(!customStart);
+                }}
+                className="text-xs font-medium text-blue-300 hover:text-blue-200 transition-colors"
+              >
+                {customStart ? "Use today" : "Change start date"}
+              </button>
+            </div>
+
+            {customStart && (
+              <div className="flex flex-col gap-3">
+                <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Start Date
+                </label>
+                <CalendarPicker
+                  value={startDate}
+                  minDate="2000-01-01"
+                  initialDate={todayISO}
+                  onChange={setStartDate}
+                />
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 Target Date
               </label>
               <CalendarPicker
                 value={selectedDate}
-                minDate={todayISO}
+                minDate={customStart && startDate ? startDate : todayISO}
                 onChange={setSelectedDate}
               />
             </div>
@@ -118,7 +162,7 @@ export default function CalculatorPage() {
             <div className="flex flex-col gap-4 pt-2 border-t border-slate-800">
               <p className="text-xs text-slate-400 text-center">
                 {result && selectedDate
-                  ? <>From today through <span className="text-slate-200 font-medium">{formatDisplayDate(selectedDate)}</span></>
+                  ? <>From <span className="text-slate-200 font-medium">{customStart && startDate ? formatDisplayDate(startDate) : "today"}</span> through <span className="text-slate-200 font-medium">{formatDisplayDate(selectedDate)}</span></>
                   : <span className="text-slate-600">Select a date above to see the count</span>
                 }
               </p>

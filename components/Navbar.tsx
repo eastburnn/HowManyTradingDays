@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { label: "Home", href: "/" },
   { label: "Days in a Year", href: "/trading-days-in-a-year" },
+  { label: "Holidays", href: "/stock-market-holidays" },
   { label: "Calculator", href: "/calculator" },
   { label: "About", href: "/about" },
 ];
@@ -22,7 +23,7 @@ export default function Navbar() {
         </Link>
 
         {/* Nav links */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {LINKS.map(({ label, href }) => {
             const isActive = pathname === href;
             return (
@@ -30,7 +31,7 @@ export default function Navbar() {
                 key={href}
                 href={href}
                 className={`
-                  px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150
+                  px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium transition-colors duration-150 whitespace-nowrap
                   ${isActive
                     ? "bg-slate-800 text-slate-100"
                     : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60"

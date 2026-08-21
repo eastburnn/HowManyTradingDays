@@ -6,6 +6,7 @@ type Props = {
   value: string; // ISO yyyy-mm-dd or ""
   minDate: string; // ISO yyyy-mm-dd — days before this are disabled
   onChange: (isoDate: string) => void;
+  initialDate?: string; // ISO yyyy-mm-dd — month shown when no value is selected (defaults to minDate)
 };
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -62,9 +63,9 @@ function buildGrid(displayYear: number, displayMonth: number) {
   return cells;
 }
 
-export default function CalendarPicker({ value, minDate, onChange }: Props) {
+export default function CalendarPicker({ value, minDate, onChange, initialDate }: Props) {
   // Initialise the displayed month to the selected date, or today
-  const initParsed = parseISO(value) ?? parseISO(minDate);
+  const initParsed = parseISO(value) ?? parseISO(initialDate ?? "") ?? parseISO(minDate);
   const initYear = initParsed?.year ?? new Date().getFullYear();
   const initMonth = initParsed?.month ?? new Date().getMonth();
 
