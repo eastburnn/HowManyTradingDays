@@ -57,7 +57,7 @@ export default function Navbar() {
   }, [pathname]);
 
   return (
-    <nav className="w-full border-b border-slate-800 bg-slate-950">
+    <nav className="w-full border-b border-slate-800 bg-[#010409]">
       <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -95,7 +95,7 @@ export default function Navbar() {
             {open && (
               <div
                 role="menu"
-                className="absolute -right-12 sm:right-auto sm:left-0 top-full mt-1.5 w-52 rounded-xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/40 py-1.5 z-50"
+                className="absolute -right-12 sm:right-auto sm:left-0 top-full mt-1.5 w-52 rounded-xl border border-slate-800 bg-[#010409] shadow-xl shadow-black/40 py-1.5 z-50"
               >
                 {REFERENCE_LINKS.map(({ label, href }) => {
                   const isActive = pathname === href || pathname.startsWith(href + "/");

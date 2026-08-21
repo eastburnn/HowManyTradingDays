@@ -42,7 +42,7 @@ function LinkColumn({
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t border-slate-800 bg-slate-950 mt-auto">
+    <footer className="w-full border-t border-slate-800 bg-[#010409] mt-auto">
       <div className="max-w-xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between gap-6 sm:gap-8">
         {/* Brand + legal */}
         <div className="flex flex-col gap-2 max-w-[240px]">
