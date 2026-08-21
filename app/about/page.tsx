@@ -1,6 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+
+const title = "About — How Many Trading Days";
+const description =
+  "How HowManyTradingDays.com counts U.S. market trading days — live 4 p.m. ET countdown, NYSE holiday rules, and half-day sessions.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+
+  alternates: {
+    canonical: "/about",
+  },
+
+  openGraph: {
+    title,
+    description,
+    url: "https://howmanytradingdays.com/about",
+    siteName: "How Many Trading Days",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "How Many Trading Days — U.S. stock market trading days left this year",
+      },
+    ],
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/og-image.png"],
+  },
+};
 
 export default function AboutPage() {
   return (
