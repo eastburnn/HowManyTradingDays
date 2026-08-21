@@ -80,7 +80,7 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Date Calculator</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Pick any future date and instantly see how many trading days and calendar days remain from today.
+              Count trading days and calendar days between any two dates — from today or a custom start date.
             </p>
           </div>
 
@@ -90,9 +90,9 @@ export default function AboutPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 className="text-sm font-semibold text-slate-100">Holiday Aware</h2>
+            <h2 className="text-sm font-semibold text-slate-100">Holiday Reference</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Follows the full NYSE/Nasdaq holiday schedule. Early-close days count as 0.5. No manual updates needed year to year.
+              The full NYSE/Nasdaq holiday schedule, plus a dedicated answer page for every market holiday. Early closes count as 0.5.
             </p>
           </div>
 
@@ -105,6 +105,30 @@ export default function AboutPage() {
             <h2 className="text-sm font-semibold text-slate-100">Always Accurate</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
               Holidays like Good Friday and Memorial Day are computed algorithmically - no hardcoded dates that go stale.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
+            <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-semibold text-slate-100">Live Market Status</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              See whether markets are open right now, with a countdown to today&apos;s close or the next session.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
+            <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-semibold text-slate-100">Free API</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Five JSON endpoints for developers - trading-day counts, date math, and live status. No key required.
             </p>
           </div>
         </div>
