@@ -45,16 +45,15 @@ function computeTarget(): Target {
 
   let why = "";
   if (status.reason === "weekend") why = "Closed for the weekend";
-  else if (status.reason === "after-close") why = "Today's session has ended";
   else if (status.reason === "before-open") why = "Pre-market";
-  else why = `Closed for ${status.reason}`;
+  else if (status.reason !== "after-close") why = `Closed for ${status.reason}`;
 
   return {
     status,
     label: "U.S. markets are closed",
     kicker: "Opens in",
     target,
-    secondary: `${why} — next session: ${dayLabel} at 9:30 a.m. ET`,
+    secondary: `${why ? `${why} — n` : "N"}ext session: ${dayLabel} at 9:30 a.m. ET`,
   };
 }
 
