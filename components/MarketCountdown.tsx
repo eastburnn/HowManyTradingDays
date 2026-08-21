@@ -12,6 +12,7 @@ function nowET(): Date {
 type Target = {
   status: MarketStatus;
   label: string;
+  kicker: string;
   target: Date; // in ET wall-clock terms
   secondary: string;
 };
@@ -25,7 +26,8 @@ function computeTarget(): Target {
     target.setHours(status.isEarlyClose ? 13 : 16, 0, 0, 0);
     return {
       status,
-      label: "Market closes in",
+      label: "U.S. markets are open",
+      kicker: "Closes in",
       target,
       secondary: status.isEarlyClose
         ? "Today is an early-close session — trading ends at 1:00 p.m. ET"
@@ -49,7 +51,8 @@ function computeTarget(): Target {
 
   return {
     status,
-    label: "Market opens in",
+    label: "U.S. markets are closed",
+    kicker: "Opens in",
     target,
     secondary: `${why} — next session: ${dayLabel} at 9:30 a.m. ET`,
   };
@@ -89,7 +92,8 @@ export default function MarketCountdown() {
   }
 
   const { t, secondsLeft } = state;
-  const h = Math.floor(secondsLeft / 3600);
+  const d = Math.floor(secondsLeft / 86400);
+  const h = Math.floor((secondsLeft % 86400) / 3600);
   const m = Math.floor((secondsLeft % 3600) / 60);
   const s = secondsLeft % 60;
   const isOpen = t.status.isOpen;
@@ -113,18 +117,28 @@ export default function MarketCountdown() {
         </p>
       </div>
 
+      <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 -mb-1">
+        {t.kicker}
+      </p>
+
       {/* Countdown */}
       <div className="flex items-end gap-1.5 tabular-nums">
-        {h > 0 && (
+        {d > 0 && (
           <>
-            <span className="text-5xl sm:text-6xl font-semibold">{h}</span>
-            <span className="text-lg text-slate-400 mb-1.5">h</span>
+            <span className="text-4xl sm:text-6xl font-semibold">{d}</span>
+            <span className="text-base sm:text-lg text-slate-400 mb-1 sm:mb-1.5">d</span>
           </>
         )}
-        <span className="text-5xl sm:text-6xl font-semibold">{h > 0 ? pad(m) : m}</span>
-        <span className="text-lg text-slate-400 mb-1.5">m</span>
-        <span className="text-5xl sm:text-6xl font-semibold">{pad(s)}</span>
-        <span className="text-lg text-slate-400 mb-1.5">s</span>
+        {(d > 0 || h > 0) && (
+          <>
+            <span className="text-4xl sm:text-6xl font-semibold">{d > 0 ? pad(h) : h}</span>
+            <span className="text-base sm:text-lg text-slate-400 mb-1 sm:mb-1.5">h</span>
+          </>
+        )}
+        <span className="text-4xl sm:text-6xl font-semibold">{d > 0 || h > 0 ? pad(m) : m}</span>
+        <span className="text-base sm:text-lg text-slate-400 mb-1 sm:mb-1.5">m</span>
+        <span className="text-4xl sm:text-6xl font-semibold">{pad(s)}</span>
+        <span className="text-base sm:text-lg text-slate-400 mb-1 sm:mb-1.5">s</span>
       </div>
 
       <p className="text-xs text-slate-400 text-center max-w-sm">{t.secondary}</p>
