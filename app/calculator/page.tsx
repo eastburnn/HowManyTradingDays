@@ -92,7 +92,7 @@ export default function CalculatorPage() {
 
         {/* HEADER */}
         <header className="text-center space-y-2 -mt-4">
-          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight`}>
+          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
             Trading Days Calculator
           </h1>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">

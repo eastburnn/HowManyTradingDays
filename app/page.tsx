@@ -133,7 +133,7 @@ export default function HomePage() {
         {/* TITLE */}
         <header className="text-center space-y-2">
           <h1
-            className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight`}
+            className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}
           >
             How Many Trading Days
           </h1>

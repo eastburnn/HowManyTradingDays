@@ -46,7 +46,7 @@ export default function AboutPage() {
         <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "About" }]} />
 
         <header className="space-y-2">
-          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight`}>
+          <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
             About
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
