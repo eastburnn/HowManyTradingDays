@@ -65,7 +65,25 @@ export default function ApiDocsPage() {
             for any year from 1950 to 2100. For the current year, <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">remaining</code>{" "}
             holds the live days-left count.
           </p>
-          <CodeBlock>{`curl https://howmanytradingdays.com/api/trading-days?year=2026`}</CodeBlock>
+          <CodeBlock>{`# curl
+curl https://howmanytradingdays.com/api/trading-days?year=2026`}</CodeBlock>
+          <CodeBlock>{`// JavaScript (browser or Node — CORS is enabled)
+const res = await fetch(
+  "https://howmanytradingdays.com/api/trading-days?year=2026"
+);
+const data = await res.json();
+
+console.log(data.tradingDays);           // 251
+console.log(data.remaining.tradingDays); // days left (current year only)
+console.log(data.holidays[0]);           // { date, name, status }`}</CodeBlock>
+          <CodeBlock>{`# Python
+import requests
+
+data = requests.get(
+    "https://howmanytradingdays.com/api/trading-days", params={"year": 2026}
+).json()
+print(data["tradingDays"])  # 251`}</CodeBlock>
+          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
           <CodeBlock>{`{
   "year": 2026,
   "tradingDays": 251,
@@ -94,7 +112,16 @@ export default function ApiDocsPage() {
             Whether U.S. equity markets are open right now, based on regular session hours
             (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
           </p>
-          <CodeBlock>{`curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
+          <CodeBlock>{`# curl
+curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
+          <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
+const res = await fetch("https://howmanytradingdays.com/api/market-status");
+const { isOpen, isEarlyClose, closesAtET } = await res.json();
+
+badge.textContent = isOpen
+  ? \`Market open — closes \${closesAtET} ET\`
+  : "Market closed";`}</CodeBlock>
+          <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
           <CodeBlock>{`{
   "isOpen": true,
   "isTradingDay": true,
