@@ -105,9 +105,14 @@ export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
             className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]"
           />
           <p className="text-[11px] sm:text-xs text-white leading-snug">
-            <span className="font-semibold">Use WELCOME15</span> for{" "}
-            <span className="font-semibold">
-              15% off your first 11 months
+            {/* Short copy on mobile so the bar stays one line */}
+            <span className="sm:hidden">
+              <span className="font-semibold">WELCOME15</span> for{" "}
+              <span className="font-semibold">15% off 11 months</span>
+            </span>
+            <span className="hidden sm:inline">
+              <span className="font-semibold">Use WELCOME15</span> for{" "}
+              <span className="font-semibold">15% off your first 11 months</span>
             </span>
           </p>
           <span className="ml-1 text-[11px] sm:text-xs font-semibold text-emerald-300 whitespace-nowrap transition-transform duration-200 group-hover:translate-x-0.5">
