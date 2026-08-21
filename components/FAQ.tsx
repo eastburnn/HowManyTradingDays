@@ -10,21 +10,12 @@ type FaqItem = {
 
 const faqs: FaqItem[] = [
   {
-    question: "How many trading days are in a year?",
-    answer:
-      "For U.S. markets, most years have about 252 trading days after removing weekends and full market holidays. The exact total ranges from 250 to 253 depending on how holidays fall.",
-    link: {
-      href: "/trading-days-in-a-year",
-      label: "See the exact count for every year",
-    },
-  },
-  {
     question: "Which days is the U.S. stock market closed?",
     answer:
       "We follow the standard NYSE/Nasdaq holiday schedule: New Year's Day, Martin Luther King Jr. Day, Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead. The list above shows the holidays still ahead this year.",
     link: {
-      href: "/trading-days-in-a-year",
-      label: "Full holiday and trading-day breakdown",
+      href: "/stock-market-holidays",
+      label: "Full holiday schedule for this year and next",
     },
   },
   {
