@@ -2,48 +2,35 @@
 
 import React from "react";
 
-const faqs = [
+type FaqItem = {
+  question: string;
+  answer: string; // plain text — also used for JSON-LD
+  link?: { href: string; label: string };
+};
+
+const faqs: FaqItem[] = [
   {
-    // EXACT MATCH for the keyword you care about most
-    question: "How many trading days in a year?",
+    question: "How many trading days are in a year?",
     answer:
-      "For U.S. markets, most years have about 252 trading days after removing weekends and full market holidays. The exact total can vary slightly by year depending on how holidays fall. This site shows the live count of trading days remaining in the current calendar year.",
-  },
-  {
-    // Another variant you showed: "market days in a year"
-    question: "How many market days are in a year?",
-    answer:
-      "People usually mean U.S. stock-market trading days. Most years have about 252 market (trading) days, depending on weekends and the NYSE/Nasdaq holiday schedule. This site calculates the live remaining total for the current year.",
-  },
-  {
-    question: "What does this website show?",
-    answer:
-      "This website shows how many U.S. stock market trading days are left in the current calendar year. The live counter updates automatically and includes weekdays when markets are open, counts scheduled early-close days as half days, and excludes weekends and full market holidays. The site also lists upcoming market holidays and their associated dates.",
-  },
-  {
-    question: "How many trading days in a month?",
-    answer:
-      "Most months have between 19 and 22 trading days. The exact number depends on where weekends and market holidays fall. Months containing major holidays—such as July, November, or December—tend to have fewer trading days. This site only calculates the count for the full calendar year, but monthly totals follow the same pattern of excluding weekends and full U.S. stock-market holidays.",
+      "For U.S. markets, most years have about 252 trading days after removing weekends and full market holidays. The exact total ranges from 250 to 253 depending on how holidays fall.",
+    link: {
+      href: "/trading-days-in-a-year",
+      label: "See the exact count for every year",
+    },
   },
   {
     question: "Which days is the U.S. stock market closed?",
     answer:
-      "We follow the standard NYSE/Nasdaq holiday schedule: New Year’s Day, Martin Luther King Jr. Day, Presidents’ Day, Good Friday, Memorial Day, Juneteenth National Independence Day, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead.",
+      "We follow the standard NYSE/Nasdaq holiday schedule: New Year's Day, Martin Luther King Jr. Day, Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead. The list above shows the holidays still ahead this year.",
+    link: {
+      href: "/trading-days-in-a-year",
+      label: "Full holiday and trading-day breakdown",
+    },
   },
   {
-    question: "Does this site include half trading days?",
+    question: "How are half days (early closes) counted?",
     answer:
-      "Yes. Scheduled early-close days—such as the day after Thanksgiving, Christmas Eve in some years, or the day before Independence Day—are counted as 0.5 trading days. Full holidays are counted as 0, and normal weekdays when the market is open are counted as 1.",
-  },
-  {
-    question: "How many trading days are left in the year?",
-    answer:
-      "The main counter at the top of the page shows the remaining U.S. stock-market trading days in the current calendar year. It includes weekdays when markets are open, partial days as 0.5, and excludes weekends and full-day holidays.",
-  },
-  {
-    question: "Why does the number sometimes end in .5 instead of a whole number?",
-    answer:
-      "A .5 at the end means there is at least one remaining scheduled half day (early close). For example, if the only remaining session is an early-close day, the counter will show 0.5 trading days left.",
+      "Scheduled early-close sessions — such as the day after Thanksgiving, Christmas Eve in some years, or the day before Independence Day — end at 1:00 p.m. ET and are counted as 0.5 trading days. That's why the counter sometimes ends in .5: at least one remaining session is an early close.",
   },
   {
     question: "Do you count today as a trading day?",
@@ -54,11 +41,6 @@ const faqs = [
     question: "Which markets and time zone does this site use?",
     answer:
       "This site is based on regular-session hours for the major U.S. equity exchanges (such as NYSE and Nasdaq) and uses U.S. Eastern Time. It does not track extended hours, futures markets, or cryptocurrencies.",
-  },
-  {
-    question: "How often is the countdown updated?",
-    answer:
-      "The countdown is recalculated every time you load or refresh the page, using your current date and time converted to U.S. Eastern Time. There’s no manual input—everything updates automatically.",
   },
 ];
 
@@ -133,6 +115,18 @@ export default function FAQ() {
               >
                 {item.answer}
               </p>
+
+              {item.link && (
+                <a
+                  href={item.link.href}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-300 hover:text-blue-200 transition-colors"
+                >
+                  {item.link.label}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              )}
             </details>
           );
         })}

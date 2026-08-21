@@ -4,30 +4,16 @@ import { useState, useMemo } from "react";
 import { domine } from "../fonts";
 import CalendarPicker from "@/components/CalendarPicker";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import {
+  stripTime,
+  toISODate,
+  getUsStockMarketHolidays,
+  countTradingDaysBetween,
+} from "@/lib/tradingDays";
 
 /* ---------------------------------------------
    DATE + HOLIDAY UTILITIES (shared logic)
 ----------------------------------------------*/
-
-type HolidayType = "closed" | "half-day";
-
-type Holiday = {
-  date: Date;
-  name: string;
-  type: HolidayType;
-  closeTime?: string;
-};
-
-function stripTime(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function toISODate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function formatDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -38,188 +24,6 @@ function formatDisplayDate(isoDate: string): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function addDays(d: Date, days: number): Date {
-  const copy = new Date(d.getTime());
-  copy.setDate(copy.getDate() + days);
-  return copy;
-}
-
-function nthWeekdayOfMonth(
-  year: number,
-  monthIndex: number,
-  weekday: number,
-  nth: number
-): Date {
-  const firstOfMonth = new Date(year, monthIndex, 1);
-  const firstWeekday = firstOfMonth.getDay();
-  const offset = (weekday - firstWeekday + 7) % 7;
-  const day = 1 + offset + 7 * (nth - 1);
-  return new Date(year, monthIndex, day);
-}
-
-function lastWeekdayOfMonth(
-  year: number,
-  monthIndex: number,
-  weekday: number
-): Date {
-  const last = new Date(year, monthIndex + 1, 0);
-  const d = last.getDay();
-  const offset = (d - weekday + 7) % 7;
-  return new Date(year, monthIndex + 1, 0 - offset);
-}
-
-function easterSunday(year: number): Date {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-
-function observedFixedHoliday(
-  year: number,
-  monthIndex: number,
-  day: number
-): Date | null {
-  const d = new Date(year, monthIndex, day);
-  const dow = d.getDay();
-  if (dow === 6) d.setDate(day - 1);
-  else if (dow === 0) d.setDate(day + 1);
-  if (d.getFullYear() !== year) return null;
-  return d;
-}
-
-function getEasternTime() {
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
-  );
-}
-
-function isAfterMarketCloseET() {
-  const nowET = getEasternTime();
-  const close = new Date(nowET);
-  close.setHours(16, 0, 0, 0);
-  return nowET > close;
-}
-
-function getUsStockMarketHolidays(year: number): Holiday[] {
-  const holidays: Holiday[] = [];
-
-  const newYears = observedFixedHoliday(year, 0, 1);
-  if (newYears) holidays.push({ date: newYears, name: "New Year's Day", type: "closed" });
-
-  holidays.push({ date: nthWeekdayOfMonth(year, 0, 1, 3), name: "Martin Luther King Jr. Day", type: "closed" });
-  holidays.push({ date: nthWeekdayOfMonth(year, 1, 1, 3), name: "Presidents' Day", type: "closed" });
-
-  const easter = easterSunday(year);
-  holidays.push({ date: addDays(easter, -2), name: "Good Friday", type: "closed" });
-
-  holidays.push({ date: lastWeekdayOfMonth(year, 4, 1), name: "Memorial Day", type: "closed" });
-
-  const juneteenth = observedFixedHoliday(year, 5, 19);
-  if (juneteenth) holidays.push({ date: juneteenth, name: "Juneteenth National Independence Day", type: "closed" });
-
-  const independence = observedFixedHoliday(year, 6, 4);
-  if (independence) holidays.push({ date: independence, name: "Independence Day", type: "closed" });
-
-  holidays.push({ date: nthWeekdayOfMonth(year, 8, 1, 1), name: "Labor Day", type: "closed" });
-
-  const thanksgiving = nthWeekdayOfMonth(year, 10, 4, 4);
-  holidays.push({ date: thanksgiving, name: "Thanksgiving Day", type: "closed" });
-
-  const christmas = observedFixedHoliday(year, 11, 25);
-  if (christmas) holidays.push({ date: christmas, name: "Christmas Day", type: "closed" });
-
-  // Half days
-  const july3 = new Date(year, 6, 3);
-  if (![0, 6].includes(july3.getDay())) {
-    const iso = toISODate(july3);
-    if (!holidays.some((h) => toISODate(h.date) === iso))
-      holidays.push({ date: july3, name: "Day Before Independence Day (early close)", type: "half-day", closeTime: "13:00" });
-  }
-
-  const dayAfterThanksgiving = addDays(thanksgiving, 1);
-  if (dayAfterThanksgiving.getDay() === 5)
-    holidays.push({ date: dayAfterThanksgiving, name: "Day After Thanksgiving (early close)", type: "half-day", closeTime: "13:00" });
-
-  const christmasEve = new Date(year, 11, 24);
-  if (![0, 6].includes(christmasEve.getDay())) {
-    const iso = toISODate(christmasEve);
-    if (!holidays.some((h) => toISODate(h.date) === iso))
-      holidays.push({ date: christmasEve, name: "Christmas Eve (early close)", type: "half-day", closeTime: "13:00" });
-  }
-
-  return holidays;
-}
-
-/* ---------------------------------------------
-   COUNT TRADING DAYS BETWEEN TWO DATES
-----------------------------------------------*/
-
-function countTradingDaysBetween(from: Date, to: Date) {
-  const start = stripTime(from);
-  const end = stripTime(to);
-
-  if (end < start) return { tradingDays: 0, calendarDays: 0, fullDays: 0, halfDays: 0 };
-
-  const calendarDays = Math.round((end.getTime() - start.getTime()) / 86400000);
-
-  // Build holiday maps for years involved
-  const startYear = start.getFullYear();
-  const endYear = end.getFullYear();
-  const holidayMap = new Map<string, { type: HolidayType }>();
-
-  for (let y = startYear; y <= endYear; y++) {
-    for (const h of getUsStockMarketHolidays(y)) {
-      holidayMap.set(toISODate(h.date), { type: h.type });
-    }
-  }
-
-  const afterClose = isAfterMarketCloseET();
-  let fullDays = 0;
-  let halfDays = 0;
-
-  let cursor = new Date(start.getTime());
-  while (cursor <= end) {
-    const iso = toISODate(cursor);
-    const dow = cursor.getDay();
-    const hInfo = holidayMap.get(iso);
-
-    if (dow !== 0 && dow !== 6) {
-      const isToday =
-        cursor.getFullYear() === start.getFullYear() &&
-        cursor.getMonth() === start.getMonth() &&
-        cursor.getDate() === start.getDate();
-
-      if (isToday && afterClose) {
-        // skip
-      } else {
-        if (!hInfo) fullDays += 1;
-        else if (hInfo.type === "half-day") halfDays += 1;
-      }
-    }
-
-    cursor = addDays(cursor, 1);
-  }
-
-  return {
-    tradingDays: fullDays + halfDays * 0.5,
-    calendarDays,
-    fullDays,
-    halfDays,
-  };
 }
 
 /* ---------------------------------------------
