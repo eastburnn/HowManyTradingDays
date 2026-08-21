@@ -253,3 +253,29 @@ export function resolveYearStatus(def: HolidayPageDef, year: number): YearStatus
 export function getHolidayPage(slug: string): HolidayPageDef | undefined {
   return HOLIDAY_PAGES.find((h) => h.slug === slug);
 }
+
+/* ---------------------------------------------
+   NAME → SLUG LOOKUP
+   Maps the holiday names produced by
+   getUsStockMarketHolidays() to their pages.
+----------------------------------------------*/
+
+const NAME_TO_SLUG: Record<string, string> = {
+  "New Year's Day": "new-years-day",
+  "Martin Luther King Jr. Day": "martin-luther-king-jr-day",
+  "Presidents' Day": "presidents-day",
+  "Good Friday": "good-friday",
+  "Memorial Day": "memorial-day",
+  "Juneteenth National Independence Day": "juneteenth",
+  "Independence Day": "july-4th",
+  "Day Before Independence Day (early close)": "july-4th",
+  "Labor Day": "labor-day",
+  "Thanksgiving Day": "thanksgiving",
+  "Day After Thanksgiving (early close)": "black-friday",
+  "Christmas Eve (early close)": "christmas-eve",
+  "Christmas Day": "christmas",
+};
+
+export function slugForHolidayName(name: string): string | null {
+  return NAME_TO_SLUG[name] ?? null;
+}

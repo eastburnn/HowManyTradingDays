@@ -3,7 +3,7 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getUsStockMarketHolidays, toISODate } from "@/lib/tradingDays";
-import { HOLIDAY_PAGES } from "@/lib/holidayPages";
+import { HOLIDAY_PAGES, slugForHolidayName } from "@/lib/holidayPages";
 
 // Re-render at most once a day so the year rolls over automatically
 export const revalidate = 86400;
@@ -70,9 +70,23 @@ function HolidayTable({ year }: { year: number }) {
           </tr>
         </thead>
         <tbody>
-          {holidays.map((h) => (
+          {holidays.map((h) => {
+            const slug = slugForHolidayName(h.name);
+            const displayName = h.name.replace(" (early close)", "");
+            return (
             <tr key={toISODate(h.date) + h.name} className="border-t border-slate-800 bg-slate-900/30">
-              <td className="px-4 py-2.5 text-slate-200">{h.name.replace(" (early close)", "")}</td>
+              <td className="px-4 py-2.5 text-slate-200">
+                {slug ? (
+                  <Link
+                    href={`/is-the-stock-market-open/${slug}`}
+                    className="hover:text-slate-100 hover:underline decoration-slate-600 underline-offset-2 transition-colors"
+                  >
+                    {displayName}
+                  </Link>
+                ) : (
+                  displayName
+                )}
+              </td>
               <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">{formatDate(h.date)}</td>
               <td className="px-4 py-2.5 text-right">
                 {h.type === "closed" ? (
@@ -86,7 +100,8 @@ function HolidayTable({ year }: { year: number }) {
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

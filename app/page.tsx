@@ -7,6 +7,7 @@ import ShareButton from "@/components/ShareButton";
 import FAQ from "@/components/FAQ";
 import FiscalAd from "@/components/FiscalAd";
 import MarketStatusCard from "@/components/MarketStatusCard";
+import { slugForHolidayName } from "@/lib/holidayPages";
 import {
   type HolidayType,
   stripTime,
@@ -241,13 +242,16 @@ export default function HomePage() {
             </p>
           ) : (
             <ul className="space-y-2 text-sm">
-              {upcoming.map((h) => (
-                <li
-                  key={h.isoDate + h.name}
-                  className="flex items-start justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+              {upcoming.map((h) => {
+                const slug = slugForHolidayName(h.name);
+                return (
+                <li key={h.isoDate + h.name}>
+                <a
+                  href={slug ? `/is-the-stock-market-open/${slug}` : "/stock-market-holidays"}
+                  className="group flex items-start justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium text-slate-100">{h.name}</span>
+                    <span className="font-medium text-slate-100 group-hover:underline decoration-slate-600 underline-offset-2">{h.name}</span>
                     <span className="text-xs text-slate-400">
                       {formatDisplayDate(h.isoDate)}
                     </span>
@@ -270,8 +274,10 @@ export default function HomePage() {
                       </div>
                     )}
                   </div>
+                </a>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
 
