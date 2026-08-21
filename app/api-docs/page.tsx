@@ -31,29 +31,56 @@ export const metadata: Metadata = {
 
 function CodeBlock({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-xs leading-relaxed text-slate-300">
+    <pre className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950/70 p-4 text-xs leading-relaxed text-slate-300">
       <code>{children}</code>
     </pre>
   );
 }
 
-function Expandable({ label, children }: { label: string; children: React.ReactNode }) {
+function EndpointCard({
+  path,
+  url,
+  description,
+  children,
+}: {
+  path: string;
+  url: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <details className="group rounded-xl border border-slate-800 bg-slate-900/40">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-slate-200 hover:text-slate-100 transition-colors">
-        {label}
-        <svg
-          className="w-3.5 h-3.5 text-slate-500 transition-transform duration-150 group-open:rotate-180 flex-shrink-0 ml-3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </summary>
-      <div className="px-4 pb-4 flex flex-col gap-3">{children}</div>
-    </details>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/40 shadow-xl overflow-hidden">
+      {/* Header */}
+      <div className="p-5 sm:p-6 flex flex-col gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-300">
+            GET
+          </span>
+          <h2 className="font-mono text-sm sm:text-base font-semibold text-slate-100">{path}</h2>
+        </div>
+
+        <p className="font-mono text-[11px] text-slate-500 break-all">{url}</p>
+
+        <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
+      </div>
+
+      {/* Expandable footer */}
+      <details className="group border-t border-slate-800">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 sm:px-6 py-3 text-xs font-medium uppercase tracking-wide text-slate-400 hover:text-slate-200 hover:bg-slate-900/70 transition-colors">
+          Code examples &amp; sample response
+          <svg
+            className="w-3.5 h-3.5 text-slate-500 transition-transform duration-150 group-open:rotate-180 flex-shrink-0 ml-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <div className="px-5 sm:px-6 pb-5 pt-1 flex flex-col gap-3">{children}</div>
+      </details>
+    </section>
   );
 }
 
@@ -75,19 +102,18 @@ export default function ApiDocsPage() {
         </header>
 
         {/* TRADING DAYS ENDPOINT */}
-        <section className="space-y-3">
-          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
-            GET /api/trading-days
-          </h2>
-          <CodeBlock>{`https://howmanytradingdays.com/api/trading-days`}</CodeBlock>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Trading-day totals, month-by-month counts, and the full holiday calendar for a year.
-            Defaults to the current year; pass <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">?year=2027</code>{" "}
-            for any year from 1950 to 2100. For the current year, <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">remaining</code>{" "}
-            holds the live days-left count.
-          </p>
-
-          <Expandable label="Code examples & sample response">
+        <EndpointCard
+          path="/api/trading-days"
+          url="https://howmanytradingdays.com/api/trading-days"
+          description={
+            <>
+              Trading-day totals, month-by-month counts, and the full holiday calendar for a year.
+              Defaults to the current year; pass <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">?year=2027</code>{" "}
+              for any year from 1950 to 2100. For the current year, <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">remaining</code>{" "}
+              holds the live days-left count.
+            </>
+          }
+        >
             <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/trading-days?year=2026`}</CodeBlock>
             <CodeBlock>{`// JavaScript (browser or Node — CORS is enabled)
@@ -124,21 +150,19 @@ print(data["tradingDays"])  # 251`}</CodeBlock>
   ],
   "source": "https://howmanytradingdays.com"
 }`}</CodeBlock>
-          </Expandable>
-        </section>
+        </EndpointCard>
 
         {/* MARKET STATUS ENDPOINT */}
-        <section className="space-y-3 border-t border-slate-800 pt-6">
-          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
-            GET /api/market-status
-          </h2>
-          <CodeBlock>{`https://howmanytradingdays.com/api/market-status`}</CodeBlock>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Whether U.S. equity markets are open right now, based on regular session hours
-            (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
-          </p>
-
-          <Expandable label="Code examples & sample response">
+        <EndpointCard
+          path="/api/market-status"
+          url="https://howmanytradingdays.com/api/market-status"
+          description={
+            <>
+              Whether U.S. equity markets are open right now, based on regular session hours
+              (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
+            </>
+          }
+        >
             <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
             <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
@@ -160,8 +184,7 @@ badge.textContent = isOpen
   "timezone": "America/New_York",
   "source": "https://howmanytradingdays.com"
 }`}</CodeBlock>
-          </Expandable>
-        </section>
+        </EndpointCard>
 
         {/* NOTES */}
         <section className="space-y-3 border-t border-slate-800 pt-6">
