@@ -223,7 +223,7 @@ export default function HomePage() {
 
         {/* FISCAL.AI AD (directly below live counter, above upcoming holidays) */}
         <aside
-          className="w-full -mt-2"
+          className="w-full -mt-2 -mb-4"
           aria-label="Sponsored content"
         >
           <FiscalAd href="https://fiscal.ai/pricing/?via=welcome" />

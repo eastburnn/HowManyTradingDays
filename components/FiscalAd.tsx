@@ -1,5 +1,13 @@
+"use client";
+
 // components/FiscalAd.tsx
 import Image from "next/image";
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
 
 type FiscalAdProps = {
   href: string;
@@ -19,12 +27,19 @@ const WORDS = [
 
 export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
   return (
+    <>
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer sponsored"
       aria-label="Visit Fiscal.ai (sponsored)"
       data-ad="true"
+      onClick={() => {
+        window.gtag?.("event", "affiliate_ad_click", {
+          event_category: "affiliate",
+          event_label: "fiscal-ai",
+        });
+      }}
       className={[
         "group relative block w-full rounded-2xl bg-white border border-black/10",
         // base shadow + hover lift
@@ -95,6 +110,9 @@ export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
               15% off your first 11 months
             </span>
           </p>
+          <span className="ml-1 text-[11px] sm:text-xs font-semibold text-emerald-300 whitespace-nowrap transition-transform duration-200 group-hover:translate-x-0.5">
+            Claim →
+          </span>
         </div>
       </div>
 
@@ -167,5 +185,11 @@ export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
         }
       `}</style>
     </a>
+
+    {/* Disclosure */}
+    <p className="mt-1.5 text-center text-[9px] text-slate-600 leading-none">
+      Sponsored &middot; we may earn a commission if you subscribe
+    </p>
+    </>
   );
 }
