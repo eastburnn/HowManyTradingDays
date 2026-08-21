@@ -281,10 +281,16 @@ export default function HomePage() {
             </ul>
           )}
 
-          <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-            Calendar is based on standard NYSE/Nasdaq U.S. stock market holidays
-            and common 1 p.m. early closes. Weekends are handled automatically
-            and not shown here.
+          <p className="mt-3 text-xs">
+            <a
+              href="/stock-market-holidays"
+              className="inline-flex items-center gap-1 font-medium text-blue-300 hover:text-blue-200 transition-colors"
+            >
+              See the full holiday schedule for this year and next
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
           </p>
         </section>
 
