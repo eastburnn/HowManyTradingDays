@@ -22,7 +22,7 @@ function describe(status: MarketStatus): { label: string; detail: string } {
     const closeMin = status.isEarlyClose ? 13 * 60 : 16 * 60;
     const closeLabel = status.isEarlyClose ? "1:00 p.m." : "4:00 p.m.";
     return {
-      label: "Market is open",
+      label: "U.S. markets are open",
       detail: `Closes in ${formatCountdown(closeMin - minutesNow)} (${closeLabel} ET${status.isEarlyClose ? " — early close" : ""})`,
     };
   }
@@ -43,7 +43,7 @@ function describe(status: MarketStatus): { label: string; detail: string } {
   else if (status.reason === "before-open") why = "Pre-market";
   else why = status.reason; // holiday name
 
-  return { label: "Market is closed", detail: `${why} · ${opensLabel}` };
+  return { label: "U.S. markets are closed", detail: `${why} · ${opensLabel}` };
 }
 
 export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boolean }) {
@@ -59,7 +59,7 @@ export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boo
   // Render a stable placeholder during SSR/first paint to avoid hydration mismatch
   if (!status) {
     return (
-      <div className="w-full rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 flex items-center gap-2.5">
+      <div className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3 flex items-center gap-2.5">
         <span className="w-2 h-2 rounded-full bg-slate-600 flex-shrink-0" />
         <span className="text-xs text-slate-500">Checking market status…</span>
       </div>
@@ -97,8 +97,8 @@ export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boo
   );
 
   const className =
-    "group w-full flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 transition-all duration-150" +
-    (linkToHub ? " hover:border-slate-700 hover:bg-slate-900/70" : "");
+    "group w-full flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3 transition-all duration-150" +
+    (linkToHub ? " hover:border-slate-700 hover:bg-slate-900" : "");
 
   if (linkToHub) {
     return (
