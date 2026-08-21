@@ -74,16 +74,24 @@ export default function IsMarketOpenPage() {
                   <td className="px-4 py-2.5 text-slate-200">Pre-market</td>
                   <td className="px-4 py-2.5 text-right text-slate-400 whitespace-nowrap">4:00 a.m. – 9:30 a.m. ET</td>
                 </tr>
-                <tr className="bg-slate-900/30">
+                <tr className="border-b border-slate-800 bg-slate-900/30">
                   <td className="px-4 py-2.5 text-slate-200">After-hours</td>
                   <td className="px-4 py-2.5 text-right text-slate-400 whitespace-nowrap">4:00 p.m. – 8:00 p.m. ET</td>
+                </tr>
+                <tr className="bg-slate-900/30">
+                  <td className="px-4 py-2.5 text-slate-200">Overnight</td>
+                  <td className="px-4 py-2.5 text-right text-slate-400 whitespace-nowrap">8:00 p.m. – 4:00 a.m. ET</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             The status above reflects the regular session only. Pre-market and after-hours
-            trading is available through most brokers but with lower liquidity.
+            trading is available through most brokers but with lower liquidity. Overnight
+            trading (8 p.m.–4 a.m. ET, Sunday evening through Friday morning) is newer and
+            more limited: it runs through alternative trading systems rather than the
+            exchanges, is offered by only some brokers, and covers a restricted list of
+            stocks and ETFs with thin liquidity.
           </p>
         </section>
 
