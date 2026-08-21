@@ -213,7 +213,7 @@ export default function HomePage() {
             </svg>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-slate-100">Trading Days Calculator</span>
-              <span className="text-xs text-slate-500">See how many trading days remain until a specific date</span>
+              <span className="text-xs text-slate-500">See trading days remaining until any date</span>
             </div>
           </div>
           <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
