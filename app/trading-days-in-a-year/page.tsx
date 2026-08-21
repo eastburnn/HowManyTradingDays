@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { getYearStats, getMonthlyStats } from "@/lib/tradingDays";
+import { getYearStats, getMonthlyStats, getUnscheduledClosuresForYear } from "@/lib/tradingDays";
 
 // Re-render at most once a day so the year and tables stay current
 export const revalidate = 86400;
@@ -158,6 +158,24 @@ export default function TradingDaysInAYearPage() {
               live countdown
             </Link>
             .
+            {years.some((y) => y.unscheduledClosures > 0) && (
+              <>
+                {" "}
+                {years
+                  .filter((y) => y.unscheduledClosures > 0)
+                  .map((y) =>
+                    getUnscheduledClosuresForYear(y.year)
+                      .map((c) => `${y.year} includes the unscheduled closure on ${c.dateISO} (${c.reason.charAt(0).toLowerCase() + c.reason.slice(1)}).`)
+                      .join(" ")
+                  )
+                  .join(" ")}
+              </>
+            )}
+          </p>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            <Link href="/trading-days-by-year" className="text-blue-300 hover:text-blue-200 transition-colors font-medium">
+              See every year back to 1990 →
+            </Link>
           </p>
         </section>
 

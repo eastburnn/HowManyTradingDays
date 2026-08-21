@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   countTradingDaysBetween,
   getMonthlyStats,
+  getUnscheduledClosuresForYear,
   getUsStockMarketHolidays,
   getYearStats,
   stripTime,
@@ -81,6 +82,10 @@ export async function GET(request: NextRequest) {
         tradingDays: m.sessions,
       })),
       holidays,
+      unscheduledClosures: getUnscheduledClosuresForYear(year).map((c) => ({
+        date: c.dateISO,
+        reason: c.reason,
+      })),
       source: "https://howmanytradingdays.com",
     },
     { headers: CORS_HEADERS }

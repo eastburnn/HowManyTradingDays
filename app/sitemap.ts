@@ -29,6 +29,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: "https://howmanytradingdays.com/trading-days-by-year",
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: "https://howmanytradingdays.com/stock-market-holidays",
       lastModified: new Date(),
       changeFrequency: "monthly",

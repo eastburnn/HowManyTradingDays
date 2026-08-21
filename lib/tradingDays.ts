@@ -108,7 +108,9 @@ export function getUsStockMarketHolidays(year: number): Holiday[] {
   const newYears = observedFixedHoliday(year, 0, 1);
   if (newYears) holidays.push({ date: newYears, name: "New Year's Day", type: "closed" });
 
-  holidays.push({ date: nthWeekdayOfMonth(year, 0, 1, 3), name: "Martin Luther King Jr. Day", type: "closed" });
+  // NYSE/Nasdaq have observed MLK Day only since 1998
+  if (year >= 1998)
+    holidays.push({ date: nthWeekdayOfMonth(year, 0, 1, 3), name: "Martin Luther King Jr. Day", type: "closed" });
   holidays.push({ date: nthWeekdayOfMonth(year, 1, 1, 3), name: "Presidents' Day", type: "closed" });
 
   const easter = easterSunday(year);
@@ -116,7 +118,8 @@ export function getUsStockMarketHolidays(year: number): Holiday[] {
 
   holidays.push({ date: lastWeekdayOfMonth(year, 4, 1), name: "Memorial Day", type: "closed" });
 
-  const juneteenth = observedFixedHoliday(year, 5, 19);
+  // Juneteenth has been a market holiday only since 2022
+  const juneteenth = year >= 2022 ? observedFixedHoliday(year, 5, 19) : null;
   if (juneteenth) holidays.push({ date: juneteenth, name: "Juneteenth National Independence Day", type: "closed" });
 
   const independence = observedFixedHoliday(year, 6, 4);
@@ -151,6 +154,38 @@ export function getUsStockMarketHolidays(year: number): Holiday[] {
   }
 
   return holidays;
+}
+
+/* ---------------------------------------------
+   UNSCHEDULED MARKET CLOSURES (1990-present)
+   Full-day closures that were not on the
+   scheduled holiday calendar.
+----------------------------------------------*/
+
+export type UnscheduledClosure = { dateISO: string; reason: string };
+
+export const UNSCHEDULED_CLOSURES: UnscheduledClosure[] = [
+  { dateISO: "1994-04-27", reason: "Day of mourning for President Richard Nixon" },
+  { dateISO: "2001-09-11", reason: "September 11 attacks" },
+  { dateISO: "2001-09-12", reason: "September 11 attacks" },
+  { dateISO: "2001-09-13", reason: "September 11 attacks" },
+  { dateISO: "2001-09-14", reason: "September 11 attacks" },
+  { dateISO: "2004-06-11", reason: "Day of mourning for President Ronald Reagan" },
+  { dateISO: "2007-01-02", reason: "Day of mourning for President Gerald Ford" },
+  { dateISO: "2012-10-29", reason: "Hurricane Sandy" },
+  { dateISO: "2012-10-30", reason: "Hurricane Sandy" },
+  { dateISO: "2018-12-05", reason: "Day of mourning for President George H. W. Bush" },
+  { dateISO: "2025-01-09", reason: "Day of mourning for President Jimmy Carter" },
+];
+
+const CLOSURE_MAP = new Map(UNSCHEDULED_CLOSURES.map((c) => [c.dateISO, c.reason]));
+
+export function getUnscheduledClosureReason(iso: string): string | null {
+  return CLOSURE_MAP.get(iso) ?? null;
+}
+
+export function getUnscheduledClosuresForYear(year: number): UnscheduledClosure[] {
+  return UNSCHEDULED_CLOSURES.filter((c) => c.dateISO.startsWith(String(year) + "-"));
 }
 
 /* ---------------------------------------------
@@ -197,7 +232,7 @@ export function countTradingDaysBetween(from: Date, to: Date) {
 
       if (isToday && afterClose) {
         // skip
-      } else {
+      } else if (!CLOSURE_MAP.has(iso)) {
         if (!hInfo) fullDays += 1;
         else if (hInfo.type === "half-day") halfDays += 1;
       }
@@ -225,8 +260,9 @@ export type YearStats = {
   year: number;
   weekdays: number;
   closedHolidays: number;
+  unscheduledClosures: number; // e.g. 9/11, Hurricane Sandy, days of mourning
   halfDaySessions: number;
-  sessions: number; // weekdays - closedHolidays
+  sessions: number; // weekdays - closedHolidays - unscheduledClosures
   halfDayAdjusted: number; // sessions - halfDaySessions * 0.5
 };
 
@@ -238,6 +274,7 @@ export function getYearStats(year: number): YearStats {
 
   let weekdays = 0;
   let closedHolidays = 0;
+  let unscheduledClosures = 0;
   let halfDaySessions = 0;
 
   let cursor = new Date(year, 0, 1);
@@ -246,18 +283,21 @@ export function getYearStats(year: number): YearStats {
     const dow = cursor.getDay();
     if (dow !== 0 && dow !== 6) {
       weekdays += 1;
-      const type = holidayMap.get(toISODate(cursor));
+      const iso = toISODate(cursor);
+      const type = holidayMap.get(iso);
       if (type === "closed") closedHolidays += 1;
+      else if (CLOSURE_MAP.has(iso)) unscheduledClosures += 1;
       else if (type === "half-day") halfDaySessions += 1;
     }
     cursor = addDays(cursor, 1);
   }
 
-  const sessions = weekdays - closedHolidays;
+  const sessions = weekdays - closedHolidays - unscheduledClosures;
   return {
     year,
     weekdays,
     closedHolidays,
+    unscheduledClosures,
     halfDaySessions,
     sessions,
     halfDayAdjusted: sessions - halfDaySessions * 0.5,
@@ -292,10 +332,15 @@ export function getMonthlyStats(year: number): MonthStats[] {
     while (cursor <= end) {
       const dow = cursor.getDay();
       if (dow !== 0 && dow !== 6) {
-        const info = holidayMap.get(toISODate(cursor));
+        const iso = toISODate(cursor);
+        const info = holidayMap.get(iso);
+        const closureReason = getUnscheduledClosureReason(iso);
         if (info?.type === "closed") {
           closedHolidays += 1;
           holidayNames.push(info.name);
+        } else if (closureReason) {
+          closedHolidays += 1;
+          holidayNames.push(closureReason);
         } else {
           sessions += 1;
           if (info?.type === "half-day") halfDaySessions += 1;
@@ -409,13 +454,16 @@ export function getDayInfo(d: Date): DayInfo {
 
   const isWeekend = dow === 0 || dow === 6;
   const isClosedHoliday = holiday?.type === "closed";
+  const closureReason = !isWeekend && !isClosedHoliday ? getUnscheduledClosureReason(iso) : null;
 
   return {
     dateISO: iso,
     weekday: day.toLocaleDateString("en-US", { weekday: "long" }),
-    isTradingDay: !isWeekend && !isClosedHoliday,
-    isEarlyClose: !isWeekend && holiday?.type === "half-day",
-    holidayName: !isWeekend && holiday ? holiday.name.replace(" (early close)", "") : null,
+    isTradingDay: !isWeekend && !isClosedHoliday && !closureReason,
+    isEarlyClose: !isWeekend && !closureReason && holiday?.type === "half-day",
+    holidayName:
+      closureReason ??
+      (!isWeekend && holiday ? holiday.name.replace(" (early close)", "") : null),
   };
 }
 
