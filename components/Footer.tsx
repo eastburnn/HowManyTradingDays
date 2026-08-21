@@ -45,7 +45,7 @@ export default function Footer() {
     <footer className="w-full border-t border-slate-800 bg-[#010409] mt-auto">
       <div className="max-w-xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between gap-6 sm:gap-8">
         {/* Brand + legal */}
-        <div className="flex flex-col gap-2 max-w-[240px]">
+        <div className="flex flex-col gap-2.5 max-w-[250px]">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src="/favicon.ico" alt="" className="h-5 w-5" />
             <span className={`${domine.className} text-sm font-semibold text-slate-100`}>
@@ -56,7 +56,7 @@ export default function Footer() {
             Live reference for U.S. stock market trading days, holidays, and market hours.
           </p>
           <p className="text-[10px] text-slate-600 leading-relaxed">
-            U.S. equity markets only &middot; For informational purposes only.
+            U.S. equity markets only &middot; Informational purposes only.
           </p>
           <p className="flex items-center gap-1.5 text-[10px] text-slate-500">
             Made by{" "}
