@@ -152,40 +152,6 @@ print(data["tradingDays"])  # 251`}</CodeBlock>
 }`}</CodeBlock>
         </EndpointCard>
 
-        {/* MARKET STATUS ENDPOINT */}
-        <EndpointCard
-          path="/api/market-status"
-          url="https://howmanytradingdays.com/api/market-status"
-          description={
-            <>
-              Whether U.S. equity markets are open right now, based on regular session hours
-              (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
-            </>
-          }
-        >
-            <CodeBlock>{`# curl
-curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
-            <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
-const res = await fetch("https://howmanytradingdays.com/api/market-status");
-const { isOpen, isEarlyClose, closesAtET } = await res.json();
-
-badge.textContent = isOpen
-  ? \`Market open — closes \${closesAtET} ET\`
-  : "Market closed";`}</CodeBlock>
-            <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
-            <CodeBlock>{`{
-  "isOpen": true,
-  "isTradingDay": true,
-  "isEarlyClose": false,
-  "closesAtET": "16:00",
-  "closedReason": null,
-  "nextSessionDate": "2026-08-21",
-  "opensAtET": "09:30",
-  "timezone": "America/New_York",
-  "source": "https://howmanytradingdays.com"
-}`}</CodeBlock>
-        </EndpointCard>
-
         {/* COUNT ENDPOINT */}
         <EndpointCard
           path="/api/count"
@@ -265,6 +231,40 @@ curl "https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"`}</CodeB
   "result": "2026-08-25",
   "resultWeekday": "Tuesday",
   "resultIsEarlyClose": false,
+  "source": "https://howmanytradingdays.com"
+}`}</CodeBlock>
+        </EndpointCard>
+
+        {/* MARKET STATUS ENDPOINT */}
+        <EndpointCard
+          path="/api/market-status"
+          url="https://howmanytradingdays.com/api/market-status"
+          description={
+            <>
+              Whether U.S. equity markets are open right now, based on regular session hours
+              (9:30 a.m.–4:00 p.m. ET) and the NYSE/Nasdaq holiday calendar.
+            </>
+          }
+        >
+            <CodeBlock>{`# curl
+curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
+            <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
+const res = await fetch("https://howmanytradingdays.com/api/market-status");
+const { isOpen, isEarlyClose, closesAtET } = await res.json();
+
+badge.textContent = isOpen
+  ? \`Market open — closes \${closesAtET} ET\`
+  : "Market closed";`}</CodeBlock>
+            <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
+            <CodeBlock>{`{
+  "isOpen": true,
+  "isTradingDay": true,
+  "isEarlyClose": false,
+  "closesAtET": "16:00",
+  "closedReason": null,
+  "nextSessionDate": "2026-08-21",
+  "opensAtET": "09:30",
+  "timezone": "America/New_York",
   "source": "https://howmanytradingdays.com"
 }`}</CodeBlock>
         </EndpointCard>
