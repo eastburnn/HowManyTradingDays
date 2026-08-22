@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { domine } from "../../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import ScrollHintTable from "@/components/ScrollHintTable";
 import { HOLIDAY_PAGES, getHolidayPage, resolveYearStatus } from "@/lib/holidayPages";
 
 export const revalidate = 86400;
@@ -177,7 +178,7 @@ export default async function HolidayOpenPage({ params }: Props) {
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
             {def.name} market status by year
           </h2>
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <ScrollHintTable>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -205,7 +206,7 @@ export default async function HolidayOpenPage({ params }: Props) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintTable>
         </section>
 
         {/* RELATED */}

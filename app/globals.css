@@ -18,3 +18,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Sideways-scroll hint on wide tables (ScrollHintTable) */
+@keyframes scroll-hint-nudge {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(4px);
+    opacity: 0.45;
+  }
+}
+
+.scroll-hint-nudge {
+  animation: scroll-hint-nudge 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint-nudge {
+    animation: none;
+  }
+}

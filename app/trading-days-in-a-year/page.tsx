@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import ScrollHintTable from "@/components/ScrollHintTable";
 import { getYearStats, getMonthlyStats, getUnscheduledClosuresForYear } from "@/lib/tradingDays";
 
 // Re-render at most once a day so the year and tables stay current
@@ -117,15 +118,15 @@ export default function TradingDaysInAYearPage() {
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
             Trading days by year ({year - 2}–{year + 2})
           </h2>
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <ScrollHintTable>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-3 font-medium">Year</th>
-                  <th className="px-4 py-3 font-medium text-right">Weekdays</th>
-                  <th className="px-4 py-3 font-medium text-right">Holidays</th>
-                  <th className="px-4 py-3 font-medium text-right">Early closes</th>
-                  <th className="px-4 py-3 font-medium text-right">Trading days</th>
+                  <th className="px-4 py-3 font-medium text-center">Year</th>
+                  <th className="px-4 py-3 font-medium text-center">Weekdays</th>
+                  <th className="px-4 py-3 font-medium text-center">Holidays</th>
+                  <th className="px-4 py-3 font-medium text-center">Early closes</th>
+                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,20 +137,20 @@ export default function TradingDaysInAYearPage() {
                       y.year === year ? "bg-blue-500/10" : "bg-slate-900/30"
                     }`}
                   >
-                    <td className={`px-4 py-2.5 tabular-nums ${y.year === year ? "font-semibold text-blue-200" : "text-slate-200"}`}>
+                    <td className={`px-4 py-2.5 text-center tabular-nums ${y.year === year ? "font-semibold text-blue-200" : "text-slate-200"}`}>
                       {y.year}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">{y.weekdays}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">{y.closedHolidays}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">{y.halfDaySessions}</td>
-                    <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${y.year === year ? "text-blue-200" : "text-slate-100"}`}>
+                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.weekdays}</td>
+                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.closedHolidays}</td>
+                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.halfDaySessions}</td>
+                    <td className={`px-4 py-2.5 text-center tabular-nums font-semibold ${y.year === year ? "text-blue-200" : "text-slate-100"}`}>
                       {y.sessions}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintTable>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             Early-close sessions (1 p.m. ET) are counted as full trading days here, per the standard
             convention. Counting them as half days instead, {year} has {current.halfDayAdjusted % 1 === 0 ? current.halfDayAdjusted : current.halfDayAdjusted.toFixed(1)} trading
@@ -184,12 +185,12 @@ export default function TradingDaysInAYearPage() {
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
             Trading days per month in {year}
           </h2>
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <ScrollHintTable>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-4 py-3 font-medium">Month</th>
-                  <th className="px-4 py-3 font-medium text-right">Trading days</th>
+                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
                   <th className="px-4 py-3 font-medium">Market holidays</th>
                 </tr>
               </thead>
@@ -197,7 +198,7 @@ export default function TradingDaysInAYearPage() {
                 {months.map((m) => (
                   <tr key={m.monthIndex} className="border-t border-slate-800 bg-slate-900/30">
                     <td className="px-4 py-2.5 text-slate-200">{m.monthName}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-100">
+                    <td className="px-4 py-2.5 text-center tabular-nums font-semibold text-slate-100">
                       {m.sessions}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-400">
@@ -207,7 +208,7 @@ export default function TradingDaysInAYearPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintTable>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             Months average about 21 trading days. February is usually the shortest; months with no
             holidays and five full weeks reach 22–23.

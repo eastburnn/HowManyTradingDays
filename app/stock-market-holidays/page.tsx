@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import ScrollHintTable from "@/components/ScrollHintTable";
 import { getUsStockMarketHolidays, toISODate } from "@/lib/tradingDays";
 import { HOLIDAY_PAGES, slugForHolidayName } from "@/lib/holidayPages";
 
@@ -60,7 +61,7 @@ function HolidayTable({ year }: { year: number }) {
   );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-800">
+    <ScrollHintTable>
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -104,7 +105,7 @@ function HolidayTable({ year }: { year: number }) {
           })}
         </tbody>
       </table>
-    </div>
+    </ScrollHintTable>
   );
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import ScrollHintTable from "@/components/ScrollHintTable";
 import { getYearStats, UNSCHEDULED_CLOSURES } from "@/lib/tradingDays";
 
 // Re-render at most once a day so the current-year highlight stays fresh
@@ -95,15 +96,15 @@ export default function TradingDaysByYearPage() {
 
         {/* FULL TABLE */}
         <section className="space-y-3">
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <ScrollHintTable>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-3 font-medium">Year</th>
-                  <th className="px-4 py-3 font-medium text-right">Weekdays</th>
-                  <th className="px-4 py-3 font-medium text-right">Holidays</th>
-                  <th className="px-4 py-3 font-medium text-right">Unscheduled</th>
-                  <th className="px-4 py-3 font-medium text-right">Trading days</th>
+                  <th className="px-4 py-3 font-medium text-center">Year</th>
+                  <th className="px-4 py-3 font-medium text-center">Weekdays</th>
+                  <th className="px-4 py-3 font-medium text-center">Holidays</th>
+                  <th className="px-4 py-3 font-medium text-center">Unscheduled</th>
+                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,23 +115,23 @@ export default function TradingDaysByYearPage() {
                       y.year === currentYear ? "bg-blue-500/10" : "bg-slate-900/30"
                     }`}
                   >
-                    <td className={`px-4 py-2 tabular-nums ${y.year === currentYear ? "font-semibold text-blue-200" : "text-slate-200"}`}>
+                    <td className={`px-4 py-2 text-center tabular-nums whitespace-nowrap ${y.year === currentYear ? "font-semibold text-blue-200" : "text-slate-200"}`}>
                       {y.year}
                       {y.year > currentYear && <span className="text-slate-500 text-xs"> *</span>}
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-400">{y.weekdays}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-400">{y.closedHolidays}</td>
-                    <td className={`px-4 py-2 text-right tabular-nums ${y.unscheduledClosures > 0 ? "text-amber-300 font-medium" : "text-slate-600"}`}>
+                    <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.weekdays}</td>
+                    <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.closedHolidays}</td>
+                    <td className={`px-4 py-2 text-center tabular-nums whitespace-nowrap ${y.unscheduledClosures > 0 ? "text-amber-300 font-medium" : "text-slate-600"}`}>
                       {y.unscheduledClosures > 0 ? y.unscheduledClosures : "—"}
                     </td>
-                    <td className={`px-4 py-2 text-right tabular-nums font-semibold ${y.year === currentYear ? "text-blue-200" : "text-slate-100"}`}>
+                    <td className={`px-4 py-2 text-center tabular-nums font-semibold ${y.year === currentYear ? "text-blue-200" : "text-slate-100"}`}>
                       {y.sessions}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintTable>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             Early-close sessions (1 p.m. ET) are counted as full trading days, per the standard
             convention. * Future years show the scheduled calendar; any unscheduled closures

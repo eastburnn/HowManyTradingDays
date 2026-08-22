@@ -43,22 +43,39 @@ function LinkColumn({
 export default function Footer() {
   return (
     <footer className="w-full border-t border-slate-800 bg-[#010409] mt-auto">
-      <div className="max-w-xl mx-auto px-4 py-6 flex flex-col items-center sm:items-start sm:flex-row justify-between gap-6 sm:gap-8">
-        {/* Brand + legal */}
-        <div className="flex flex-col items-center text-center sm:items-start sm:text-left gap-2.5 max-w-[280px] sm:max-w-[250px]">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src="/favicon.ico" alt="" className="h-5 w-5" />
-            <span className={`${domine.className} text-sm font-semibold text-slate-100`}>
-              How Many Trading Days
-            </span>
-          </Link>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Live reference for U.S. stock market trading days, holidays, and market hours.
-          </p>
-          <p className="text-[10px] text-slate-600 leading-relaxed">
+      <div className="max-w-xl mx-auto px-4 py-6 flex flex-col gap-5">
+        <div className="flex flex-col items-center sm:items-start sm:flex-row justify-between gap-4 sm:gap-8">
+          {/* Brand + legal */}
+          <div className="flex flex-col items-center text-center sm:items-start sm:text-left gap-2.5 max-w-[280px] sm:max-w-[250px]">
+            <Link
+              href="/"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <img src="/favicon.ico" alt="" className="h-5 w-5" />
+              <span
+                className={`${domine.className} text-sm font-semibold text-slate-100`}
+              >
+                How Many Trading Days
+              </span>
+            </Link>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Live reference for U.S. stock market trading days, holidays, and
+              market hours.
+            </p>
+          </div>
+
+          {/* Links */}
+          <div className="flex gap-16 sm:gap-12">
+            <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
+            <LinkColumn heading="Site" links={SITE_LINKS} />
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-center text-[10px] text-slate-600">
             U.S. equity markets only &middot; Informational purposes only.
           </p>
-          <p className="flex items-center justify-center sm:justify-start gap-1.5 text-[10px] text-slate-500">
+          <p className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500">
             Made by{" "}
             <a
               href="https://www.itschrisray.com"
@@ -75,18 +92,16 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
             >
-              <img src="/twitter.png" alt="" className="h-2.5 w-2.5 opacity-70" />
+              <img
+                src="/twitter.png"
+                alt=""
+                className="h-2.5 w-2.5 opacity-70"
+              />
               <span className="text-slate-400 hover:text-slate-300 transition-colors">
                 @itschrisray
               </span>
             </a>
           </p>
-        </div>
-
-        {/* Links */}
-        <div className="flex gap-16 sm:gap-12">
-          <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
-          <LinkColumn heading="Site" links={SITE_LINKS} />
         </div>
       </div>
     </footer>
