@@ -2,10 +2,10 @@ import Link from "next/link";
 import { domine } from "@/app/fonts";
 
 const REFERENCE_LINKS = [
+  { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
+  { label: "Stock Market Holidays", href: "/stock-market-holidays" },
   { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },
   { label: "Trading Days by Year", href: "/trading-days-by-year" },
-  { label: "Stock Market Holidays", href: "/stock-market-holidays" },
-  { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
 ];
 
 const SITE_LINKS = [
