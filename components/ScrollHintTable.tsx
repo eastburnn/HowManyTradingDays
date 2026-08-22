@@ -34,11 +34,19 @@ export default function ScrollHintTable({ children }: { children: React.ReactNod
     check();
     const lateCheck = setTimeout(check, 400); // fonts/layout settling
     el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(() => {
+      if (dismissed.current) return;
+      if (el.clientWidth === 0) return;
+      // Re-evaluate on any size change (rotation, split view, pane resize)
+      setHint(el.scrollWidth > el.clientWidth + 8);
+    });
+    ro.observe(el);
     window.addEventListener("resize", check);
     document.addEventListener("visibilitychange", check);
     return () => {
       clearTimeout(lateCheck);
       el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
       window.removeEventListener("resize", check);
       document.removeEventListener("visibilitychange", check);
     };
@@ -51,12 +59,12 @@ export default function ScrollHintTable({ children }: { children: React.ReactNod
       </div>
 
       {/* Right-edge fade + pulsing chevron (sticky so it stays in view while
-          scrolling vertically through a tall table) */}
+          scrolling vertically through a tall table). Mounted only while
+          active so no composited layer lingers when hidden. */}
+      {hint && (
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-y-0 right-0 w-14 rounded-r-xl bg-gradient-to-l from-slate-950/90 via-slate-950/40 to-transparent transition-opacity duration-500 ${
-          hint ? "opacity-100" : "opacity-0"
-        }`}
+        className="pointer-events-none absolute inset-y-0 right-0 w-14 rounded-xl bg-gradient-to-l from-slate-950/90 via-slate-950/40 to-transparent scroll-hint-fade-in"
       >
         {/* mt pushes the chevron's first appearance below the table's top edge;
             once scrolled it sticks at mid-viewport */}
@@ -72,6 +80,7 @@ export default function ScrollHintTable({ children }: { children: React.ReactNod
           </svg>
         </div>
       </div>
+      )}
     </div>
   );
 }
