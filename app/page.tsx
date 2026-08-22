@@ -180,17 +180,17 @@ export default function HomePage() {
                 <span>half days</span>
               </div>
             </div>
+
+            {/* LIVE MARKET STATUS */}
+            <div className="w-full border-t border-slate-800 mt-3 pt-3">
+              <MarketStatusCard variant="inline" />
+            </div>
           </div>
         </section>
 
         {/* SHARE BUTTON */}
         <div className="w-full flex justify-center -mt-8">
           <ShareButton cardRef={cardRef} />
-        </div>
-
-        {/* LIVE MARKET STATUS */}
-        <div className="w-full -mt-4">
-          <MarketStatusCard />
         </div>
 
         {/* CALCULATOR CTA */}

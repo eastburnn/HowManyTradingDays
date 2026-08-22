@@ -46,7 +46,34 @@ function describe(status: MarketStatus): { word: string; detail: string } {
   return { word: "closed", detail: `${why} · ${opensLabel}` };
 }
 
-export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boolean }) {
+function shortTail(status: MarketStatus): string {
+  const nowET = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  const minutesNow = nowET.getHours() * 60 + nowET.getMinutes();
+
+  if (status.isOpen) {
+    const closeMin = status.isEarlyClose ? 13 * 60 : 16 * 60;
+    return `closes in ${formatCountdown(closeMin - minutesNow)}`;
+  }
+
+  const [y, m, d] = status.nextOpenISO.split("-").map(Number);
+  const nextOpen = new Date(y, m - 1, d);
+  const todayISO = `${nowET.getFullYear()}-${String(nowET.getMonth() + 1).padStart(2, "0")}-${String(nowET.getDate()).padStart(2, "0")}`;
+  const day =
+    status.nextOpenISO === todayISO
+      ? "today"
+      : nextOpen.toLocaleDateString("en-US", { weekday: "short" });
+  return `opens ${day} 9:30 a.m. ET`;
+}
+
+export default function MarketStatusCard({
+  linkToHub = true,
+  variant = "card",
+}: {
+  linkToHub?: boolean;
+  variant?: "card" | "inline";
+}) {
   const [status, setStatus] = useState<MarketStatus | null>(null);
 
   useEffect(() => {
@@ -57,6 +84,50 @@ export default function MarketStatusCard({ linkToHub = true }: { linkToHub?: boo
   }, []);
 
   // Render a stable placeholder during SSR/first paint to avoid hydration mismatch
+  if (variant === "inline") {
+    if (!status) {
+      return (
+        <span className="flex items-center justify-center gap-2 text-[11px] sm:text-xs text-slate-600">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+          Checking market status…
+        </span>
+      );
+    }
+    return (
+      <Link
+        href="/is-the-stock-market-open"
+        className="group flex items-center justify-center gap-1.5 whitespace-nowrap text-[11px] sm:text-xs"
+      >
+        <span className="relative flex w-1.5 h-1.5 mr-0.5">
+          {status.isOpen && (
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+          )}
+          <span
+            className={`relative inline-flex rounded-full w-1.5 h-1.5 ${
+              status.isOpen ? "bg-emerald-400" : "bg-red-400"
+            }`}
+          />
+        </span>
+        <span className={status.isOpen ? "text-emerald-200" : "text-slate-300"}>
+          U.S. markets are <span className="font-semibold">{status.isOpen ? "open" : "closed"}</span>
+        </span>
+        <span className="text-slate-600">&middot;</span>
+        <span className="text-slate-400 group-hover:text-slate-300 transition-colors">
+          {shortTail(status)}
+        </span>
+        <svg
+          className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    );
+  }
+
   if (!status) {
     return (
       <div className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3 flex items-center gap-2.5">
