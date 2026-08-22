@@ -53,3 +53,11 @@ body {
 .scroll-hint-fade-in {
   animation: scroll-hint-fade-in 0.5s ease-out;
 }
+
+/* Keep the whole page on one composited layer so the dark background
+   rasterizes through a single color pipeline. Prevents transient
+   shade seams ("stripes") on wide-gamut displays when the browser
+   re-layerizes during overlay open/close or navigation. */
+body {
+  transform: translateZ(0);
+}
