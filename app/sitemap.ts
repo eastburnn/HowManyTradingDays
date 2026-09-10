@@ -23,6 +23,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: "https://howmanytradingdays.com/trading-days-in-a-month",
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: "https://howmanytradingdays.com/calculator",
       lastModified: new Date(),
       changeFrequency: "monthly",

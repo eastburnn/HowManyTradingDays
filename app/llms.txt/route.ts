@@ -67,6 +67,7 @@ ${holidayList}
 
 - [Home — live countdown](https://howmanytradingdays.com/): Live count of trading days left in the current year, live market open/closed status, and upcoming holidays. Updates in real time relative to the 4:00 p.m. ET close.
 - [Trading Days in a Year](https://howmanytradingdays.com/trading-days-in-a-year): The current year's trading-day total, a month-by-month table, and exact totals for every year from 1990 to 2030 - adjusted for unscheduled closures (9/11, Hurricane Sandy, presidential days of mourning) and holiday-calendar changes (MLK Day added 1998, Juneteenth added 2022).
+- [Trading Days in a Month](https://howmanytradingdays.com/trading-days-in-a-month): About 21 on average; exact counts for every month and quarter of the current year.
 - [Stock Market Holidays](https://howmanytradingdays.com/stock-market-holidays): Full NYSE/Nasdaq holiday schedule for this year and next, including early-close days and weekend-observance rules.
 - [Is the Stock Market Open?](https://howmanytradingdays.com/is-the-stock-market-open): Live market status, regular/extended hours, and per-holiday answers.
 - [Trading Days Calculator](https://howmanytradingdays.com/calculator): Count trading days and calendar days between today (or any start date) and a target date.

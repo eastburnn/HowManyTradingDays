@@ -321,7 +321,7 @@ export default function HomePage() {
             </a>
 
             <a
-              href="/trading-days-in-a-year#months"
+              href="/trading-days-in-a-month"
               className="group rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
             >
               <h3 className="text-sm font-semibold text-slate-100">
