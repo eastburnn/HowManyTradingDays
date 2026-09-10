@@ -8,7 +8,6 @@ const REFERENCE_LINKS = [
   { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
   { label: "Stock Market Holidays", href: "/stock-market-holidays" },
   { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },
-  { label: "Trading Days by Year (1990–)", href: "/trading-days-by-year" },
 ];
 
 const BEFORE_DROPDOWN = [

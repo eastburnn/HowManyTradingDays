@@ -23,7 +23,7 @@ const faqs: FaqItem[] = [
     answer:
       "Yes — beyond the scheduled holiday calendar, U.S. markets have closed 11 times since 1990 for emergencies and national days of mourning: four days after the September 11 attacks, two days for Hurricane Sandy in 2012, and single days honoring Presidents Nixon, Reagan, Ford, George H. W. Bush, and Carter. Our historical counts account for all of them.",
     link: {
-      href: "/trading-days-by-year",
+      href: "/trading-days-in-a-year#closures",
       label: "See every unscheduled closure since 1990",
     },
   },

@@ -66,8 +66,7 @@ ${holidayList}
 ## Pages
 
 - [Home — live countdown](https://howmanytradingdays.com/): Live count of trading days left in the current year, live market open/closed status, and upcoming holidays. Updates in real time relative to the 4:00 p.m. ET close.
-- [Trading Days in a Year](https://howmanytradingdays.com/trading-days-in-a-year): Exact trading-day totals for the current and surrounding years, plus a month-by-month table.
-- [Trading Days by Year, 1990-2030](https://howmanytradingdays.com/trading-days-by-year): Historical trading-day counts for every year since 1990, adjusted for unscheduled closures (9/11, Hurricane Sandy, presidential days of mourning) and for holiday-calendar changes (MLK Day added 1998, Juneteenth added 2022).
+- [Trading Days in a Year](https://howmanytradingdays.com/trading-days-in-a-year): The current year's trading-day total, a month-by-month table, and exact totals for every year from 1990 to 2030 - adjusted for unscheduled closures (9/11, Hurricane Sandy, presidential days of mourning) and holiday-calendar changes (MLK Day added 1998, Juneteenth added 2022).
 - [Stock Market Holidays](https://howmanytradingdays.com/stock-market-holidays): Full NYSE/Nasdaq holiday schedule for this year and next, including early-close days and weekend-observance rules.
 - [Is the Stock Market Open?](https://howmanytradingdays.com/is-the-stock-market-open): Live market status, regular/extended hours, and per-holiday answers.
 - [Trading Days Calculator](https://howmanytradingdays.com/calculator): Count trading days and calendar days between today (or any start date) and a target date.
@@ -91,7 +90,7 @@ No API key required. CORS enabled. Free for personal and commercial use; attribu
 
 - U.S. equity markets only (NYSE/Nasdaq regular sessions); no futures, crypto, or non-U.S. exchanges.
 - All times are U.S. Eastern Time.
-- Holidays follow the official NYSE/Nasdaq schedule, including observed dates when holidays fall on weekends. Scheduled closures only — unscheduled closures (e.g. days of mourning) are not modeled.
+- Holidays follow the official NYSE/Nasdaq schedule, including observed dates when holidays fall on weekends. Historical counts (1990-present) also account for unscheduled closures such as 9/11, Hurricane Sandy, and presidential days of mourning.
 - Two counting conventions are shown where relevant: early closes as full sessions (standard, ~252/year) and early closes as 0.5 (used by the live countdown).
 
 Made by Chris Ray (https://www.itschrisray.com). Contact: https://x.com/itschrisray

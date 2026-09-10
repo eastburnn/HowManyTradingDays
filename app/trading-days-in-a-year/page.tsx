@@ -3,10 +3,13 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import ScrollHintTable from "@/components/ScrollHintTable";
-import { getYearStats, getMonthlyStats, getUnscheduledClosuresForYear } from "@/lib/tradingDays";
+import { getYearStats, getMonthlyStats, UNSCHEDULED_CLOSURES } from "@/lib/tradingDays";
 
 // Re-render at most once a day so the year and tables stay current
 export const revalidate = 86400;
+
+const START_YEAR = 1990;
+const END_YEAR = 2030;
 
 function getCurrentYearET(): number {
   const yearStr = new Intl.DateTimeFormat("en-US", {
@@ -21,7 +24,7 @@ export function generateMetadata(): Metadata {
   const stats = getYearStats(year);
 
   const title = `How Many Trading Days in a Year? (${year} Answer)`;
-  const description = `There are ${stats.sessions} trading days in ${year}. See the exact U.S. stock market trading day count for ${year - 2}–${year + 2}, plus a month-by-month breakdown.`;
+  const description = `There are ${stats.sessions} trading days in ${year}. See the count for every month of ${year} and every year from ${START_YEAR} to ${END_YEAR}, adjusted for unscheduled closures.`;
 
   return {
     title,
@@ -56,11 +59,33 @@ export function generateMetadata(): Metadata {
   };
 }
 
+function formatClosureDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export default function TradingDaysInAYearPage() {
   const year = getCurrentYearET();
-  const years = [year - 2, year - 1, year, year + 1, year + 2].map(getYearStats);
-  const current = years[2];
+  const years = [];
+  for (let y = END_YEAR; y >= START_YEAR; y--) years.push(getYearStats(y));
+  const current = years.find((y) => y.year === year)!;
   const months = getMonthlyStats(year);
+
+  const min = Math.min(...years.map((y) => y.sessions));
+  const max = Math.max(...years.map((y) => y.sessions));
+
+  // Group the unscheduled closures by event for the closures section
+  const closureEvents: { reason: string; dates: string[] }[] = [];
+  for (const c of UNSCHEDULED_CLOSURES) {
+    const existing = closureEvents.find((e) => e.reason === c.reason);
+    if (existing) existing.dates.push(c.dateISO);
+    else closureEvents.push({ reason: c.reason, dates: [c.dateISO] });
+  }
+  closureEvents.sort((a, b) => (a.dates[0] < b.dates[0] ? 1 : -1));
 
   return (
     <main className="flex-1 flex items-start justify-center px-4">
@@ -76,8 +101,9 @@ export default function TradingDaysInAYearPage() {
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             A typical year has about <span className="font-semibold text-slate-200">252</span> U.S.
-            stock market trading days — the exact number varies between 250 and 253 depending on how
-            weekends and holidays fall.
+            stock market trading days — the exact number varies with how weekends and holidays
+            fall. Below: this year&apos;s total, every month of {year}, and every year back
+            to {START_YEAR}.
           </p>
         </header>
 
@@ -111,73 +137,6 @@ export default function TradingDaysInAYearPage() {
               <span>early closes</span>
             </div>
           </div>
-        </section>
-
-        {/* BY-YEAR TABLE */}
-        <section className="space-y-3">
-          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
-            Trading days by year ({year - 2}–{year + 2})
-          </h2>
-          <ScrollHintTable>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-3 font-medium text-center">Year</th>
-                  <th className="px-4 py-3 font-medium text-center">Weekdays</th>
-                  <th className="px-4 py-3 font-medium text-center">Holidays</th>
-                  <th className="px-4 py-3 font-medium text-center">Early closes</th>
-                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
-                </tr>
-              </thead>
-              <tbody>
-                {years.map((y) => (
-                  <tr
-                    key={y.year}
-                    className={`border-t border-slate-800 ${
-                      y.year === year ? "bg-blue-500/10" : "bg-slate-900/30"
-                    }`}
-                  >
-                    <td className={`px-4 py-2.5 text-center tabular-nums ${y.year === year ? "font-semibold text-blue-200" : "text-slate-200"}`}>
-                      {y.year}
-                    </td>
-                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.weekdays}</td>
-                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.closedHolidays}</td>
-                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-400">{y.halfDaySessions}</td>
-                    <td className={`px-4 py-2.5 text-center tabular-nums font-semibold ${y.year === year ? "text-blue-200" : "text-slate-100"}`}>
-                      {y.sessions}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollHintTable>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Early-close sessions (1 p.m. ET) are counted as full trading days here, per the standard
-            convention. Counting them as half days instead, {year} has {current.halfDayAdjusted % 1 === 0 ? current.halfDayAdjusted : current.halfDayAdjusted.toFixed(1)} trading
-            days — the convention used by our{" "}
-            <Link href="/" className="underline text-slate-400 hover:text-slate-200 transition-colors">
-              live countdown
-            </Link>
-            .
-            {years.some((y) => y.unscheduledClosures > 0) && (
-              <>
-                {" "}
-                {years
-                  .filter((y) => y.unscheduledClosures > 0)
-                  .map((y) =>
-                    getUnscheduledClosuresForYear(y.year)
-                      .map((c) => `${y.year} includes the unscheduled closure on ${c.dateISO} (${c.reason.charAt(0).toLowerCase() + c.reason.slice(1)}).`)
-                      .join(" ")
-                  )
-                  .join(" ")}
-              </>
-            )}
-          </p>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            <Link href="/trading-days-by-year" className="text-blue-300 hover:text-blue-200 transition-colors font-medium">
-              See every year back to 1990 →
-            </Link>
-          </p>
         </section>
 
         {/* BY-MONTH TABLE */}
@@ -215,6 +174,96 @@ export default function TradingDaysInAYearPage() {
           </p>
         </section>
 
+        {/* BY-YEAR TABLE (1990–2030) */}
+        <section id="by-year" className="space-y-3 scroll-mt-20">
+          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
+            Trading days per year, {START_YEAR}–{END_YEAR}
+          </h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Exact totals for every year — including unscheduled closures such as September 11 and
+            Hurricane Sandy, which most published counts miss. Totals range from{" "}
+            <span className="font-semibold text-slate-200">{min}</span> to{" "}
+            <span className="font-semibold text-slate-200">{max}</span> sessions.
+          </p>
+          <ScrollHintTable>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-4 py-3 font-medium text-center">Year</th>
+                  <th className="px-4 py-3 font-medium text-center">Weekdays</th>
+                  <th className="px-4 py-3 font-medium text-center">Holidays</th>
+                  <th className="px-4 py-3 font-medium text-center">Unscheduled</th>
+                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
+                </tr>
+              </thead>
+              <tbody>
+                {years.map((y) => (
+                  <tr
+                    key={y.year}
+                    className={`border-t border-slate-800 ${
+                      y.year === year ? "bg-blue-500/10" : "bg-slate-900/30"
+                    }`}
+                  >
+                    <td className={`px-4 py-2 text-center tabular-nums whitespace-nowrap ${y.year === year ? "font-semibold text-blue-200" : "text-slate-200"}`}>
+                      {y.year}
+                      {y.year > year && <span className="text-slate-500 text-xs"> *</span>}
+                    </td>
+                    <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.weekdays}</td>
+                    <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.closedHolidays}</td>
+                    <td className={`px-4 py-2 text-center tabular-nums whitespace-nowrap ${y.unscheduledClosures > 0 ? "text-amber-300 font-medium" : "text-slate-600"}`}>
+                      {y.unscheduledClosures > 0 ? y.unscheduledClosures : "—"}
+                    </td>
+                    <td className={`px-4 py-2 text-center tabular-nums font-semibold ${y.year === year ? "text-blue-200" : "text-slate-100"}`}>
+                      {y.sessions}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollHintTable>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Early-close sessions (1 p.m. ET) are counted as full trading days, per the standard
+            convention. Counting them as half days instead, {year} has {current.halfDayAdjusted % 1 === 0 ? current.halfDayAdjusted : current.halfDayAdjusted.toFixed(1)} trading
+            days — the convention used by our{" "}
+            <Link href="/" className="underline text-slate-400 hover:text-slate-200 transition-colors">
+              live countdown
+            </Link>
+            . * Future years show the scheduled calendar; any unscheduled closures would reduce
+            those totals.
+          </p>
+        </section>
+
+        {/* UNSCHEDULED CLOSURES */}
+        <section id="closures" className="border-t border-slate-800 pt-6 space-y-3 scroll-mt-20">
+          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
+            Unscheduled market closures since {START_YEAR}
+          </h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Beyond the scheduled holiday calendar, U.S. markets have closed{" "}
+            {UNSCHEDULED_CLOSURES.length} times since {START_YEAR} for national days of mourning
+            and emergencies — all reflected in the totals above. The low outlier is 2001, where
+            the four-day closure after September 11 brought the year down to 248 sessions.
+          </p>
+          <ul className="space-y-2 text-sm">
+            {closureEvents.map((e) => (
+              <li
+                key={e.reason + e.dates[0]}
+                className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+              >
+                <span className="font-medium text-slate-100">{e.reason}</span>
+                <span className="text-xs text-slate-400 text-right whitespace-nowrap">
+                  {e.dates.length === 1
+                    ? formatClosureDate(e.dates[0])
+                    : `${formatClosureDate(e.dates[0]).replace(/, \d{4}$/, "")}–${formatClosureDate(e.dates[e.dates.length - 1])}`}
+                  {e.dates.length > 1 && (
+                    <span className="block text-slate-500">{e.dates.length} sessions lost</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* HOW THE MATH WORKS */}
         <section className="border-t border-slate-800 pt-6 space-y-3">
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
@@ -233,6 +282,12 @@ export default function TradingDaysInAYearPage() {
             weekends (and dropping off the schedule), and where January 1 lands in the week. That is
             why the answer ranges from 250 to 253 rather than being a fixed number.
           </p>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            The historical totals also reflect changes to the holiday calendar itself: Martin
+            Luther King Jr. Day has been observed only since 1998, and Juneteenth only since
+            2022 — so earlier years correctly show fewer scheduled holidays, not a projection of
+            today&apos;s calendar backward.
+          </p>
         </section>
 
         {/* HOLIDAYS + HALF DAYS */}
@@ -245,7 +300,11 @@ export default function TradingDaysInAYearPage() {
             Presidents&apos; Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor
             Day, Thanksgiving, and Christmas. In addition, a few sessions close early at 1 p.m. ET —
             typically July 3, the day after Thanksgiving, and Christmas Eve, when they fall on a
-            weekday.
+            weekday. See the{" "}
+            <Link href="/stock-market-holidays" className="text-blue-300 hover:text-blue-200 transition-colors">
+              full holiday schedule
+            </Link>{" "}
+            for exact dates.
           </p>
         </section>
 

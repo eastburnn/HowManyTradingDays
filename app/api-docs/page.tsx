@@ -279,8 +279,8 @@ badge.textContent = isOpen
               <span className="text-slate-200">tradingDaysHalfDayAdjusted</span> counts them as 0.5.
             </li>
             <li>
-              Holidays are computed algorithmically from NYSE/Nasdaq calendar rules — scheduled
-              closures only, not unscheduled ones (e.g. days of mourning).
+              Holidays are computed algorithmically from NYSE/Nasdaq calendar rules, and
+              historical results account for unscheduled closures (e.g. 9/11, days of mourning).
             </li>
             <li>Responses are cached briefly at the edge. No rate limits, no key — please be reasonable.</li>
             <li>Free for personal and commercial use. Attribution with a link is appreciated.</li>
