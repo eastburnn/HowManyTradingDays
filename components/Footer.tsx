@@ -62,6 +62,18 @@ export default function Footer() {
               Live reference for U.S. stock market trading days, holidays, and
               market hours.
             </p>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Visit{" "}
+              <a
+                href="https://www.foliostuff.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                FolioStuff
+              </a>{" "}
+              for more investing tools like this one.
+            </p>
           </div>
 
           {/* Links */}

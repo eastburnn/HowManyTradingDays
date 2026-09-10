@@ -171,7 +171,16 @@ export default function AboutPage() {
             >
               X&nbsp;@itschrisray
             </a>
-            .
+            . Also visit{" "}
+            <a
+              href="https://www.foliostuff.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-slate-300 hover:text-slate-100 transition-colors"
+            >
+              FolioStuff
+            </a>{" "}
+            for more investing tools like this one.
           </p>
         </section>
 
