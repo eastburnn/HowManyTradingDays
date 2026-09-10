@@ -3,7 +3,7 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import ScrollHintTable from "@/components/ScrollHintTable";
-import { getYearStats, getMonthlyStats, UNSCHEDULED_CLOSURES } from "@/lib/tradingDays";
+import { getYearStats, UNSCHEDULED_CLOSURES } from "@/lib/tradingDays";
 
 // Re-render at most once a day so the year and tables stay current
 export const revalidate = 86400;
@@ -24,7 +24,7 @@ export function generateMetadata(): Metadata {
   const stats = getYearStats(year);
 
   const title = `How Many Trading Days in a Year? (${year} Answer)`;
-  const description = `There are ${stats.sessions} trading days in ${year}. See the count for every month of ${year} and every year from ${START_YEAR} to ${END_YEAR}, adjusted for unscheduled closures.`;
+  const description = `There are ${stats.sessions} trading days in ${year}. See exact totals for every year from ${START_YEAR} to ${END_YEAR}, adjusted for unscheduled market closures.`;
 
   return {
     title,
@@ -73,7 +73,6 @@ export default function TradingDaysInAYearPage() {
   const years = [];
   for (let y = END_YEAR; y >= START_YEAR; y--) years.push(getYearStats(y));
   const current = years.find((y) => y.year === year)!;
-  const months = getMonthlyStats(year);
 
   const min = Math.min(...years.map((y) => y.sessions));
   const max = Math.max(...years.map((y) => y.sessions));
@@ -102,8 +101,8 @@ export default function TradingDaysInAYearPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             There are usually about <span className="font-semibold text-slate-200">252</span> trading
             days in a year for the U.S. stock market — the exact number varies with how weekends
-            and holidays fall. Below: this year&apos;s total, every month of {year}, and every
-            year back to {START_YEAR}.
+            and holidays fall. Below: this year&apos;s total and every year back
+            to {START_YEAR}.
           </p>
         </header>
 
@@ -139,40 +138,21 @@ export default function TradingDaysInAYearPage() {
           </div>
         </section>
 
-        {/* BY-MONTH TABLE */}
-        <section id="months" className="space-y-3 scroll-mt-20">
-          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>
-            Trading days per month in {year}
-          </h2>
-          <ScrollHintTable>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-3 font-medium">Month</th>
-                  <th className="px-4 py-3 font-medium text-center">Trading days</th>
-                  <th className="px-4 py-3 font-medium">Market holidays</th>
-                </tr>
-              </thead>
-              <tbody>
-                {months.map((m) => (
-                  <tr key={m.monthIndex} className="border-t border-slate-800 bg-slate-900/30">
-                    <td className="px-4 py-2.5 text-slate-200">{m.monthName}</td>
-                    <td className="px-4 py-2.5 text-center tabular-nums font-semibold text-slate-100">
-                      {m.sessions}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-slate-400">
-                      {m.holidayNames.length > 0 ? m.holidayNames.join(", ") : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollHintTable>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Months average about 21 trading days. February is usually the shortest; months with no
-            holidays and five full weeks reach 22–23.
-          </p>
-        </section>
+        {/* MONTHS POINTER */}
+        <Link
+          href="/trading-days-in-a-month"
+          className="group w-full flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
+        >
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-slate-100">Looking for monthly counts?</span>
+            <span className="text-xs text-slate-500">
+              Months average about 21 trading days — see every month and quarter of {year}
+            </span>
+          </div>
+          <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
 
         {/* BY-YEAR TABLE (1990–2030) */}
         <section id="by-year" className="space-y-3 scroll-mt-20">
