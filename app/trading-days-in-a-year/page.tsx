@@ -248,9 +248,9 @@ export default function TradingDaysInAYearPage() {
             {closureEvents.map((e) => (
               <li
                 key={e.reason + e.dates[0]}
-                className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+                className="flex items-start justify-between gap-6 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
               >
-                <span className="font-medium text-slate-100">{e.reason}</span>
+                <span className="font-medium text-slate-100 max-w-[50%] sm:max-w-none">{e.reason}</span>
                 <span className="text-xs text-slate-400 text-right whitespace-nowrap">
                   {e.dates.length === 1
                     ? formatClosureDate(e.dates[0])
