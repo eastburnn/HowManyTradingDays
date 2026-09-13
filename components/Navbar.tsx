@@ -18,7 +18,6 @@ const BEFORE_DROPDOWN = [
 
 const AFTER_DROPDOWN = [
   { label: "API", href: "/api-docs" },
-  { label: "About", href: "/about" },
 ];
 
 const linkClass = (isActive: boolean) => `
