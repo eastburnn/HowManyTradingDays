@@ -86,7 +86,7 @@ export default function TradingDaysInAMonthPage() {
 
         {/* ANSWER CARD */}
         <section className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-8 flex flex-col items-center gap-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 text-center">
             Average Trading Days per Month in {year}
           </p>
           <span className="text-6xl sm:text-7xl font-semibold tabular-nums">
