@@ -184,6 +184,22 @@ export default function AboutPage() {
           </p>
         </section>
 
+        {/* Advertise */}
+        <section className="border-t border-slate-800 pt-6 space-y-2">
+          <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>Advertise</h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Want to reach an audience of investors and traders? A single sponsored placement
+            is available on the homepage.{" "}
+            <Link
+              href="/advertise"
+              className="underline text-slate-300 hover:text-slate-100 transition-colors"
+            >
+              See traffic stats and get in touch
+            </Link>
+            .
+          </p>
+        </section>
+
         {/* CTA links */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-800 pt-6">
           <Link
