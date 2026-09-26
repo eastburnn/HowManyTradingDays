@@ -2,6 +2,7 @@
 
 // components/FiscalAd.tsx
 import Image from "next/image";
+import Link from "next/link";
 
 declare global {
   interface Window {
@@ -192,8 +193,15 @@ export default function FiscalAd({ href, className = "" }: FiscalAdProps) {
     </a>
 
     {/* Disclosure */}
-    <p className="mt-1.5 text-center text-[9px] text-slate-600 leading-none">
-      Sponsored &middot; we may earn a commission if you subscribe
+    <p className="mt-1.5 text-center text-[9px] text-slate-600 leading-snug">
+      Sponsored &middot; we may earn a commission if you subscribe. Want to{" "}
+      <Link
+        href="/advertise"
+        className="underline underline-offset-2 text-slate-500 hover:text-slate-300 transition-colors"
+      >
+        advertise
+      </Link>{" "}
+      here?
     </p>
     </>
   );
