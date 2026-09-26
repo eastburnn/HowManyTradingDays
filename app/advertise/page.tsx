@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { getTrafficSnapshot } from "@/lib/ga4";
+
+// Refresh the GA4 traffic snapshot once a day
+export const revalidate = 86400;
 
 const title = "Advertise — How Many Trading Days";
 const description =
@@ -19,17 +23,39 @@ export const metadata: Metadata = {
 const CONTACT_HREF =
   "mailto:itschrisray@gmail.com?subject=Advertising%20Inquiry%20-%20HowManyTradingDays.com";
 
-// Traffic snapshot from Google Analytics 4 — update these as the numbers grow.
-const STATS = [
+// Static fallback shown only if the live GA4 fetch is unavailable.
+const FALLBACK_STATS = [
   { value: "2,200+", label: "Monthly visitors" },
   { value: "+16%", label: "Visitor growth last month" },
   { value: "Organic search", label: "Primary traffic source" },
   { value: "Investors & traders", label: "Core audience" },
 ];
 
-const STATS_AS_OF = "September 2026";
+const FALLBACK_AS_OF = "September 2026";
 
-export default function AdvertisePage() {
+export default async function AdvertisePage() {
+  const live = await getTrafficSnapshot();
+
+  const stats = live
+    ? [
+        { value: live.monthlyVisitors.toLocaleString("en-US"), label: "Monthly visitors" },
+        live.growthPct !== null
+          ? {
+              value: `${live.growthPct >= 0 ? "+" : ""}${live.growthPct}%`,
+              label: "Visitor growth, last 30 days",
+            }
+          : FALLBACK_STATS[1],
+        live.organicSharePct !== null
+          ? { value: `${live.organicSharePct}%`, label: "Traffic from organic search" }
+          : FALLBACK_STATS[2],
+        { value: "Investors & traders", label: "Core audience" },
+      ]
+    : FALLBACK_STATS;
+
+  const sourceNote = live
+    ? "Source: Google Analytics 4, trailing 30 days — updated daily. Traffic has grown every month since the site launched, driven almost entirely by organic search."
+    : `Source: Google Analytics 4, as of ${FALLBACK_AS_OF}. Traffic has grown every month since the site launched, driven almost entirely by organic search.`;
+
   return (
     <main className="flex-1 flex items-start justify-center px-4">
       <div className="max-w-xl w-full flex flex-col gap-8 py-12">
@@ -52,7 +78,7 @@ export default function AdvertisePage() {
             Traffic snapshot
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            {STATS.map(({ value, label }) => (
+            {stats.map(({ value, label }) => (
               <div
                 key={label}
                 className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-1"
@@ -64,10 +90,7 @@ export default function AdvertisePage() {
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-slate-600">
-            Source: Google Analytics 4, as of {STATS_AS_OF}. Traffic has grown every month
-            since the site launched, driven almost entirely by organic search.
-          </p>
+          <p className="text-[11px] text-slate-600">{sourceNote}</p>
         </section>
 
         {/* What's available */}
