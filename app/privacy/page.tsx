@@ -40,7 +40,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Effective August 21, 2026. The short version: this site has no accounts, collects no
+            Effective September 26, 2026. The short version: this site has no accounts, collects no
             names or emails, and sells no data. We use standard analytics to understand how the
             site is used, and some links are affiliate links.
           </p>
@@ -54,6 +54,11 @@ export default function PrivacyPage() {
             services below: pages visited, approximate location (country/city derived from IP),
             device and browser type, how you arrived at the site, and how you interact with pages
             (clicks, scrolling, time on page).
+          </p>
+          <p>
+            If you choose to email us — for example, about advertising — we use your contact
+            details only to respond to you. We never add them to a marketing list or share them
+            with anyone.
           </p>
         </Section>
 
@@ -70,7 +75,8 @@ export default function PrivacyPage() {
             >
               Google Analytics opt-out browser add-on
             </a>
-            .
+            . We may publish aggregate, non-identifying usage statistics — such as monthly
+            visitor counts — for example on our advertising page.
           </p>
           <p>
             We use <span className="text-slate-200">Microsoft Clarity</span> to understand how
