@@ -51,6 +51,13 @@ function getQuickSelectOptions(today: Date) {
     isoDate: toISODate(endOfNextMonth),
   });
 
+  // End of this year (skip if a month option above already lands on Dec 31,
+  // i.e. in November and December)
+  const endOfYear = toISODate(new Date(year, 11, 31));
+  if (!options.some((o) => o.isoDate === endOfYear)) {
+    options.push({ label: "End of this Year", isoDate: endOfYear });
+  }
+
   // Upcoming full and half-day holidays in current year, sorted by date
   const holidays = getUsStockMarketHolidays(year);
   const upcomingHolidays = holidays
