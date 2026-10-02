@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { domine } from "../fonts";
 import CalendarPicker from "@/components/CalendarPicker";
@@ -82,6 +82,13 @@ export default function CalculatorPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [customStart, setCustomStart] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>("");
+
+  // Deep link: /calculator?to=YYYY-MM-DD pre-selects a target date (used by
+  // the earnings pages). Read once on mount so the page stays static.
+  useEffect(() => {
+    const to = new URLSearchParams(window.location.search).get("to");
+    if (to && /^\d{4}-\d{2}-\d{2}$/.test(to) && to >= todayISO) setSelectedDate(to);
+  }, [todayISO]);
 
   const quickOptions = useMemo(() => getQuickSelectOptions(today), [today]);
 

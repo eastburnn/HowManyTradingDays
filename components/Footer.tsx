@@ -2,6 +2,7 @@ import Link from "next/link";
 import { domine } from "@/app/fonts";
 
 const REFERENCE_LINKS = [
+  { label: "Earnings Calendar", href: "/earnings" },
   { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
   { label: "Stock Market Holidays", href: "/stock-market-holidays" },
   { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },

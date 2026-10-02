@@ -28,6 +28,7 @@ import {
   listFiscalPeriods,
   parseISO,
   predictPeriodEnd,
+  timeOfDayFromAcceptance,
 } from "./fiscal";
 import { type ConfidenceTier, type Estimate, estimateReleaseDate } from "./estimator";
 import { withTransaction } from "./db";
@@ -242,17 +243,72 @@ type UpcomingEstimate = {
   sourceAccession: string | null;
 };
 
+/**
+ * An earnings release (8-K Item 2.02) filed after the latest periodic report
+ * belongs to the quarter that hasn't had its 10-Q/10-K filed yet — the
+ * normal state for every company in the days to weeks between its press
+ * release and its periodic report. Without this, that quarter would look
+ * unreported and its estimate would sit "overdue" at today.
+ */
+export type UnmatchedRelease = {
+  fiscalYear: number;
+  quarter: 1 | 2 | 3 | 4;
+  periodEnd: string;
+  reportForm: ReportForm;
+  releaseDate: string;
+  timeOfDay: EarningsObservation["timeOfDay"];
+  accession: string;
+};
+
+export function findUnmatchedRelease(
+  company: EdgarCompany,
+  periods: FiscalPeriod[],
+  observations: EarningsObservation[]
+): UnmatchedRelease | null {
+  if (periods.length === 0) return null;
+  const last = periods[periods.length - 1];
+  const lastRelease = observations.reduce((m, o) => (o.releaseDate > m ? o.releaseDate : m), "");
+  const target = nextQuarter(last.fiscalYear, last.quarter);
+  const periodEnd = targetPeriodEnd(target, periods, last);
+
+  // Latest 2.02 strictly after the last periodic report was filed, after the
+  // last matched release, and after the target quarter actually ended.
+  let best: EdgarFiling | null = null;
+  for (const f of company.filings) {
+    if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
+    const date = f.reportDate ?? f.filingDate;
+    if (date <= last.filedDate || date <= lastRelease || date <= periodEnd) continue;
+    if (!best || date > (best.reportDate ?? best.filingDate)) best = f;
+  }
+  if (!best) return null;
+
+  const releaseDate = best.reportDate ?? best.filingDate;
+  return {
+    ...target,
+    periodEnd,
+    reportForm: target.quarter === 4 ? "10-K" : "10-Q",
+    releaseDate,
+    timeOfDay: timeOfDayFromAcceptance(best.acceptanceDateTime, releaseDate),
+    accession: best.accession,
+  };
+}
+
 export function estimateUpcoming(
   company: EdgarCompany,
   periods: FiscalPeriod[],
   observations: EarningsObservation[],
-  today: string
+  today: string,
+  unmatched: UnmatchedRelease | null = null
 ): UpcomingEstimate[] {
   if (periods.length === 0) return [];
   const last = periods[periods.length - 1];
   const out: UpcomingEstimate[] = [];
 
-  let target = nextQuarter(last.fiscalYear, last.quarter);
+  // Start after the last reported quarter — which is the unmatched release's
+  // quarter when one exists, otherwise the last periodic report's.
+  let target = unmatched
+    ? nextQuarter(unmatched.fiscalYear, unmatched.quarter)
+    : nextQuarter(last.fiscalYear, last.quarter);
   for (let i = 0; i < ESTIMATE_QUARTERS_AHEAD; i++) {
     const reportForm: ReportForm = target.quarter === 4 ? "10-K" : "10-Q";
     const periodEnd = targetPeriodEnd(target, periods, last);
@@ -320,7 +376,8 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
   const active = isQuarterlyReporter(company);
   const periods = active ? listFiscalPeriods(company.filings) : [];
   const observations = active ? buildObservations(company.filings) : [];
-  const upcoming = active ? estimateUpcoming(company, periods, observations, today) : [];
+  const unmatched = active ? findUnmatchedRelease(company, periods, observations) : null;
+  const upcoming = active ? estimateUpcoming(company, periods, observations, today, unmatched) : [];
 
   const cutoffYear = parseISO(today).getFullYear() - REPORTED_HISTORY_YEARS;
   const reportedRows = observations.filter((o) => o.fiscalYear >= cutoffYear);
@@ -347,6 +404,23 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
         sourceType: "edgar-8k",
         sourceUrl: filingUrl(company.cik, o.releaseAccession),
         sourceAccession: o.releaseAccession,
+      });
+    }
+
+    if (unmatched) {
+      await recordEvent(client, {
+        cik: company.cik,
+        ticker,
+        fiscalYear: unmatched.fiscalYear,
+        quarter: unmatched.quarter,
+        periodEnd: unmatched.periodEnd,
+        reportForm: unmatched.reportForm,
+        eventDate: unmatched.releaseDate,
+        timeOfDay: unmatched.timeOfDay,
+        status: "reported",
+        sourceType: "edgar-8k",
+        sourceUrl: filingUrl(company.cik, unmatched.accession),
+        sourceAccession: unmatched.accession,
       });
     }
 
@@ -378,7 +452,7 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
       ticker,
       active,
       filings,
-      reported: reportedRows.length,
+      reported: reportedRows.length + (unmatched ? 1 : 0),
       estimated: upcoming.length,
     };
   });

@@ -72,6 +72,9 @@ export function timeOfDayFromAcceptance(
   const lagDays = eventDateISO ? daysBetween(eventDateISO, acceptedOn) : 0;
 
   if (lagDays === 1) return "postmarket";
+  // Filed the evening before the event date: a morning release furnished
+  // ahead of time (PepsiCo's pattern).
+  if (lagDays === -1) return "premarket";
   if (lagDays !== 0) return "unknown";
 
   const minutes = et.getHours() * 60 + et.getMinutes();
