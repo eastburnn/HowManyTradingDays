@@ -41,7 +41,16 @@ function groupByDate(rows: UpcomingRow[]): Map<string, UpcomingRow[]> {
 export default async function EarningsCalendarPage() {
   const today = todayET();
   const end = addDaysISO(today, DAYS_AHEAD);
-  const rows = await getUpcomingEvents(today, end, 800);
+  // Degrade to an empty calendar rather than failing the build or the page
+  // if the database is unreachable; ISR retries within the hour.
+  let rows: UpcomingRow[] = [];
+  let unavailable = false;
+  try {
+    rows = await getUpcomingEvents(today, end, 800);
+  } catch (err) {
+    console.error("[earnings calendar] database unavailable:", (err as Error).message);
+    unavailable = true;
+  }
   const byDate = groupByDate(rows);
 
   return (
@@ -69,7 +78,11 @@ export default async function EarningsCalendarPage() {
           </div>
 
           {byDate.size === 0 ? (
-            <p className="text-sm text-slate-500">No earnings dates in the next two weeks yet.</p>
+            <p className="text-sm text-slate-500">
+              {unavailable
+                ? "The earnings calendar is temporarily unavailable. Please check back shortly."
+                : "No earnings dates in the next two weeks yet."}
+            </p>
           ) : (
             [...byDate.entries()].map(([date, items]) => {
               const info = getDayInfo(parseISODate(date));

@@ -11,14 +11,25 @@ export const revalidate = 86400;
 
 export const CHUNK_SIZE = 5000;
 
+// A database outage must never fail the site build: fall back to an empty
+// sitemap and let the next revalidation fill it in.
+async function safeIndexedTickers() {
+  try {
+    return await getIndexedTickers();
+  } catch (err) {
+    console.error("[earnings sitemap] database unavailable:", (err as Error).message);
+    return [];
+  }
+}
+
 export async function generateSitemaps() {
-  const tickers = await getIndexedTickers();
+  const tickers = await safeIndexedTickers();
   const chunks = Math.max(1, Math.ceil(tickers.length / CHUNK_SIZE));
   return Array.from({ length: chunks }, (_, id) => ({ id }));
 }
 
 export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
-  const tickers = await getIndexedTickers();
+  const tickers = await safeIndexedTickers();
   return tickers.slice(id * CHUNK_SIZE, (id + 1) * CHUNK_SIZE).map((t) => ({
     url: `https://howmanytradingdays.com/earnings/${t.ticker.toLowerCase()}`,
     lastModified: t.lastRefreshedAt ? new Date(t.lastRefreshedAt) : new Date(),
