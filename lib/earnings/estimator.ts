@@ -40,7 +40,8 @@ export type EstimateMethod = "nth-weekday" | "raw-offset" | "offset-snap" | "las
  *   high    SD ≤ 4  → ~72–78% within ±3 days, ~94% within ±7
  *   medium  SD 4–7  → ~55% within ±3, ~87% within ±7
  *   low     SD > 7  → ~47% within ±3, ~76% within ±7 (show a window, not a date)
- * A single prior observation has no SD, so it is capped at medium.
+ * Fewer than three prior observations is capped at medium: two-observation
+ * estimates hit ±3 days only 56% of the time in the backtest.
  */
 export type ConfidenceTier = "high" | "medium" | "low";
 
@@ -85,7 +86,7 @@ function defaultWindow(category: FilerCategory): { maxYears: number; decay: numb
 }
 
 export function confidenceTier(sdDays: number, observations: number): ConfidenceTier {
-  if (observations < 2) return "medium";
+  if (observations < 3) return sdDays <= 7 ? "medium" : "low";
   if (sdDays <= 4) return "high";
   if (sdDays <= 7) return "medium";
   return "low";

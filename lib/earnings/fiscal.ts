@@ -121,8 +121,21 @@ function quarterFor(periodEnd: string, fiscalYearEnd: string): 1 | 2 | 3 | 4 | n
   return q >= 1 && q <= 4 ? (q as 1 | 2 | 3 | 4) : null;
 }
 
-export function buildObservations(filings: EdgarFiling[]): EarningsObservation[] {
-  // Periodic reports, deduped by period end (keep the earliest filing of each)
+export type FiscalPeriod = {
+  form: ReportForm;
+  periodEnd: string;
+  filedDate: string;
+  fiscalYear: number;
+  quarter: 1 | 2 | 3 | 4;
+};
+
+/**
+ * Every 10-Q/10-K period in the filing history, labeled with its fiscal year
+ * and quarter, oldest first. Fiscal year ends are the 10-K period ends; a
+ * period belongs to the first fiscal year end on or after it.
+ */
+export function listFiscalPeriods(filings: EdgarFiling[]): FiscalPeriod[] {
+  // Deduped by period end (keep the earliest filing of each)
   const periodsByEnd = new Map<string, PeriodReport>();
   for (const f of filings) {
     const form = PERIOD_FORMS[f.form];
@@ -133,23 +146,11 @@ export function buildObservations(filings: EdgarFiling[]): EarningsObservation[]
     }
   }
   const periods = [...periodsByEnd.values()].sort((a, b) => (a.periodEnd < b.periodEnd ? -1 : 1));
-  if (periods.length === 0) return [];
 
-  // Earnings releases: 8-K Item 2.02. The 8-K's reportDate is the event date.
-  const releases: Release[] = [];
-  for (const f of filings) {
-    if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
-    const date = f.reportDate ?? f.filingDate;
-    releases.push({ date, accession: f.accession, acceptanceDateTime: f.acceptanceDateTime });
-  }
-  releases.sort((a, b) => (a.date < b.date ? -1 : 1));
-
-  // Fiscal year ends = 10-K period ends. A period belongs to the first FYE on/after it.
   const fiscalYearEnds = periods.filter((p) => p.form === "10-K").map((p) => p.periodEnd);
   const lastFYE = fiscalYearEnds[fiscalYearEnds.length - 1];
 
-  const observations: EarningsObservation[] = [];
-
+  const out: FiscalPeriod[] = [];
   for (const period of periods) {
     let fye = fiscalYearEnds.find((e) => e >= period.periodEnd);
     if (!fye) {
@@ -161,7 +162,27 @@ export function buildObservations(filings: EdgarFiling[]): EarningsObservation[]
     }
     const quarter = period.form === "10-K" ? 4 : quarterFor(period.periodEnd, fye);
     if (!quarter) continue;
+    out.push({ ...period, fiscalYear: parseISO(fye).getFullYear(), quarter });
+  }
+  return out;
+}
 
+export function buildObservations(filings: EdgarFiling[]): EarningsObservation[] {
+  const periods = listFiscalPeriods(filings);
+  if (periods.length === 0) return [];
+
+  // Earnings releases: 8-K Item 2.02. The 8-K's reportDate is the event date.
+  const releases: Release[] = [];
+  for (const f of filings) {
+    if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
+    const date = f.reportDate ?? f.filingDate;
+    releases.push({ date, accession: f.accession, acceptanceDateTime: f.acceptanceDateTime });
+  }
+  releases.sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  const observations: EarningsObservation[] = [];
+
+  for (const period of periods) {
     // The release is the 8-K 2.02 closest to the periodic report's filing date,
     // searched from just after the period end to three days after the report.
     // "Closest to the report" skips preliminary 2.02s (e.g. early revenue
@@ -182,8 +203,8 @@ export function buildObservations(filings: EdgarFiling[]): EarningsObservation[]
     if (!best) continue;
 
     observations.push({
-      fiscalYear: parseISO(fye).getFullYear(),
-      quarter,
+      fiscalYear: period.fiscalYear,
+      quarter: period.quarter,
       periodEnd: period.periodEnd,
       releaseDate: best.date,
       timeOfDay: timeOfDayFromAcceptance(best.acceptanceDateTime, best.date),

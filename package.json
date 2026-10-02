@@ -7,25 +7,27 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "earnings:backtest": "tsx scripts/earnings/backtest.ts"
+    "earnings:backtest": "tsx --env-file=.env.local scripts/earnings/backtest.ts",
+    "earnings:backfill": "tsx --env-file=.env.local scripts/earnings/backfill.ts"
   },
   "dependencies": {
     "dom-to-image-more": "^3.7.2",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "next": "^16.1.4",
+    "pg": "^8.23.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
-    "pg": "^8.23.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
