@@ -1,0 +1,145 @@
+Backtest: trained through 2025-12-31, tested on releases after it
+Predictions: 1254 from 432 companies
+
+=== PRODUCTION-FAITHFUL (period end also predicted) ===
+--- DEFAULT (per-category)
+  large-accelerated                n=  669  exact  49.0%  ±1  66.8%  ±3  75.5%  ±7  95.8%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  371  exact  27.5%  ±1  45.0%  ±3  58.2%  ±7  82.5%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1250  exact  40.9%  ±1  58.6%  ±3  68.6%  ±7  91.0%  med|err| 1d
+--- nth-weekday (6y, .7)
+  large-accelerated                n=  669  exact  37.4%  ±1  51.0%  ±3  62.0%  ±7  91.8%  med|err| 1d
+  accelerated                      n=  140  exact  33.6%  ±1  47.9%  ±3  61.4%  ±7  90.7%  med|err| 2d
+  non-accelerated                  n=  371  exact  18.9%  ±1  31.8%  ±3  42.6%  ±7  80.1%  med|err| 5d
+  unknown                          n=   70  exact  21.4%  ±1  30.0%  ±3  44.3%  ±7  82.9%  med|err| 4d
+  ALL                              n= 1250  exact  30.6%  ±1  43.8%  ±3  55.2%  ±7  87.7%  med|err| 2d
+--- raw-offset (6y, .7)
+  large-accelerated                n=  669  exact  15.1%  ±1  46.0%  ±3  71.6%  ±7  94.8%  med|err| 2d
+  accelerated                      n=  140  exact  14.3%  ±1  45.7%  ±3  66.4%  ±7  95.0%  med|err| 2d
+  non-accelerated                  n=  371  exact  12.4%  ±1  32.6%  ±3  56.1%  ±7  82.2%  med|err| 3d
+  unknown                          n=   70  exact  17.1%  ±1  41.4%  ±3  57.1%  ±7  82.9%  med|err| 2d
+  ALL                              n= 1250  exact  14.3%  ±1  41.8%  ±3  65.6%  ±7  90.4%  med|err| 2d
+--- offset-snap (6y, .7)
+  large-accelerated                n=  669  exact  44.2%  ±1  64.1%  ±3  73.5%  ±7  95.2%  med|err| 1d
+  accelerated                      n=  140  exact  40.0%  ±1  59.3%  ±3  70.7%  ±7  94.3%  med|err| 1d
+  non-accelerated                  n=  371  exact  27.5%  ±1  45.0%  ±3  58.2%  ±7  82.5%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1250  exact  37.8%  ±1  56.6%  ±3  67.5%  ±7  90.8%  med|err| 1d
+--- offset-snap (6y, .6)
+  large-accelerated                n=  669  exact  49.0%  ±1  66.8%  ±3  75.5%  ±7  95.8%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  371  exact  28.3%  ±1  44.2%  ±3  57.1%  ±7  83.3%  med|err| 2d
+  unknown                          n=   70  exact  30.0%  ±1  44.3%  ±3  54.3%  ±7  84.3%  med|err| 3d
+  ALL                              n= 1250  exact  41.4%  ±1  58.6%  ±3  68.4%  ±7  91.1%  med|err| 1d
+--- offset-snap (6y, .65)
+  large-accelerated                n=  669  exact  49.0%  ±1  66.8%  ±3  75.5%  ±7  95.8%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  371  exact  27.2%  ±1  45.6%  ±3  58.5%  ±7  83.0%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1250  exact  40.8%  ±1  58.8%  ±3  68.7%  ±7  91.1%  med|err| 1d
+--- offset-snap (3y, .7)
+  large-accelerated                n=  669  exact  42.9%  ±1  62.3%  ±3  72.2%  ±7  94.9%  med|err| 1d
+  accelerated                      n=  140  exact  42.1%  ±1  60.0%  ±3  72.1%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  371  exact  25.9%  ±1  44.7%  ±3  56.1%  ±7  82.5%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  40.0%  ±3  51.4%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1250  exact  36.8%  ±1  55.6%  ±3  66.2%  ±7  90.5%  med|err| 1d
+--- offset-snap (4y, .7)
+  large-accelerated                n=  669  exact  44.8%  ±1  64.4%  ±3  73.7%  ±7  95.1%  med|err| 1d
+  accelerated                      n=  140  exact  40.7%  ±1  59.3%  ±3  70.7%  ±7  93.6%  med|err| 1d
+  non-accelerated                  n=  371  exact  27.0%  ±1  44.2%  ±3  56.9%  ±7  82.5%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1250  exact  38.0%  ±1  56.6%  ±3  67.2%  ±7  90.6%  med|err| 1d
+--- last-year
+  large-accelerated                n=  669  exact  49.0%  ±1  66.8%  ±3  75.5%  ±7  95.8%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  371  exact  28.0%  ±1  43.1%  ±3  53.6%  ±7  81.1%  med|err| 2d
+  unknown                          n=   70  exact  30.0%  ±1  44.3%  ±3  55.7%  ±7  87.1%  med|err| 3d
+  ALL                              n= 1250  exact  41.3%  ±1  58.2%  ±3  67.4%  ±7  90.6%  med|err| 1d
+
+=== ESTIMATOR ONLY (actual period end known) ===
+--- DEFAULT (per-category)
+  large-accelerated                n=  669  exact  49.9%  ±1  68.5%  ±3  77.3%  ±7  96.6%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  375  exact  27.5%  ±1  46.1%  ±3  59.2%  ±7  82.7%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1254  exact  41.3%  ±1  59.8%  ±3  69.9%  ±7  91.4%  med|err| 1d
+--- nth-weekday (6y, .7)
+  large-accelerated                n=  669  exact  38.7%  ±1  52.8%  ±3  63.8%  ±7  92.4%  med|err| 1d
+  accelerated                      n=  140  exact  34.3%  ±1  48.6%  ±3  62.1%  ±7  90.7%  med|err| 2d
+  non-accelerated                  n=  375  exact  19.5%  ±1  33.3%  ±3  44.0%  ±7  80.5%  med|err| 4d
+  unknown                          n=   70  exact  21.4%  ±1  30.0%  ±3  44.3%  ±7  82.9%  med|err| 4d
+  ALL                              n= 1254  exact  31.5%  ±1  45.2%  ±3  56.6%  ±7  88.1%  med|err| 2d
+--- raw-offset (6y, .7)
+  large-accelerated                n=  669  exact  16.4%  ±1  48.3%  ±3  73.5%  ±7  95.4%  med|err| 2d
+  accelerated                      n=  140  exact  14.3%  ±1  45.7%  ±3  67.1%  ±7  95.0%  med|err| 2d
+  non-accelerated                  n=  375  exact  12.5%  ±1  33.6%  ±3  56.8%  ±7  82.4%  med|err| 3d
+  unknown                          n=   70  exact  17.1%  ±1  41.4%  ±3  57.1%  ±7  82.9%  med|err| 2d
+  ALL                              n= 1254  exact  15.1%  ±1  43.2%  ±3  66.9%  ±7  90.7%  med|err| 2d
+--- offset-snap (6y, .7)
+  large-accelerated                n=  669  exact  45.9%  ±1  66.2%  ±3  75.6%  ±7  95.8%  med|err| 1d
+  accelerated                      n=  140  exact  40.7%  ±1  60.0%  ±3  71.4%  ±7  94.3%  med|err| 1d
+  non-accelerated                  n=  375  exact  27.5%  ±1  46.1%  ±3  59.2%  ±7  82.7%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1254  exact  38.7%  ±1  58.1%  ±3  69.0%  ±7  91.1%  med|err| 1d
+--- offset-snap (6y, .6)
+  large-accelerated                n=  669  exact  49.9%  ±1  68.5%  ±3  77.3%  ±7  96.6%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  375  exact  28.3%  ±1  45.3%  ±3  58.1%  ±7  83.5%  med|err| 2d
+  unknown                          n=   70  exact  30.0%  ±1  44.3%  ±3  54.3%  ±7  84.3%  med|err| 3d
+  ALL                              n= 1254  exact  41.8%  ±1  59.7%  ±3  69.6%  ±7  91.5%  med|err| 1d
+--- offset-snap (6y, .65)
+  large-accelerated                n=  669  exact  49.9%  ±1  68.5%  ±3  77.3%  ±7  96.6%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  375  exact  27.2%  ±1  46.7%  ±3  59.5%  ±7  83.2%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1254  exact  41.2%  ±1  60.0%  ±3  69.9%  ±7  91.5%  med|err| 1d
+--- offset-snap (3y, .7)
+  large-accelerated                n=  669  exact  44.4%  ±1  64.4%  ±3  74.3%  ±7  95.5%  med|err| 1d
+  accelerated                      n=  140  exact  42.9%  ±1  60.7%  ±3  72.9%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  375  exact  26.1%  ±1  45.9%  ±3  57.1%  ±7  82.7%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  40.0%  ±3  51.4%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1254  exact  37.7%  ±1  57.1%  ±3  67.7%  ±7  90.8%  med|err| 1d
+--- offset-snap (4y, .7)
+  large-accelerated                n=  669  exact  46.3%  ±1  66.5%  ±3  75.8%  ±7  95.7%  med|err| 1d
+  accelerated                      n=  140  exact  41.4%  ±1  60.0%  ±3  71.4%  ±7  93.6%  med|err| 1d
+  non-accelerated                  n=  375  exact  26.9%  ±1  45.3%  ±3  57.9%  ±7  82.7%  med|err| 2d
+  unknown                          n=   70  exact  25.7%  ±1  41.4%  ±3  52.9%  ±7  85.7%  med|err| 3d
+  ALL                              n= 1254  exact  38.8%  ±1  58.1%  ±3  68.7%  ±7  91.0%  med|err| 1d
+--- last-year
+  large-accelerated                n=  669  exact  49.9%  ±1  68.5%  ±3  77.3%  ±7  96.6%  med|err| 1d
+  accelerated                      n=  140  exact  45.0%  ±1  64.3%  ±3  71.4%  ±7  92.9%  med|err| 1d
+  non-accelerated                  n=  375  exact  28.0%  ±1  43.7%  ±3  54.1%  ±7  81.3%  med|err| 2d
+  unknown                          n=   70  exact  30.0%  ±1  44.3%  ±3  55.7%  ±7  87.1%  med|err| 3d
+  ALL                              n= 1254  exact  41.7%  ±1  59.3%  ±3  68.5%  ±7  91.1%  med|err| 1d
+
+=== PERIOD-END PREDICTOR ===
+  all quarters                     n= 1250  exact  97.1%  ±1  97.4%  ±3  97.7%  ±7  99.7%  med|err| 0d
+
+=== CALIBRATION (best variant: offset-snap (6y, .65), production-faithful) ===
+  history ≥4 & SD ≤5  (spec's rule) n=  908  exact  46.3%  ±1  65.1%  ±3  74.0%  ±7  94.3%  med|err| 1d  (coverage  72.6%)
+  history ≥2 & SD ≤5               n=  963  exact  45.5%  ±1  64.5%  ±3  73.4%  ±7  93.8%  med|err| 1d  (coverage  77.0%)
+  SD ≤2                            n=  375  exact  44.3%  ±1  65.3%  ±3  76.8%  ±7  93.9%  med|err| 1d  (coverage  30.0%)
+  SD 2–5                           n=  636  exact  45.3%  ±1  62.9%  ±3  71.2%  ±7  93.4%  med|err| 1d  (coverage  50.9%)
+  SD 5–10                          n=  141  exact  27.0%  ±1  41.1%  ±3  50.4%  ±7  80.9%  med|err| 3d  (coverage  11.3%)
+  SD >10                           n=   98  exact  18.4%  ±1  32.7%  ±3  48.0%  ±7  80.6%  med|err| 4d  (coverage   7.8%)
+  history = 1                      n=   48  exact  33.3%  ±1  50.0%  ±3  70.8%  ±7  89.6%  med|err| 2d  (coverage   3.8%)
+  history = 2                      n=   41  exact  26.8%  ±1  48.8%  ±3  56.1%  ±7  85.4%  med|err| 2d  (coverage   3.3%)
+  history ≥ 3                      n= 1161  exact  41.6%  ±1  59.5%  ±3  69.1%  ±7  91.4%  med|err| 1d  (coverage  92.9%)
+  clamped to deadline              n=   50  exact  10.0%  ±1  34.0%  ±3  60.0%  ±7  76.0%  med|err| 3d  (coverage   4.0%)
+  not clamped                      n= 1200  exact  42.1%  ±1  59.8%  ±3  69.1%  ±7  91.8%  med|err| 1d  (coverage  96.0%)
+  Q4 (10-K) only                   n=  376  exact  40.4%  ±1  53.5%  ±3  60.6%  ±7  83.2%  med|err| 1d  (coverage  30.1%)
+  Q1–Q3 only                       n=  874  exact  41.0%  ±1  61.1%  ±3  72.2%  ±7  94.5%  med|err| 1d  (coverage  69.9%)
+
+=== ACCURACY OF offset-snap (6y, .65) BY LONG-HISTORY SD (offset-snap (6y, .7)) ===
+  SD ≤1                            n=  130  exact  42.3%  ±1  63.8%  ±3  74.6%  ±7  93.1%  med|err| 1d  (coverage  10.4%)
+  SD 1–2                           n=  245  exact  45.3%  ±1  66.1%  ±3  78.0%  ±7  94.3%  med|err| 1d  (coverage  19.6%)
+  SD 2–4                           n=  530  exact  46.4%  ±1  64.3%  ±3  73.0%  ±7  94.3%  med|err| 1d  (coverage  42.4%)
+  SD 4–7                           n=  189  exact  33.3%  ±1  47.6%  ±3  56.1%  ±7  86.2%  med|err| 2d  (coverage  15.1%)
+  SD >7                            n=  156  exact  22.4%  ±1  37.8%  ±3  50.0%  ±7  79.5%  med|err| 4d  (coverage  12.5%)
+
+=== TIME OF DAY ===
+  actual distribution: postmarket 704, premarket 410, unknown 39, during-market 101
+  predicted correctly:  84.9% of 1211
+
+Raw predictions written to /Users/chrisray/Desktop/Projects/howmanytradingdays/.cache/backtest-results.json
