@@ -21,6 +21,7 @@ import { SEC_USER_AGENT } from "./edgar";
 import { refreshCompany, todayET } from "./ingest";
 import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
+import { type FeedStats, type ProcessStats, pollFeeds, processFeedItems, recentlyConfirmedTickers } from "./confirmJob";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const STALE_AFTER_DAYS = 7; // every active company refreshes at least this often
@@ -34,6 +35,8 @@ export type TickStats = {
   refreshed: number;
   refreshFailed: number;
   revalidated: number;
+  feeds: FeedStats | null;
+  advisories: ProcessStats | null;
   budgetMs: number;
   elapsedMs: number;
 };
@@ -203,6 +206,8 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     refreshed: 0,
     refreshFailed: 0,
     revalidated: 0,
+    feeds: null,
+    advisories: null,
     budgetMs,
     elapsedMs: 0,
   };
@@ -213,6 +218,10 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
   try {
     await ingestDailyIndexes(today, stats);
     await flagOverdueEstimates(today, stats);
+    const feedsStarted = new Date().toISOString();
+    stats.feeds = await pollFeeds();
+    stats.advisories = await processFeedItems();
+    for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
     await refreshBatch(deadline, today, stats, touched);
 
     for (const ticker of touched) {
@@ -259,6 +268,8 @@ export type Health = {
   activeCompanies: number;
   withUpcoming: number;
   filingsLast24h: number;
+  feedItemsLast6h: number;
+  advisoriesConfirmedLast7d: number;
 };
 
 export async function checkHealth(): Promise<Health> {
@@ -269,13 +280,17 @@ export async function checkHealth(): Promise<Health> {
     active: string;
     with_upcoming: string;
     filings_24h: string;
+    feed_items_6h: string;
+    confirmed_7d: string;
   }>(`
     select
       (select max(finished_at)::text from job_runs where job = 'tick' and status = 'ok') as last_ok_tick,
       (select count(*) from earnings_current where status = 'estimated' and event_date < $1::date) as overdue,
       (select count(*) from companies where active) as active,
       (select count(*) from earnings_next) as with_upcoming,
-      (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h
+      (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h,
+      (select count(*) from feed_items where fetched_at > now() - interval '6 hours') as feed_items_6h,
+      (select count(*) from earnings_events where status = 'confirmed' and source_type = 'wire-rss' and created_at > now() - interval '7 days') as confirmed_7d
   `, [today]);
   const done = (await getState<string[]>("daily_index_done")) ?? [];
   const lastIndexDay = done.length ? done[done.length - 1] : null;
@@ -303,6 +318,11 @@ export async function checkHealth(): Promise<Health> {
     if (etHour >= 12) problems.push("no new filings ingested in 24 hours");
   }
 
+  // Wires publish around the clock on business days; silence means the poller died.
+  if (lastOk && getDayInfo(parseISO(today)).isTradingDay && Number(row.feed_items_6h) === 0) {
+    problems.push("no wire feed items fetched in 6 hours");
+  }
+
   return {
     ok: problems.length === 0,
     problems,
@@ -312,5 +332,41 @@ export async function checkHealth(): Promise<Health> {
     activeCompanies: active,
     withUpcoming: Number(row.with_upcoming),
     filingsLast24h: Number(row.filings_24h),
+    feedItemsLast6h: Number(row.feed_items_6h),
+    advisoriesConfirmedLast7d: Number(row.confirmed_7d),
   };
+}
+
+/* ---------------------------------------------
+   FEEDS-ONLY RUN (every 5 minutes)
+----------------------------------------------*/
+
+export type FeedRunStats = { feeds: FeedStats; advisories: ProcessStats; revalidated: number; elapsedMs: number };
+
+export async function runFeeds(): Promise<FeedRunStats> {
+  const started = Date.now();
+  const startedISO = new Date(started).toISOString();
+  const [run] = await query<{ id: number }>(`insert into job_runs (job) values ('feeds') returning id`);
+  try {
+    const feeds = await pollFeeds();
+    const advisories = await processFeedItems();
+    let revalidated = 0;
+    for (const ticker of await recentlyConfirmedTickers(startedISO)) {
+      try {
+        revalidatePath(`/earnings/${ticker.toLowerCase()}`);
+        revalidated += 1;
+      } catch {}
+    }
+    if (revalidated) {
+      try {
+        revalidatePath("/earnings");
+      } catch {}
+    }
+    const stats: FeedRunStats = { feeds, advisories, revalidated, elapsedMs: Date.now() - started };
+    await query(`update job_runs set finished_at = now(), status = 'ok', stats = $2 where id = $1`, [run.id, JSON.stringify(stats)]);
+    return stats;
+  } catch (err) {
+    await query(`update job_runs set finished_at = now(), status = 'error', error = $2 where id = $1`, [run.id, (err as Error).message]).catch(() => {});
+    throw err;
+  }
 }
