@@ -117,7 +117,7 @@ export default function TickerSearch() {
               setOpen(false);
             }
           }}
-          placeholder="Company name or ticker, e.g. Nvidia or NVDA"
+          placeholder="Company or ticker, e.g. NVDA"
           autoComplete="off"
           spellCheck={false}
           role="combobox"
