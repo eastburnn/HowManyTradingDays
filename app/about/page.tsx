@@ -57,7 +57,7 @@ export default function AboutPage() {
 
         {/* Feature cards */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
             <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -65,9 +65,8 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Earnings Calendar</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Upcoming earnings dates for every NYSE and Nasdaq company, estimated from each company&apos;s own SEC
-              filing history and upgraded to confirmed when the company announces, with a countdown in trading days
-              to each report. Browse by month, scan the next quarter, or open any ticker&apos;s page.
+              Upcoming earnings dates for every NYSE and Nasdaq company, estimated from SEC filings and confirmed
+              from company announcements, with a countdown in trading days to each report.
             </p>
           </div>
 
@@ -135,7 +134,7 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
+          <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
             <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
