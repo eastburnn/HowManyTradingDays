@@ -260,6 +260,8 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
         </p>
       )}
 
+      {/* A fixed height whatever the day holds: the list scrolls inside it,
+          and a quiet day simply leaves room below its rows. */}
       <dialog
         ref={dialogRef}
         onClick={(e) => {
@@ -278,7 +280,7 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
           }
         }}
         aria-labelledby={headingId}
-        className="m-auto w-[calc(100vw-2rem)] max-w-lg max-h-[85vh] rounded-2xl border border-slate-800 bg-slate-950 p-0 text-slate-100 shadow-2xl shadow-black/60 backdrop:bg-black/70 open:flex open:flex-col"
+        className="m-auto w-[calc(100vw-2rem)] max-w-lg h-[min(36rem,85vh)] rounded-2xl border border-slate-800 bg-slate-950 p-0 text-slate-100 shadow-2xl shadow-black/60 backdrop:bg-black/70 open:flex open:flex-col"
       >
         {selected && (
           <>
