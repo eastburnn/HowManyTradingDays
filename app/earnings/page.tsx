@@ -6,7 +6,7 @@ import TickerSearch from "@/components/earnings/TickerSearch";
 import MonthCalendar from "@/components/earnings/MonthCalendar";
 import StatusKey from "@/components/earnings/StatusKey";
 import CalendarRange from "@/components/earnings/CalendarRange";
-import { getEventDateBounds, getEventsInRange } from "@/lib/earnings/queries";
+import { type EstimateAccuracy, getEstimateAccuracy, getEventDateBounds, getEventsInRange } from "@/lib/earnings/queries";
 import { type RangeRow, computeDistances, monthKey, shiftMonth, toCalendarEvent } from "@/lib/earnings/calendar";
 import { todayET } from "@/lib/earnings/ingest";
 import { addDaysISO, displayName, formatMediumDate } from "@/lib/earnings/format";
@@ -41,9 +41,10 @@ export default async function EarningsCalendarPage() {
   // if the database is unreachable; ISR retries within the hour.
   let rows: RangeRow[] = [];
   let bounds: { min: string; max: string } | null = null;
+  let accuracy: EstimateAccuracy | null = null;
   let unavailable = false;
   try {
-    [rows, bounds] = await Promise.all([getEventsInRange(today, end), getEventDateBounds()]);
+    [rows, bounds, accuracy] = await Promise.all([getEventsInRange(today, end), getEventDateBounds(), getEstimateAccuracy()]);
   } catch (err) {
     console.error("[earnings calendar] database unavailable:", (err as Error).message);
     unavailable = true;
@@ -80,7 +81,7 @@ export default async function EarningsCalendarPage() {
 
         <MonthCalendar today={today} minMonth={minMonth} maxMonth={maxMonth} />
 
-        <StatusKey />
+        <StatusKey accuracy={accuracy} />
 
         <CalendarRange
           today={today}

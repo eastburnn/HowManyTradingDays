@@ -149,6 +149,49 @@ export async function getEventDateBounds(): Promise<{ min: string; max: string }
   return row?.min && row.max ? { min: row.min, max: row.max } : null;
 }
 
+export type EstimateAccuracy = {
+  /** Single-date estimates (high and medium confidence): right when within ±3 days */
+  estimated: { checked: number; within3: number };
+  /** Window estimates (low confidence): right when the actual date fell inside the window */
+  window: { checked: number; inside: number };
+};
+
+/**
+ * How past estimates fared once the real date arrived. For every quarter
+ * where a confirmed or reported date replaced an estimate, the last estimate
+ * that was on display is compared with the actual date.
+ */
+export async function getEstimateAccuracy(): Promise<EstimateAccuracy> {
+  const rows = await query<{ tier: "estimated" | "window"; checked: number; within3: number; inside: number }>(
+    `with truth as (
+       select cik, fiscal_year, fiscal_quarter, event_date, created_at
+         from earnings_events
+        where status in ('confirmed','reported') and superseded_by is null
+     ),
+     last_estimate as (
+       select distinct on (e.cik, e.fiscal_year, e.fiscal_quarter)
+              e.cik, e.fiscal_year, e.fiscal_quarter, e.event_date, e.confidence, e.window_days
+         from earnings_events e
+         join truth t on t.cik = e.cik and t.fiscal_year = e.fiscal_year and t.fiscal_quarter = e.fiscal_quarter
+        where e.status = 'estimated' and e.created_at < t.created_at
+        order by e.cik, e.fiscal_year, e.fiscal_quarter, e.created_at desc
+     )
+     select case when l.confidence = 'low' then 'window' else 'estimated' end as tier,
+            count(*)::int as checked,
+            sum((abs(t.event_date - l.event_date) <= 3)::int)::int as within3,
+            sum((abs(t.event_date - l.event_date) <= coalesce(l.window_days, 3))::int)::int as inside
+       from last_estimate l
+       join truth t on t.cik = l.cik and t.fiscal_year = l.fiscal_year and t.fiscal_quarter = l.fiscal_quarter
+      group by 1`
+  );
+  const out: EstimateAccuracy = { estimated: { checked: 0, within3: 0 }, window: { checked: 0, inside: 0 } };
+  for (const r of rows) {
+    if (r.tier === "window") out.window = { checked: r.checked, inside: r.inside };
+    else out.estimated = { checked: r.checked, within3: r.within3 };
+  }
+  return out;
+}
+
 /** Tickers eligible for the sitemap / static generation */
 export async function getIndexedTickers(): Promise<{ ticker: string; lastRefreshedAt: string | null }[]> {
   return query(

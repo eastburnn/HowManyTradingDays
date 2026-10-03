@@ -60,7 +60,7 @@ export function toCalendarEvent(r: RangeRow): CalendarEvent {
 ----------------------------------------------*/
 
 export function statusChip(e: Pick<CalendarEvent, "status" | "confidence">): { label: string; className: string } {
-  if (e.status === "reported") return { label: "Reported", className: "border-slate-600 bg-slate-700/40 text-slate-300" };
+  if (e.status === "reported") return { label: "Reported", className: "border-blue-400/40 bg-blue-400/10 text-blue-200" };
   if (e.status === "confirmed") return { label: "Confirmed", className: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" };
   if (e.confidence === "low") return { label: "Window", className: "border-slate-600 bg-slate-700/30 text-slate-400" };
   return { label: "Estimated", className: "border-amber-400/40 bg-amber-400/10 text-amber-200" };
