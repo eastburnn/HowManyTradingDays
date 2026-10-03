@@ -5,12 +5,12 @@ import type { EstimateAccuracy } from "@/lib/earnings/queries";
 type Tier = NonNullable<CalendarEvent["confidence"]>;
 type Entry = { status: CalendarEvent["status"]; confidence: Tier; meaning: string };
 
-/** One row per chip the calendar can show, in the order a reader meets them. */
+/** One row per chip the calendar can show, from least to most certain. */
 const ENTRIES: Entry[] = [
   {
-    status: "confirmed",
-    confidence: "high",
-    meaning: "The company has announced this date, in a press release or on its investor site.",
+    status: "estimated",
+    confidence: "low",
+    meaning: "The company's pattern is too irregular for a single date, so a range of likely days is shown instead.",
   },
   {
     status: "estimated",
@@ -18,9 +18,9 @@ const ENTRIES: Entry[] = [
     meaning: "Projected from the company's past reporting pattern in its SEC filings.",
   },
   {
-    status: "estimated",
-    confidence: "low",
-    meaning: "The company's pattern is too irregular for a single date, so a range of likely days is shown instead.",
+    status: "confirmed",
+    confidence: "high",
+    meaning: "The company has announced this date, in a press release or on its investor site.",
   },
   {
     status: "reported",
