@@ -249,7 +249,10 @@ export async function processFeedItems(
     stats.processed += 1;
     const published = item.published_at ? new Date(item.published_at).toISOString() : new Date().toISOString();
     let description = item.parsed?.description ?? "";
-    let outcome = parseAdvisory(item.title, description, published);
+    // An IR events feed is a structured list of upcoming calls, dated from
+    // today and reaching into the following quarter.
+    const parseOpts = item.feed === "ir-events" ? { maxDaysAhead: 120 } : {};
+    let outcome = parseAdvisory(item.title, description, published, parseOpts);
     let method: "regex" | "llm" = "regex";
 
     // The release page, read at most once per item and only when the wire's
@@ -271,7 +274,7 @@ export async function processFeedItems(
       const opening = await readPage();
       if (opening) {
         description = `${description} ${opening}`.slice(0, 6000);
-        outcome = parseAdvisory(item.title, description, published);
+        outcome = parseAdvisory(item.title, description, published, parseOpts);
       }
     }
 

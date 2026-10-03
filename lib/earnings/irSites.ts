@@ -155,8 +155,10 @@ export function irHostCandidates(text: string, hints: { name?: string; ticker?: 
   }
   const top = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([d]) => d);
   const guessed: string[] = [];
-  const first = hints.name ? nameTokens(hints.name)[0] : undefined;
+  const tokens = hints.name ? nameTokens(hints.name) : [];
+  const first = tokens[0];
   if (first && first.length >= 4) guessed.push(`${first}.com`);
+  if (tokens.length >= 2) guessed.push(`${tokens[0]}${tokens[1]}.com`); // "lambweston.com"
   if (hints.ticker && /^[a-z]{3,5}$/i.test(hints.ticker)) guessed.push(`${hints.ticker.toLowerCase()}.com`);
   const conventional = [...new Set([...top, ...guessed])].flatMap((d) => IR_SUBDOMAINS.map((s) => `${s}.${d}`));
   return [...new Set([...explicit, ...conventional])].slice(0, 14);
@@ -261,7 +263,8 @@ export function eventsToAdvisories(items: FeedItem[], cik: number, todayISO: str
       title: dateMentioned(name, iso) ? name : `${name} on ${long}`,
       link: it.link,
       description: `Scheduled investor event: ${name}, ${long}.`,
-      publishedAt: it.publishedAt ?? new Date().toISOString(),
+      // The feed lists the event as upcoming now, whenever it was first posted
+      publishedAt: new Date().toISOString(),
       cik,
     });
   }

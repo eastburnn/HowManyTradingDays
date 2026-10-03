@@ -205,9 +205,15 @@ function companyNameFromTitle(title: string): string | null {
    PARSE ONE ITEM
 ----------------------------------------------*/
 
-export function parseAdvisory(title: string, description: string, publishedISO: string): ParseOutcome {
+export function parseAdvisory(
+  title: string,
+  description: string,
+  publishedISO: string,
+  opts: { maxDaysAhead?: number } = {}
+): ParseOutcome {
   const t = title.replace(/\s+/g, " ").trim();
   const text = `${t} ${description}`;
+  const maxDaysAhead = opts.maxDaysAhead ?? 75;
 
   if (!SCHEDULING.test(t)) return { ok: false, reason: "no scheduling language in title" };
   if (ALREADY_REPORTED.test(t) && !/\b(?:to|will)\s+(?:report|announce|release)\b/i.test(t)) {
@@ -221,9 +227,10 @@ export function parseAdvisory(title: string, description: string, publishedISO: 
   const date = parseDate(text, publishedISO);
   if (!date) return { ok: false, reason: "no future date found" };
 
-  // Sanity: advisories run 1–60 days ahead. Longer is a different kind of event.
+  // Sanity: wire advisories run 1–60 days ahead; longer is a different kind of
+  // event. Structured event feeds list the following quarter too (120 days).
   const daysAhead = Math.round((Date.parse(date) - Date.parse(publishedISO.slice(0, 10))) / 86_400_000);
-  if (daysAhead > 75) return { ok: false, reason: `date ${daysAhead} days out` };
+  if (daysAhead > maxDaysAhead) return { ok: false, reason: `date ${daysAhead} days out` };
 
   const { quarter, fiscalYear } = parseQuarter(text);
   return {

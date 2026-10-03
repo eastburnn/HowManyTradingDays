@@ -70,13 +70,16 @@ async function releaseText(cik: number): Promise<string> {
   } else if (mode === "discover") {
     const limit = Number(arg("limit", "200"));
     const concurrency = Number(arg("concurrency", "4"));
-    const todo = await query<{ cik: number; ticker: string; name: string }>(
-      `select c.cik, c.ticker, c.name from companies c
-        where c.active and not exists (select 1 from ir_sources s where s.cik = c.cik and s.discovered_at > now() - interval '30 days')
-        order by (c.filer_category = 'large-accelerated') desc, (c.filer_category = 'accelerated') desc, c.indexed desc, c.ticker
-        limit $1`,
-      [limit]
-    );
+    const only = arg("tickers", "").split(",").map((t) => t.trim().toUpperCase()).filter(Boolean);
+    const todo = only.length
+      ? await query<{ cik: number; ticker: string; name: string }>(`select cik, ticker, name from companies where active and upper(ticker) = any($1) order by ticker`, [only])
+      : await query<{ cik: number; ticker: string; name: string }>(
+          `select c.cik, c.ticker, c.name from companies c
+            where c.active and not exists (select 1 from ir_sources s where s.cik = c.cik and s.discovered_at > now() - interval '30 days')
+            order by (c.filer_category = 'large-accelerated') desc, (c.filer_category = 'accelerated') desc, c.indexed desc, c.ticker
+            limit $1`,
+          [limit]
+        );
     console.log(`discovering IR feeds for ${todo.length} companies (concurrency ${concurrency})`);
     const tally: Record<string, number> = {};
     let cursor = 0;
