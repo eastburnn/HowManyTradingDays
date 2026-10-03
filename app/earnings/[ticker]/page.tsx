@@ -10,6 +10,7 @@ import {
   daysBetweenISO,
   displayName,
   estimateWindow,
+  fiscalCalendar,
   fiscalLabel,
   formatLongDate,
   formatMediumDate,
@@ -23,6 +24,7 @@ import {
   weekdayOf,
 } from "@/lib/earnings/format";
 import { todayET } from "@/lib/earnings/ingest";
+import { predictPeriodEnd } from "@/lib/earnings/fiscal";
 import { countTradingDaysBetween } from "@/lib/tradingDays";
 
 // Pages render on demand and are re-generated at most daily; the pipeline
@@ -141,6 +143,12 @@ export default async function EarningsTickerPage({ params }: Params) {
   const sym = company.ticker;
   const today = todayET();
   const justReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 7 : false;
+
+  // Fiscal calendar: the current year's end from the upcoming Q4 if we have
+  // it, else the last 10-K's period end rolled forward a year.
+  const lastYearEnd = history.find((h) => h.reportForm === "10-K")?.periodEnd ?? null;
+  const currentYearEnd = upcoming.find((u) => u.fiscalQuarter === 4)?.periodEnd ?? (lastYearEnd ? predictPeriodEnd(lastYearEnd) : null);
+  const fiscal = fiscalCalendar(company.fiscalYearEnd, company.is5253Week, currentYearEnd, today);
 
   const isOverdue = next?.status === "estimated" && next.overdue;
   const isWindow = next?.status === "estimated" && next.confidence === "low" && !isOverdue;
@@ -326,9 +334,9 @@ export default async function EarningsTickerPage({ params }: Params) {
           </section>
         )}
 
-        {/* FOLLOWING QUARTER + LAST REPORTED */}
-        {(following || (lastReported && !justReported)) && (
-          <div className="grid gap-3 sm:grid-cols-2">
+        {/* FOLLOWING QUARTER + LAST REPORTED + FISCAL CALENDAR */}
+        {(following || (lastReported && !justReported) || fiscal) && (
+          <div className={`grid gap-3 ${[following, lastReported && !justReported, fiscal].filter(Boolean).length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             {following && (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">After that</p>
@@ -354,6 +362,13 @@ export default async function EarningsTickerPage({ params }: Params) {
                     </>
                   )}
                 </p>
+              </div>
+            )}
+            {fiscal && (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Fiscal year</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{fiscal.range}</p>
+                {fiscal.note && <p className="text-xs text-slate-400">{fiscal.note}</p>}
               </div>
             )}
           </div>

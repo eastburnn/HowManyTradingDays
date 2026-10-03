@@ -102,6 +102,7 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
       `select ${eventColumns()} from earnings_current
         where cik = $1 and status in ('estimated','confirmed')
           and event_date >= (now() at time zone 'America/New_York')::date
+          and not (status = 'estimated' and overdue and estimate_is_stale(period_end, report_form))
         order by event_date asc, id desc`,
       [company.cik]
     ),
@@ -130,8 +131,10 @@ export async function getEventsInRange(fromISO: string, toISO: string, limit = 1
        from earnings_current e
        join companies c on c.cik = e.cik
       where e.event_date between $1::date and $2::date and c.active
-        -- an estimate in the past is a quarter that went unreported, not a date
+        -- an estimate in the past is a quarter that went unreported, not a date,
+        -- and a stale overdue estimate is a delinquent filer's, not "any day now"
         and not (e.status = 'estimated' and e.event_date < (now() at time zone 'America/New_York')::date)
+        and not (e.status = 'estimated' and e.overdue and estimate_is_stale(e.period_end, e.report_form))
       order by e.event_date asc, c.name asc
       limit $3`,
     [fromISO, toISO, limit]

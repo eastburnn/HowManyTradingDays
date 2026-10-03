@@ -126,12 +126,18 @@ function nextQuarter(fy: number, q: number): { fiscalYear: number; quarter: 1 | 
 function targetPeriodEnd(
   target: { fiscalYear: number; quarter: number },
   periods: FiscalPeriod[],
-  lastKnown: FiscalPeriod
+  lastKnown: FiscalPeriod,
+  fiscalYearEndMMDD?: string | null
 ): string {
-  // The LATEST matching period: after a fiscal-year-end change the old and new
-  // calendars reuse fiscal labels (IGC's Dec 2024 and Sep 2025 periods are
-  // both "FY2025 Q3"), and only the newest one is on the calendar the company
-  // now follows.
+  // Month-end calendars come straight from the declared year end. That also
+  // survives a change of fiscal year end, where prior-year labels belong to
+  // the old calendar (USBC's "Q3" ended in June under its old September year
+  // end and ends in September now; IGC's Dec 2024 and Sep 2025 periods are
+  // both "FY2025 Q3").
+  const declared = declaredQuarterEnd(target, fiscalYearEndMMDD);
+  if (declared && usesMonthEndCalendar(periods)) return declared;
+
+  // 52/53-week calendars: roll the latest matching prior-year period forward.
   const priorYear = [...periods]
     .reverse()
     .find((p) => p.quarter === target.quarter && p.fiscalYear === target.fiscalYear - 1);
@@ -147,6 +153,47 @@ function targetPeriodEnd(
   return toISODate(addDays(base, 91 * quartersAhead));
 }
 
+/** Every 10-K so far ended on a month end (a 52/53-week filer's never does) */
+function usesMonthEndCalendar(periods: FiscalPeriod[]): boolean {
+  const tenKs = periods.filter((p) => p.form === "10-K");
+  return tenKs.length > 0 && tenKs.every((p) => isMonthEnd(p.periodEnd));
+}
+
+/**
+ * The quarter's end on a declared month-end fiscal calendar ("MMDD" from
+ * EDGAR), or null when the declared value is not a month end ("0927": a
+ * 52/53-week filer's nominal date) or malformed.
+ */
+function declaredQuarterEnd(target: { fiscalYear: number; quarter: number }, mmdd?: string | null): string | null {
+  if (!mmdd || !/^\d{4}$/.test(mmdd)) return null;
+  const month = Number(mmdd.slice(0, 2));
+  const day = Number(mmdd.slice(2));
+  if (month < 1 || month > 12) return null;
+  if (day < new Date(2001, month, 0).getDate()) return null;
+  const endMonthIndex = month - 1 - 3 * (4 - target.quarter);
+  return toISODate(new Date(target.fiscalYear, endMonthIndex + 1, 0));
+}
+
+/* ---------------------------------------------
+   LISTED SYMBOLS
+----------------------------------------------*/
+
+/** Preferred shares ("CMS-PB"), warrants ("LUCYW"), units ("ACACU"), rights */
+function isDerivativeSymbol(symbol: string, all: string[]): boolean {
+  return symbol.includes("-") || (/[WUR]$/.test(symbol) && all.some((o) => o !== symbol && symbol.startsWith(o)));
+}
+
+/**
+ * The company's common-stock symbol: the first listed symbol that is not a
+ * derivative security. Null for registrants with only preferred shares
+ * listed (Consumers Energy) or no symbol at all (debt-only filers like
+ * Qwest) — they file 10-Qs but have no earnings date of their own.
+ */
+function commonSymbol(company: EdgarCompany, listing: RefreshOptions["listing"]): string | null {
+  const symbols = [...new Set([listing?.ticker, ...company.tickers].filter((t): t is string => Boolean(t)).map((t) => t.toUpperCase()))];
+  return symbols.find((s) => !isDerivativeSymbol(s, symbols)) ?? null;
+}
+
 /* ---------------------------------------------
    DATABASE WRITES
 ----------------------------------------------*/
@@ -158,7 +205,7 @@ async function upsertCompany(
   listing: RefreshOptions["listing"],
   periods: FiscalPeriod[]
 ): Promise<string> {
-  const ticker = (listing?.ticker ?? company.tickers[0] ?? String(company.cik)).toUpperCase();
+  const ticker = commonSymbol(company, listing) ?? (listing?.ticker ?? company.tickers[0] ?? String(company.cik)).toUpperCase();
   const exchange = listing?.exchange ?? company.exchanges[0] ?? null;
   const is5253 = periods.some((p) => p.form === "10-K" && !isMonthEnd(p.periodEnd));
 
@@ -298,7 +345,7 @@ export function findUnmatchedRelease(
   const last = periods[periods.length - 1];
   const lastRelease = observations.reduce((m, o) => (o.releaseDate > m ? o.releaseDate : m), "");
   const target = nextQuarter(last.fiscalYear, last.quarter);
-  const periodEnd = targetPeriodEnd(target, periods, last);
+  const periodEnd = targetPeriodEnd(target, periods, last, company.fiscalYearEnd);
 
   // Latest 2.02 strictly after the last periodic report was filed, after the
   // last matched release, and a plausible interval after the target quarter
@@ -346,7 +393,7 @@ export function estimateUpcoming(
   // Q2 must not crowd out its Q3), with a bound on how far to look.
   for (let i = 0; out.length < ESTIMATE_QUARTERS_AHEAD && i < ESTIMATE_QUARTERS_AHEAD + 3; i++) {
     const reportForm: ReportForm = target.quarter === 4 ? "10-K" : "10-Q";
-    const periodEnd = targetPeriodEnd(target, periods, last);
+    const periodEnd = targetPeriodEnd(target, periods, last, company.fiscalYearEnd);
     if (isStaleEstimate(periodEnd, reportForm, today)) {
       target = nextQuarter(target.fiscalYear, target.quarter);
       continue;
@@ -415,7 +462,7 @@ export function estimateUpcoming(
 export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Promise<RefreshResult> {
   const today = opts.today ?? todayET();
   const company = await fetchCompany(cik, { cacheDir: opts.cacheDir, refresh: opts.refresh, sinceDate: "2015-01-01" });
-  const active = isQuarterlyReporter(company);
+  const active = isQuarterlyReporter(company) && commonSymbol(company, opts.listing) !== null;
   const periods = active ? listFiscalPeriods(company.filings, company.fiscalYearEnd) : [];
   const observations = active
     ? buildObservations(company.filings, company.fiscalYearEnd, {

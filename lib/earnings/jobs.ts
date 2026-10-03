@@ -161,28 +161,31 @@ async function flagOverdueEstimates(today: string, stats: TickStats): Promise<vo
 ----------------------------------------------*/
 
 /**
- * Companies whose CIK has vanished from the SEC's exchange list — acquired,
- * delisted, gone dark — leave the calendar after missing two daily sweeps
- * (one glitchy file must not deactivate anyone). A company that reappears is
- * reactivated and refreshed.
+ * Companies whose primary symbol has vanished from the SEC's exchange list —
+ * acquired, delisted, gone dark, or left with only notes and warrants
+ * listed — leave the calendar after missing two daily sweeps (one glitchy
+ * file must not deactivate anyone). A symbol that reappears reactivates the
+ * company. A renamed symbol is harmless: the refresh adopts EDGAR's new
+ * ticker before the second sweep. Only companies this sweep deactivated are
+ * ever reactivated by it (listing_missing_since marks them).
  */
 async function sweepListingsDaily(today: string, stats: TickStats): Promise<void> {
   const last = await getState<string>("listing_sweep_last_day");
   if (last === today) return;
-  const ciks = [...new Set((await fetchExchangeListings()).map((l) => l.cik))];
-  if (ciks.length < 1000) throw new Error(`exchange list looks truncated (${ciks.length} CIKs)`);
+  const tickers = [...new Set((await fetchExchangeListings()).map((l) => l.ticker.toUpperCase()))];
+  if (tickers.length < 1000) throw new Error(`exchange list looks truncated (${tickers.length} symbols)`);
 
   const missing = await query<{ cik: number }>(
-    `update companies set listing_missing_since = coalesce(listing_missing_since, now())
-      where active and not (cik = any($1::int[])) returning cik`,
-    [ciks]
+    `update companies set listing_missing_since = coalesce(listing_missing_since, now()), refresh_requested_at = coalesce(refresh_requested_at, now())
+      where active and not (upper(ticker) = any($1::text[])) returning cik`,
+    [tickers]
   );
   const reactivated = await query<{ ticker: string }>(
     `update companies set active = true, listing_missing_since = null, refresh_requested_at = coalesce(refresh_requested_at, now())
-      where not active and listing_missing_since is not null and cik = any($1::int[]) returning ticker`,
-    [ciks]
+      where not active and listing_missing_since is not null and upper(ticker) = any($1::text[]) returning ticker`,
+    [tickers]
   );
-  await query(`update companies set listing_missing_since = null where active and listing_missing_since is not null and cik = any($1::int[])`, [ciks]);
+  await query(`update companies set listing_missing_since = null where active and listing_missing_since is not null and upper(ticker) = any($1::text[])`, [tickers]);
   const deactivated = await query<{ ticker: string }>(
     `update companies set active = false
       where active and listing_missing_since < now() - interval '36 hours' returning ticker`
