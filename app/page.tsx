@@ -141,11 +141,9 @@ export default function HomePage() {
             How Many Trading Days
           </h1>
 
-          {/* Small, keyword-rich helper line for SEO + clarity */}
+          {/* One line; the counting rules live in the FAQ below */}
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Live countdown of how many U.S. stock market trading days are left in {year}.
-            Includes weekdays if it’s before 4pm ET; excludes weekends,
-            full holidays, and counts early-close days as 0.5.
+            Live countdown of U.S. market trading days left in {year}.
           </p>
         </header>
 

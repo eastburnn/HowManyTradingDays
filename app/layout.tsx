@@ -32,8 +32,7 @@ export function generateMetadata(): Metadata {
   const year = getCurrentYearET();
 
   const title = `How Many Trading Days Are Left In ${year}`;
-  const description =
-    "Live countdown of U.S. stock market trading days left this year, excluding weekends and NYSE holidays, plus a calculator for any future date.";
+  const description = `Live countdown of U.S. stock market trading days left in ${year}, plus market status, NYSE holidays, a trading-day calculator, and an earnings date calendar.`;
 
   return {
     metadataBase: new URL("https://howmanytradingdays.com"),

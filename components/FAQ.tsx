@@ -10,6 +10,15 @@ type FaqItem = {
 
 const faqs: FaqItem[] = [
   {
+    question: "How does the trading-days counter work?",
+    answer:
+      "The number at the top is how many U.S. stock market trading days are left in the current year, updated live. It counts every weekday from today through December 31, leaves out weekends and full-day NYSE/Nasdaq holidays, and counts scheduled early-close sessions (1:00 p.m. ET closes) as half a day. Today is included until the market closes at 4:00 p.m. Eastern Time; after that it drops out of the count. The full-day and half-day totals beneath the number show how that count breaks down.",
+    link: {
+      href: "/calculator",
+      label: "Count trading days between any two dates",
+    },
+  },
+  {
     question: "Which days is the U.S. stock market closed?",
     answer:
       "We follow the standard NYSE/Nasdaq holiday schedule: New Year's Day, Martin Luther King Jr. Day, Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor Day, Thanksgiving Day, and Christmas Day. When these fall on a weekend, an observed weekday holiday is used instead. The list above shows the holidays still ahead this year.",
@@ -41,6 +50,15 @@ const faqs: FaqItem[] = [
     question: "Which markets and time zone does this site use?",
     answer:
       "This site is based on regular-session hours for the major U.S. equity exchanges (such as NYSE and Nasdaq) and uses U.S. Eastern Time. It does not track extended hours, futures markets, or cryptocurrencies.",
+  },
+  {
+    question: "Where do the earnings dates come from?",
+    answer:
+      "The earnings calendar covers every NYSE and Nasdaq company that files quarterly reports with the SEC. Each date starts as an estimate from the company's own filing history (how many days after each quarter ended it reported in past years) and switches to confirmed when the company announces the date in a press release or on its investor relations site. Every company page shows the countdown in trading days and the past report dates behind the estimate.",
+    link: {
+      href: "/earnings",
+      label: "Open the earnings calendar",
+    },
   },
 ];
 
