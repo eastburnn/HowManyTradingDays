@@ -73,6 +73,11 @@ const FIXTURES: Fixture[] = [
     description: "Updated full-year 2026 guidance will be provided in conjunction with the Company's third quarter 2026 earnings release. THIRD QUARTER 2026 RESULTS AND EARNINGS CONFERENCE CALL The Company intends to release third quarter 2026 results for the period ended September 30, 2026, on Tuesday, November 3, 2026, after the U.S. financial market closes. In addition to this release, Talos (NYSE: TALO) will host a conference call on November 4, 2026.",
     expect: { ok: true, date: "2026-11-03", tod: "postmarket", quarter: 3, tickers: ["TALO"] },
   },
+  {
+    title: "Horizon Bancorp, Inc. Announces Conference Call to Review Third Quarter Results on October 22",
+    description: "Horizon Bank will host a conference call at 7:30 a.m. CT on Thursday, October 22, 2026 to review its third quarter 2026 financial results.",
+    expect: { ok: true, date: "2026-10-22", tod: "premarket", quarter: 3, tickers: [] },
+  },
   // ---- must NOT match ----
   { title: "Acme Corp Reports Third Quarter 2026 Financial Results", description: "Revenue of $1.2 billion...", expect: { ok: false } },
   { title: "Globex Announces Record Fourth Quarter Results", description: "...", expect: { ok: false } },
