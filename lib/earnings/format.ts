@@ -151,8 +151,8 @@ export function formatQuarterEnd(iso: string): string {
   return parseISODate(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-/** Two spellings of every month in the fiscal-year card: "JUN 1" for the narrow desktop column, "June 1" for phones. */
-export type FiscalText = { abbr: string; full: string };
+/** Two spellings of the fiscal-year range: "JUN 1 – MAY 31" for the narrow desktop column, "June 1 – May 31" for phones. */
+export type FiscalRange = { abbr: string; full: string };
 
 /**
  * A company's fiscal calendar for the company page card: the year's start and
@@ -165,7 +165,7 @@ export function fiscalCalendar(
   is5253Week: boolean,
   currentYearEnd: string | null,
   today: string
-): { range: FiscalText; current: { label: string; date: FiscalText } | null } | null {
+): { range: FiscalRange; current: { label: string; date: string } | null } | null {
   if (!fiscalYearEndMMDD || !/^\d{4}$/.test(fiscalYearEndMMDD)) return null;
   const month = Number(fiscalYearEndMMDD.slice(0, 2));
   const day = Number(fiscalYearEndMMDD.slice(2));
@@ -182,12 +182,11 @@ export function fiscalCalendar(
   const range = { abbr: rangeIn("short"), full: rangeIn("long") };
   if (!currentYearEnd) return { range, current: null };
   const yearEnd = parseISODate(currentYearEnd);
-  const dateIn = (style: "short" | "long") => `${monthDay(yearEnd, style)}, ${yearEnd.getFullYear()}`;
   return {
     range,
     current: {
       label: `Fiscal year ${yearEnd.getFullYear()} ${currentYearEnd < today ? "ended" : "ends"}`,
-      date: { abbr: dateIn("short"), full: dateIn("long") },
+      date: `${monthDay(yearEnd, "long")}, ${yearEnd.getFullYear()}`, // the full month name at every width
     },
   };
 }
