@@ -123,8 +123,7 @@ export default function CalculatorPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             Count U.S. stock market trading days and calendar days between today, or any start date, and a target
             date. Pick a day on the calendar or jump to a month end, year end, or the next market holiday. Weekends
-            and NYSE/Nasdaq holidays are skipped and early closes count as half days, which makes it the right count
-            for option expirations, vesting dates, earnings dates, and any other deadline measured in sessions.
+            and NYSE/Nasdaq holidays are skipped, and early closes count as half days.
           </p>
         </header>
 
