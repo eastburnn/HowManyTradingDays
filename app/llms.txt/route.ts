@@ -29,7 +29,7 @@ export async function GET() {
   const holidayList = holidays
     .map(
       (h) =>
-        `- ${toISODate(h.date)} — ${h.name.replace(" (early close)", "")}: ${
+        `- ${toISODate(h.date)}, ${h.name.replace(" (early close)", "")}: ${
           h.type === "closed" ? "market closed" : "early close at 1:00 p.m. ET"
         }`
     )
@@ -39,10 +39,10 @@ export async function GET() {
     (h) =>
       `- [Is the Stock Market Open on ${h.name}?](https://howmanytradingdays.com/is-the-stock-market-open/${h.slug}): ${
         h.shortAnswer === "closed"
-          ? "No — market holiday."
+          ? "No, market holiday."
           : h.shortAnswer === "early-close"
           ? "Yes, with a 1:00 p.m. ET early close."
-          : "Yes — markets are open."
+          : "Yes, markets are open."
       }`
   ).join("\n");
 
@@ -65,7 +65,7 @@ ${holidayList}
 
 ## Pages
 
-- [Home — live countdown](https://howmanytradingdays.com/): Live count of trading days left in the current year, live market open/closed status, and upcoming holidays. Updates in real time relative to the 4:00 p.m. ET close.
+- [Home (live countdown)](https://howmanytradingdays.com/): Live count of trading days left in the current year, live market open/closed status, and upcoming holidays. Updates in real time relative to the 4:00 p.m. ET close.
 - [Trading Days in a Year](https://howmanytradingdays.com/trading-days-in-a-year): The current year's trading-day total, a month-by-month table, and exact totals for every year from 1990 to 2030 - adjusted for unscheduled closures (9/11, Hurricane Sandy, presidential days of mourning) and holiday-calendar changes (MLK Day added 1998, Juneteenth added 2022).
 - [Trading Days in a Month](https://howmanytradingdays.com/trading-days-in-a-month): About 21 on average; exact counts for every month and quarter of the current year.
 - [Stock Market Holidays](https://howmanytradingdays.com/stock-market-holidays): Full NYSE/Nasdaq holiday schedule for this year and next, including early-close days and weekend-observance rules.
@@ -81,11 +81,11 @@ ${holidayPageList}
 
 No API key required. CORS enabled. Free for personal and commercial use; attribution with a link to howmanytradingdays.com is appreciated. Full documentation with examples: https://howmanytradingdays.com/api-docs
 
-- GET https://howmanytradingdays.com/api/trading-days — trading-day totals, month-by-month counts, holiday calendar, and (for the current year) remaining days. Optional ?year= parameter (1950-2100). Example fields: tradingDays, tradingDaysHalfDayAdjusted, weekdays, marketHolidays, earlyCloseSessions, remaining, months[], holidays[].
-- GET https://howmanytradingdays.com/api/market-status — whether U.S. equity markets are open right now. Example fields: isOpen, isTradingDay, isEarlyClose, closesAtET, closedReason, nextSessionDate, opensAtET.
-- GET https://howmanytradingdays.com/api/count?from=YYYY-MM-DD&to=YYYY-MM-DD — count trading days between two dates (inclusive). Example fields: tradingDays, fullDays, halfDays, calendarDays.
-- GET https://howmanytradingdays.com/api/is-trading-day?date=YYYY-MM-DD — whether a date is a trading session (defaults to today ET). Example fields: isTradingDay, isEarlyClose, holiday, closesAtET, previousTradingDay, nextTradingDay.
-- GET https://howmanytradingdays.com/api/offset?date=YYYY-MM-DD&days=N — add or subtract N trading days from a date (settlement math, e.g. days=1 gives the T+1 settlement date). Example fields: result, resultWeekday, resultIsEarlyClose.
+- GET https://howmanytradingdays.com/api/trading-days: trading-day totals, month-by-month counts, holiday calendar, and (for the current year) remaining days. Optional ?year= parameter (1950-2100). Example fields: tradingDays, tradingDaysHalfDayAdjusted, weekdays, marketHolidays, earlyCloseSessions, remaining, months[], holidays[].
+- GET https://howmanytradingdays.com/api/market-status: whether U.S. equity markets are open right now. Example fields: isOpen, isTradingDay, isEarlyClose, closesAtET, closedReason, nextSessionDate, opensAtET.
+- GET https://howmanytradingdays.com/api/count?from=YYYY-MM-DD&to=YYYY-MM-DD: count trading days between two dates (inclusive). Example fields: tradingDays, fullDays, halfDays, calendarDays.
+- GET https://howmanytradingdays.com/api/is-trading-day?date=YYYY-MM-DD: whether a date is a trading session (defaults to today ET). Example fields: isTradingDay, isEarlyClose, holiday, closesAtET, previousTradingDay, nextTradingDay.
+- GET https://howmanytradingdays.com/api/offset?date=YYYY-MM-DD&days=N: add or subtract N trading days from a date (settlement math, e.g. days=1 gives the T+1 settlement date). Example fields: result, resultWeekday, resultIsEarlyClose.
 
 ## Conventions and scope
 

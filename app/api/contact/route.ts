@@ -4,6 +4,7 @@ import { z } from "zod";
 import { query } from "@/lib/earnings/db";
 import { CONTACT_TOPICS, MESSAGE_MAX, MESSAGE_MIN } from "@/lib/contact";
 import { emailAvailable, sendContactEmail } from "@/lib/email";
+import { turnstileEnabled, verifyTurnstile } from "@/lib/turnstile";
 
 /**
  * POST /api/contact — the contact form.
@@ -27,10 +28,15 @@ const Body = z.object({
   message: z.string().trim().min(MESSAGE_MIN, `Please write at least ${MESSAGE_MIN} characters`).max(MESSAGE_MAX),
   website: z.string().max(500).optional(), // honeypot: humans never see it; anything in it is a bot
   startedAt: z.number().int().optional(),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
+function clientIp(req: Request): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip");
+}
+
 function ipHash(req: Request): string | null {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip");
+  const ip = clientIp(req);
   if (!ip) return null;
   return createHash("sha256").update(`${ip}|${process.env.JOBS_SECRET ?? "contact"}`).digest("hex").slice(0, 32);
 }
@@ -40,7 +46,7 @@ const reply = (status: number, body: Record<string, unknown>) =>
 
 /** Is delivery configured? The form shows a plain email link when it is not. */
 export async function GET() {
-  return reply(200, { enabled: emailAvailable() });
+  return reply(200, { enabled: emailAvailable(), turnstile: turnstileEnabled() });
 }
 
 export async function POST(req: Request) {
@@ -60,6 +66,16 @@ export async function POST(req: Request) {
   // Bots fill the hidden field and submit instantly; say nothing useful either way.
   if (body.website) return reply(200, { ok: true });
   if (body.startedAt && Date.now() - body.startedAt < MIN_SECONDS_TO_FILL * 1000) return reply(200, { ok: true });
+
+  // Cloudflare Turnstile: the widget's one-time token must verify
+  if (turnstileEnabled()) {
+    if (!body.turnstileToken) return reply(400, { error: "Please complete the verification and try again.", field: "turnstile" });
+    const check = await verifyTurnstile(body.turnstileToken, clientIp(req));
+    if (!check.ok) {
+      console.warn("[contact] turnstile rejected:", check.codes.join(","));
+      return reply(400, { error: "Verification didn't pass. Please try again.", field: "turnstile" });
+    }
+  }
 
   const hash = ipHash(req);
   try {

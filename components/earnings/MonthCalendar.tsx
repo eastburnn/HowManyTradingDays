@@ -237,7 +237,7 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
                     ) : count ? (
                       <span className={`text-base font-semibold tabular-nums ${past ? "text-slate-300" : "text-slate-100"}`}>{count}</span>
                     ) : (
-                      <span className="text-[10px] text-slate-600">{info.holidayName ? "Closed" : "—"}</span>
+                      <span className="text-[10px] text-slate-600">{info.holidayName ? "Closed" : "-"}</span>
                     )}
                   </span>
                 </button>
@@ -299,7 +299,7 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
               ) : selectedEvents.length === 0 ? (
                 <li className="px-4 py-6 text-center text-sm text-slate-500">
                   No earnings dates on this day
-                  {selectedInfo?.holidayName ? ` — ${selectedInfo.holidayName}, market closed` : ""}.
+                  {selectedInfo?.holidayName ? ` (${selectedInfo.holidayName}, market closed)` : ""}.
                 </li>
               ) : (
                 selectedEvents.map((e) => <CompanyRow key={e.id} e={e} />)

@@ -43,12 +43,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `Is the Stock Market Open on ${def.name}? (${year})`;
   const answerWord =
     status.status === "open"
-      ? "Yes — markets are open."
+      ? "Yes, markets are open."
       : status.status === "early-close"
-      ? "Yes — with a 1 p.m. ET early close."
-      : "No — markets are closed.";
+      ? "Yes, with a 1 p.m. ET early close."
+      : "No, markets are closed.";
   const description = `${answerWord} ${def.name} ${year} falls on ${
-    status.dateISO ? formatFullDate(status.dateISO) : "—"
+    status.dateISO ? formatFullDate(status.dateISO) : "-"
   }. See NYSE and Nasdaq hours for ${def.name} this year and next.`;
 
   return {
@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: "How Many Trading Days — U.S. stock market trading days left this year",
+          alt: "How Many Trading Days: U.S. stock market trading days left this year",
         },
       ],
       type: "website",
@@ -97,7 +97,7 @@ const STATUS_STYLES = {
     border: "border-slate-700",
     bg: "bg-slate-800/40",
     text: "text-slate-300",
-    label: "WEEKEND — NO SESSION",
+    label: "WEEKEND: NO SESSION",
   },
   none: {
     border: "border-slate-700",
@@ -119,12 +119,12 @@ export default async function HolidayOpenPage({ params }: Props) {
 
   const answerSentence =
     current.status === "open"
-      ? `Yes — U.S. stock markets are open on ${def.name} in ${year}.`
+      ? `Yes, U.S. stock markets are open on ${def.name} in ${year}.`
       : current.status === "early-close"
-      ? `Yes — markets are open on ${def.name} in ${year}, but close early at 1:00 p.m. ET.`
+      ? `Yes, markets are open on ${def.name} in ${year}, but close early at 1:00 p.m. ET.`
       : current.status === "weekend"
       ? `In ${year}, ${def.name} falls on a weekend, so there is no trading session that day.`
-      : `No — U.S. stock markets are closed on ${def.name}.`;
+      : `No, U.S. stock markets are closed on ${def.name}.`;
 
   // Other holiday pages for the "related" section (exclude self)
   const related = HOLIDAY_PAGES.filter((h) => h.slug !== def.slug).slice(0, 6);
@@ -199,7 +199,7 @@ export default async function HolidayOpenPage({ params }: Props) {
                     <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">
                       {ys.dateISO
                         ? `${ys.weekdayName}, ${new Date(ys.dateISO + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                        : "—"}
+                        : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-300 whitespace-nowrap">{ys.detail}</td>
                   </tr>

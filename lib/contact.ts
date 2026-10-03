@@ -3,6 +3,7 @@
 export const CONTACT_TOPICS = [
   { value: "general", label: "General question" },
   { value: "advertising", label: "Advertising" },
+  { value: "feature", label: "Feature suggestion" },
   { value: "data", label: "A wrong or missing earnings date" },
   { value: "bug", label: "Something's broken" },
   { value: "other", label: "Other" },

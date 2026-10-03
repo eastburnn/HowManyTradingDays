@@ -7,7 +7,7 @@ import { getTrafficSnapshot } from "@/lib/ga4";
 // Refresh the GA4 traffic snapshot once a day
 export const revalidate = 86400;
 
-const title = "Advertise — How Many Trading Days";
+const title = "Advertise | How Many Trading Days";
 const description =
   "Sponsor HowManyTradingDays.com and reach an audience of U.S. investors and traders.";
 
@@ -52,7 +52,7 @@ export default async function AdvertisePage() {
     : FALLBACK_STATS;
 
   const sourceNote = live
-    ? "Source: Google Analytics 4, trailing 30 days — updated daily. Traffic has grown every month since the site launched, driven almost entirely by organic search."
+    ? "Source: Google Analytics 4, trailing 30 days, updated daily. Traffic has grown every month since the site launched, driven almost entirely by organic search."
     : `Source: Google Analytics 4, as of ${FALLBACK_AS_OF}. Traffic has grown every month since the site launched, driven almost entirely by organic search.`;
 
   return (
@@ -65,7 +65,7 @@ export default async function AdvertisePage() {
             Advertise Here
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            HowManyTradingDays.com is a live reference for U.S. stock market trading days —
+            HowManyTradingDays.com is a live reference for U.S. stock market trading days,
             visited by investors, traders, and finance professionals who plan around the
             market calendar.
           </p>
@@ -99,7 +99,7 @@ export default async function AdvertisePage() {
           </h2>
           <p className="text-sm text-slate-400 leading-relaxed">
             A single sponsored placement on the homepage, directly below the live trading-day
-            counter — the most-viewed spot on the site. One sponsor at a time, clearly
+            counter, the most-viewed spot on the site. One sponsor at a time, clearly
             disclosed, with click tracking available on request. Placements on other
             high-traffic pages can also be arranged.
           </p>

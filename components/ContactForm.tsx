@@ -1,18 +1,41 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import Script from "next/script";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CONTACT_TOPICS, type ContactTopic, MESSAGE_MAX, MESSAGE_MIN } from "@/lib/contact";
 
 /**
- * The contact form. Posts to /api/contact; the hidden "website" field and
- * the time the form appeared travel with it as quiet spam checks. The page
- * passes a preselected topic from its ?topic= query parameter (the
- * advertise page links here with topic=advertising).
+ * The contact form. Posts to /api/contact; the hidden "website" field, the
+ * time the form appeared, and a Cloudflare Turnstile token travel with it
+ * as spam checks. The page passes a preselected topic from its ?topic=
+ * query parameter (the advertise page links here with topic=advertising).
  */
 
 type Status = { kind: "idle" } | { kind: "sending" } | { kind: "sent"; email: string } | { kind: "error"; message: string; field?: string | null };
 
 const FALLBACK_EMAIL = "itschrisray@gmail.com";
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
+type TurnstileApi = {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      theme?: "light" | "dark" | "auto";
+      size?: "normal" | "compact" | "flexible";
+      callback?: (token: string) => void;
+      "expired-callback"?: () => void;
+      "error-callback"?: () => void;
+    }
+  ) => string;
+  reset: (widgetId?: string) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 const INPUT =
   "w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-slate-500";
@@ -27,6 +50,9 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
   const [startedAt] = useState(() => Date.now()); // when the form appeared (never rendered)
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileEl = useRef<HTMLDivElement | null>(null);
+  const widgetId = useRef<string | null>(null);
 
   useEffect(() => {
     fetch("/api/contact")
@@ -34,6 +60,29 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
       .then((j: { enabled?: boolean }) => setEnabled(j.enabled !== false))
       .catch(() => setEnabled(true));
   }, []);
+
+  // Render the Turnstile widget once its script is available (the script's
+  // onLoad for a fresh load; the effect for a page the script is already on).
+  const mountTurnstile = useCallback(() => {
+    const el = turnstileEl.current;
+    if (!TURNSTILE_SITE_KEY || !el || widgetId.current || !window.turnstile) return;
+    widgetId.current = window.turnstile.render(el, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: "dark",
+      size: "flexible",
+      callback: (token) => setTurnstileToken(token),
+      "expired-callback": () => setTurnstileToken(null),
+      "error-callback": () => setTurnstileToken(null),
+    });
+  }, []);
+  useEffect(() => {
+    if (enabled !== false) mountTurnstile();
+  }, [enabled, mountTurnstile]);
+
+  const resetTurnstile = () => {
+    if (widgetId.current && window.turnstile) window.turnstile.reset(widgetId.current);
+    setTurnstileToken(null);
+  };
 
   if (enabled === false) {
     return (
@@ -58,7 +107,7 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, topic, message, website, startedAt }),
+        body: JSON.stringify({ name, email, topic, message, website, startedAt, turnstileToken: turnstileToken ?? undefined }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; field?: string | null };
       if (res.ok && json.ok) {
@@ -69,6 +118,8 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
       }
     } catch {
       setStatus({ kind: "error", message: "Couldn't reach the server. Please check your connection and try again." });
+    } finally {
+      resetTurnstile(); // tokens are single-use
     }
   }
 
@@ -76,13 +127,22 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
     return (
       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 space-y-2">
         <p className="font-semibold">Message sent.</p>
-        <p className="text-emerald-100/80">Thanks — I read every message and will reply to {status.email}.</p>
-        <button type="button" onClick={() => setStatus({ kind: "idle" })} className="text-xs underline text-emerald-200 hover:text-white transition-colors">
+        <p className="text-emerald-100/80">Thanks! I read every message and will reply to {status.email}.</p>
+        <button
+          type="button"
+          onClick={() => {
+            widgetId.current = null; // the widget unmounts with the form; render a fresh one
+            setStatus({ kind: "idle" });
+          }}
+          className="text-xs underline text-emerald-200 hover:text-white transition-colors"
+        >
           Send another
         </button>
       </div>
     );
   }
+
+  const awaitingTurnstile = Boolean(TURNSTILE_SITE_KEY) && !turnstileToken;
 
   const field = (name: string) => (status.kind === "error" && status.field === name ? "border-rose-400/60" : "");
 
@@ -142,6 +202,13 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
         <input id={`${id}-website`} name="website" value={website} onChange={(e) => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off" />
       </div>
 
+      {TURNSTILE_SITE_KEY && (
+        <>
+          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" onLoad={mountTurnstile} />
+          <div ref={turnstileEl} className="min-h-[65px]" aria-label="Verification" />
+        </>
+      )}
+
       {status.kind === "error" && (
         <p role="alert" className="rounded-lg border border-rose-400/40 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">
           {status.message}
@@ -158,10 +225,11 @@ export default function ContactForm({ defaultTopic = "general" }: { defaultTopic
         </p>
         <button
           type="submit"
-          disabled={status.kind === "sending"}
+          disabled={status.kind === "sending" || awaitingTurnstile}
+          title={awaitingTurnstile ? "Waiting for the verification check" : undefined}
           className="shrink-0 rounded-lg border border-blue-500/40 bg-blue-500/20 px-5 py-2 text-sm font-medium text-blue-200 hover:bg-blue-500/30 disabled:opacity-60 transition-colors"
         >
-          {status.kind === "sending" ? "Sending…" : "Send message"}
+          {status.kind === "sending" ? "Sending…" : awaitingTurnstile ? "Verifying…" : "Send message"}
         </button>
       </div>
     </form>

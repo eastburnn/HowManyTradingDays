@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   const date = parseISODate(dateParam);
   if (!date) {
     return NextResponse.json(
-      { error: "invalid date — use YYYY-MM-DD between 1950 and 2100" },
+      { error: "invalid date: use YYYY-MM-DD between 1950 and 2100" },
       { status: 400, headers: CORS_HEADERS }
     );
   }
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       resultWeekday: resultInfo.weekday,
       resultIsEarlyClose: resultInfo.isEarlyClose,
       note:
-        "Counts trading days strictly after (or before, for negative values) the start date — days=1 from a trade date gives the T+1 settlement date. days=0 returns the nearest trading day on or after the date.",
+        "Counts trading days strictly after (or before, for negative values) the start date: days=1 from a trade date gives the T+1 settlement date. days=0 returns the nearest trading day on or after the date.",
       source: "https://howmanytradingdays.com",
     },
     { headers: CORS_HEADERS }

@@ -30,7 +30,7 @@ function computeTarget(): Target {
       kicker: "Closes in",
       target,
       secondary: status.isEarlyClose
-        ? ["Early close today — session ends at 1:00 p.m. ET"]
+        ? ["Early close today: session ends at 1:00 p.m. ET"]
         : ["Today's regular session ends at 4:00 p.m. ET"],
     };
   }

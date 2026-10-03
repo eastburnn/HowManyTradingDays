@@ -37,8 +37,8 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => observedFixedHoliday(y, 0, 1),
     blurb: [
       "U.S. stock markets are closed on New Year's Day. It is one of the ten official NYSE and Nasdaq holidays.",
-      "When January 1 falls on a Saturday, the exchanges do not observe a substitute day off — markets simply reopen the following Monday. When it falls on a Sunday, markets are closed the following Monday instead.",
-      "That Saturday rule makes New Year's Day the only holiday that can disappear from the market calendar entirely — in those years the exchanges observe nine holidays instead of ten. New Year's Eve, by contrast, is always a full trading session when it falls on a weekday.",
+      "When January 1 falls on a Saturday, the exchanges do not observe a substitute day off: markets simply reopen the following Monday. When it falls on a Sunday, markets are closed the following Monday instead.",
+      "That Saturday rule makes New Year's Day the only holiday that can disappear from the market calendar entirely: in those years the exchanges observe nine holidays instead of ten. New Year's Eve, by contrast, is always a full trading session when it falls on a weekday.",
     ],
     bondMarketClosed: true,
   },
@@ -49,7 +49,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => nthWeekdayOfMonth(y, 0, 1, 3),
     blurb: [
       "U.S. stock markets are closed on Martin Luther King Jr. Day, observed on the third Monday of January. The NYSE and Nasdaq have observed the holiday since 1998.",
-      "It was the most recently added market holiday for over two decades, until Juneteenth joined the calendar in 2022. Because it always falls on a Monday, it creates a guaranteed three-day weekend — the first market break of every year after New Year's Day.",
+      "It was the most recently added market holiday for over two decades, until Juneteenth joined the calendar in 2022. Because it always falls on a Monday, it creates a guaranteed three-day weekend, the first market break of every year after New Year's Day.",
     ],
     bondMarketClosed: true,
   },
@@ -70,8 +70,8 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "closed",
     getDate: (y) => addDays(easterSunday(y), -2),
     blurb: [
-      "U.S. stock markets are closed on Good Friday, even though it is not a federal holiday. It is one of the oldest traditions on the NYSE calendar — the exchange has closed for Good Friday nearly every year since the 1800s.",
-      "Because Good Friday is tied to Easter, its date moves each year — it can fall anywhere from late March to late April.",
+      "U.S. stock markets are closed on Good Friday, even though it is not a federal holiday. It is one of the oldest traditions on the NYSE calendar: the exchange has closed for Good Friday nearly every year since the 1800s.",
+      "Because Good Friday is tied to Easter, its date moves each year: it can fall anywhere from late March to late April.",
     ],
     bondMarketClosed: true,
   },
@@ -81,7 +81,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "open",
     getDate: (y) => addDays(easterSunday(y), 1),
     blurb: [
-      "Yes — U.S. stock markets are open on Easter Monday. Unlike many European exchanges (London, Frankfurt, Paris), which close for Easter Monday, the NYSE and Nasdaq trade a normal full session.",
+      "Yes, U.S. stock markets are open on Easter Monday. Unlike many European exchanges (London, Frankfurt, Paris), which close for Easter Monday, the NYSE and Nasdaq trade a normal full session.",
       "Note that markets are closed the Friday before (Good Friday), so Easter Monday is the first session after a three-day weekend.",
     ],
   },
@@ -92,7 +92,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => lastWeekdayOfMonth(y, 4, 1),
     blurb: [
       "U.S. stock markets are closed on Memorial Day, observed on the last Monday of May. It marks the unofficial start of summer and is a full market holiday.",
-      "Unlike Thanksgiving or Independence Day, Memorial Day has no early-close session attached to it — the Friday before is a normal full trading day ending at 4:00 p.m. ET.",
+      "Unlike Thanksgiving or Independence Day, Memorial Day has no early-close session attached to it: the Friday before is a normal full trading day ending at 4:00 p.m. ET.",
     ],
     bondMarketClosed: true,
   },
@@ -102,7 +102,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "closed",
     getDate: (y) => observedFixedHoliday(y, 5, 19),
     blurb: [
-      "U.S. stock markets are closed for Juneteenth National Independence Day (June 19). It became a federal holiday in 2021, and the NYSE and Nasdaq began observing it in 2022 — making it the newest holiday on the market calendar.",
+      "U.S. stock markets are closed for Juneteenth National Independence Day (June 19). It became a federal holiday in 2021, and the NYSE and Nasdaq began observing it in 2022, making it the newest holiday on the market calendar.",
       "It was the first holiday added to the exchange calendar since Martin Luther King Jr. Day in 1998. When June 19 falls on a Saturday the market closes the Friday before, and when it falls on a Sunday the closure moves to Monday, June 20.",
     ],
     bondMarketClosed: true,
@@ -135,8 +135,8 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "open",
     getDate: (y) => nthWeekdayOfMonth(y, 9, 1, 2),
     blurb: [
-      "Yes — U.S. stock markets are open on Columbus Day (also observed as Indigenous Peoples' Day), the second Monday of October. It is a federal holiday, so banks and government offices are closed, but the NYSE and Nasdaq trade a normal full session.",
-      "The bond market, however, is closed — SIFMA recommends a full bond market close on Columbus Day. This is one of the few days when stocks trade but Treasuries do not.",
+      "Yes, U.S. stock markets are open on Columbus Day (also observed as Indigenous Peoples' Day), the second Monday of October. It is a federal holiday, so banks and government offices are closed, but the NYSE and Nasdaq trade a normal full session.",
+      "The bond market, however, is closed: SIFMA recommends a full bond market close on Columbus Day. This is one of the few days when stocks trade but Treasuries do not.",
       COMMON_OPEN_NOTE,
     ],
     bondMarketClosed: true,
@@ -147,7 +147,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "open",
     getDate: (y) => addDays(nthWeekdayOfMonth(y, 10, 1, 1), 1), // Tuesday after the first Monday of November
     blurb: [
-      "Yes — U.S. stock markets are open on Election Day. The NYSE stopped closing for presidential elections after 1980; since 1984, every Election Day has been a normal full trading session.",
+      "Yes, U.S. stock markets are open on Election Day. The NYSE stopped closing for presidential elections after 1980; since 1984, every Election Day has been a normal full trading session.",
       "Election Day falls on the Tuesday after the first Monday of November. Markets are open regular hours (9:30 a.m.–4:00 p.m. ET) regardless of whether it is a presidential or midterm election year.",
     ],
   },
@@ -157,7 +157,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "open",
     getDate: (y) => new Date(y, 10, 11),
     blurb: [
-      "Yes — U.S. stock markets are open on Veterans Day (November 11). It is a federal holiday, so banks and post offices are closed, but the NYSE and Nasdaq trade a normal full session.",
+      "Yes, U.S. stock markets are open on Veterans Day (November 11). It is a federal holiday, so banks and post offices are closed, but the NYSE and Nasdaq trade a normal full session.",
       "The bond market is the exception: SIFMA recommends a full bond market close on Veterans Day, so Treasuries do not trade even though stocks do.",
       COMMON_OPEN_NOTE,
     ],
@@ -181,7 +181,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "early-close",
     getDate: (y) => addDays(nthWeekdayOfMonth(y, 10, 4, 4), 1),
     blurb: [
-      "Yes — U.S. stock markets are open on Black Friday (the day after Thanksgiving), but only for a shortened session: trading ends early at 1:00 p.m. ET instead of the usual 4:00 p.m.",
+      "Yes, U.S. stock markets are open on Black Friday (the day after Thanksgiving), but only for a shortened session: trading ends early at 1:00 p.m. ET instead of the usual 4:00 p.m.",
       "It is typically one of the lightest-volume sessions of the year, with many traders away for the holiday weekend.",
     ],
   },
@@ -192,7 +192,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => new Date(y, 11, 24),
     blurb: [
       "When Christmas Eve (December 24) falls on a weekday, U.S. stock markets are open for a shortened session that ends at 1:00 p.m. ET. When it falls on a weekend, there is no session at all.",
-      "One exception: when Christmas Day falls on a Saturday, the Christmas holiday is observed on Friday, December 24 — in those years the market is fully closed on Christmas Eve.",
+      "One exception: when Christmas Day falls on a Saturday, the Christmas holiday is observed on Friday, December 24. In those years the market is fully closed on Christmas Eve.",
     ],
   },
   {
@@ -202,7 +202,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     getDate: (y) => observedFixedHoliday(y, 11, 25),
     blurb: [
       "U.S. stock markets are closed on Christmas Day. When December 25 falls on a Saturday, the holiday is observed the Friday before; when it falls on a Sunday, markets close the following Monday.",
-      "In most years the closure pairs with a 1:00 p.m. ET early close on Christmas Eve, and the sessions between Christmas and New Year's are typically among the lightest-volume of the year — the stretch associated with the so-called Santa Claus rally.",
+      "In most years the closure pairs with a 1:00 p.m. ET early close on Christmas Eve, and the sessions between Christmas and New Year's are typically among the lightest-volume of the year, the stretch associated with the so-called Santa Claus rally.",
     ],
     bondMarketClosed: true,
   },
@@ -212,7 +212,7 @@ export const HOLIDAY_PAGES: HolidayPageDef[] = [
     shortAnswer: "open",
     getDate: (y) => new Date(y, 11, 31),
     blurb: [
-      "Yes — U.S. stock markets are open for a full session on New Year's Eve (December 31) when it falls on a weekday. Unlike Christmas Eve, there is no early close: trading runs the normal 9:30 a.m.–4:00 p.m. ET.",
+      "Yes, U.S. stock markets are open for a full session on New Year's Eve (December 31) when it falls on a weekday. Unlike Christmas Eve, there is no early close: trading runs the normal 9:30 a.m.–4:00 p.m. ET.",
       "It is the final trading day of the year (when it falls on a weekday), which makes it the deadline for same-year trade dates.",
     ],
   },
@@ -248,7 +248,7 @@ export function resolveYearStatus(def: HolidayPageDef, year: number): YearStatus
   );
 
   if (dow === 0 || dow === 6) {
-    return { year, dateISO: iso, weekdayName, status: "weekend", detail: "Falls on a weekend — no session" };
+    return { year, dateISO: iso, weekdayName, status: "weekend", detail: "Falls on a weekend: no session" };
   }
   if (holidayOnDate?.type === "closed") {
     return { year, dateISO: iso, weekdayName, status: "closed", detail: "Market closed" };
@@ -256,7 +256,7 @@ export function resolveYearStatus(def: HolidayPageDef, year: number): YearStatus
   if (holidayOnDate?.type === "half-day") {
     return { year, dateISO: iso, weekdayName, status: "early-close", detail: "Open until 1:00 p.m. ET" };
   }
-  return { year, dateISO: iso, weekdayName, status: "open", detail: "Open — regular hours" };
+  return { year, dateISO: iso, weekdayName, status: "open", detail: "Open: regular hours" };
 }
 
 export function getHolidayPage(slug: string): HolidayPageDef | undefined {

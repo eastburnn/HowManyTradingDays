@@ -39,7 +39,7 @@ export function generateMetadata(): Metadata {
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: "How Many Trading Days — U.S. stock market trading days left this year",
+          alt: "How Many Trading Days: U.S. stock market trading days left this year",
         },
       ],
       type: "website",
@@ -79,7 +79,7 @@ export default function TradingDaysInAMonthPage() {
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             There are about <span className="font-semibold text-slate-200">21</span> trading days
-            in a month on average for U.S. stock markets — anywhere from {min} to {max} depending
+            in a month on average for U.S. stock markets, anywhere from {min} to {max} depending
             on how weekends and market holidays fall. Below: every month and quarter of {year}.
           </p>
         </header>
@@ -132,7 +132,7 @@ export default function TradingDaysInAMonthPage() {
                       {m.sessions}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-400">
-                      {m.holidayNames.length > 0 ? m.holidayNames.join(", ") : "—"}
+                      {m.holidayNames.length > 0 ? m.holidayNames.join(", ") : "-"}
                     </td>
                   </tr>
                 ))}
@@ -194,7 +194,7 @@ export default function TradingDaysInAMonthPage() {
             December can drop to {min}.
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
-            The exact counts change every year as weekends and holidays shift — the table above
+            The exact counts change every year as weekends and holidays shift. The table above
             always shows the current year. For yearly totals back to 1990, see{" "}
             <Link href="/trading-days-in-a-year" className="text-blue-300 hover:text-blue-200 transition-colors">
               trading days in a year

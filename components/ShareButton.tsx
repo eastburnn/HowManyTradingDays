@@ -5,9 +5,18 @@ import type { RefObject } from "react";
 import { toPng } from "html-to-image";
 import { domine } from "../app/fonts"; // ensures Domine is bundled
 
+/**
+ * Share / save controls that live in a corner of the main card. The exported
+ * image is rendered from the card itself, so the controls are marked
+ * data-export-ignore and filtered out of the capture; the watermark is then
+ * drawn under the card on a canvas.
+ */
+
 type ShareButtonProps = {
   cardRef: RefObject<HTMLDivElement | null>;
 };
+
+const EXPORT_IGNORE = "exportIgnore"; // data-export-ignore
 
 export default function ShareButton({ cardRef }: ShareButtonProps) {
   const [mode, setMode] = useState<null | "share" | "save">(null);
@@ -35,7 +44,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         el.style.outline = "0";
         el.style.boxShadow = "none";
         el.style.filter = "none";
-        (el.style as any).backdropFilter = "none";
+        el.style.setProperty("backdrop-filter", "none");
         el.style.transform = "none";
       }
     };
@@ -63,6 +72,8 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         cacheBust: true,
         backgroundColor: "#020617",
         pixelRatio,
+        // The share/save controls themselves never appear in the image
+        filter: (el) => !(el instanceof HTMLElement && el.dataset[EXPORT_IGNORE] !== undefined),
         style: {
           borderRadius: "0px",
           overflow: "hidden",
@@ -140,12 +151,8 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       const { finalDataUrl, file } = await generateImage();
 
       const shareData: ShareData = { files: [file] };
-      const navAny = navigator as any;
 
-      if (
-        navigator.share &&
-        (!navAny.canShare || navAny.canShare({ files: [file] }))
-      ) {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
         await navigator.share(shareData);
       } else {
         const link = document.createElement("a");
@@ -153,9 +160,8 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         link.download = "trading-days.png";
         link.click();
       }
-    } catch (err: any) {
-      const name = err?.name || "";
-      const message = err?.message || "";
+    } catch (err: unknown) {
+      const { name = "", message = "" } = (err ?? {}) as { name?: string; message?: string };
 
       const isUserCancel =
         name === "AbortError" ||
@@ -167,7 +173,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
         setError(null);
       } else {
         console.error(err);
-        setError("Something went wrong exporting the image.");
+        setError("Couldn't export the image.");
       }
     } finally {
       setMode(null);
@@ -187,92 +193,82 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       link.click();
     } catch (err) {
       console.error(err);
-      setError("Something went wrong saving the image.");
+      setError("Couldn't save the image.");
     } finally {
       setMode(null);
     }
   };
 
-  return (
-    <div className="w-full flex flex-col items-center gap-1">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleShare}
-          disabled={isWorking}
-          className={`
-            group relative inline-flex items-center gap-2
-            rounded-xl px-4 py-2 text-xs font-medium
-            bg-slate-800/60 text-slate-200 shadow-sm backdrop-blur
-            border border-slate-700/60
-            transition-all duration-200
-            hover:bg-slate-700/60 hover:border-slate-600/60 hover:shadow-md
-            active:scale-[0.97]
-            disabled:opacity-50 disabled:cursor-not-allowed
-          `}
-        >
-          <span className="transition-opacity duration-150 group-hover:opacity-90">
-            {mode === "share" ? "Preparing..." : "Share"}
-          </span>
+  const buttonClass = `
+    inline-flex h-7 w-7 items-center justify-center rounded-lg
+    border border-slate-700/60 bg-slate-800/60 text-slate-400
+    transition-colors duration-150
+    hover:border-slate-600/60 hover:bg-slate-700/60 hover:text-white
+    active:scale-[0.96]
+    disabled:cursor-wait disabled:opacity-60
+  `;
 
-          <svg
-            className="w-4 h-4 text-slate-300 group-hover:text-white transition"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
+  const Spinner = (
+    <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+    </svg>
+  );
+
+  return (
+    <div
+      data-export-ignore=""
+      className="absolute right-2.5 top-2.5 sm:right-3 sm:top-3 flex items-center gap-1.5"
+    >
+      <button
+        type="button"
+        onClick={handleShare}
+        disabled={isWorking}
+        aria-busy={mode === "share"}
+        aria-label="Share as image"
+        title="Share as image"
+        className={buttonClass}
+      >
+        {mode === "share" ? (
+          Spinner
+        ) : (
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="18" cy="5" r="3" />
             <circle cx="6" cy="12" r="3" />
             <circle cx="18" cy="19" r="3" />
             <line x1="8.6" y1="13.4" x2="15.4" y2="6.6" />
             <line x1="8.6" y1="10.6" x2="15.4" y2="17.4" />
           </svg>
+        )}
+      </button>
 
-          <span className="absolute inset-0 rounded-xl bg-slate-400/10 opacity-0 group-hover:opacity-100 transition pointer-events-none" />
-        </button>
-
-        <button
-          onClick={handleSave}
-          disabled={isWorking}
-          className={`
-            group relative inline-flex items-center gap-2
-            rounded-xl px-4 py-2 text-xs font-medium
-            bg-slate-800/60 text-slate-200 shadow-sm backdrop-blur
-            border border-slate-700/60
-            transition-all duration-200
-            hover:bg-slate-700/60 hover:border-slate-600/60 hover:shadow-md
-            active:scale-[0.97]
-            disabled:opacity-50 disabled:cursor-not-allowed
-          `}
-        >
-          <span className="transition-opacity duration-150 group-hover:opacity-90">
-            {mode === "save" ? "Preparing..." : "Save"}
-          </span>
-
-          <svg
-            className="w-4 h-4 text-slate-300 group-hover:text-white transition"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 3v12m0 0l-4-4m4 4l4-4"
-            />
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={isWorking}
+        aria-busy={mode === "save"}
+        aria-label="Save as image"
+        title="Save as image"
+        className={buttonClass}
+      >
+        {mode === "save" ? (
+          Spinner
+        ) : (
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4" />
           </svg>
+        )}
+      </button>
 
-          <span className="absolute inset-0 rounded-xl bg-slate-400/10 opacity-0 group-hover:opacity-100 transition pointer-events-none" />
-        </button>
-      </div>
-
-      {error && <p className="text-[10px] text-red-400">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="absolute right-0 top-9 whitespace-nowrap rounded-md border border-rose-400/40 bg-slate-950 px-2 py-1 text-[10px] text-rose-300"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import ContactForm from "@/components/ContactForm";
 import { CONTACT_TOPICS, type ContactTopic } from "@/lib/contact";
 
-const title = "Contact — How Many Trading Days";
+const title = "Contact | How Many Trading Days";
 const description =
   "Questions, advertising, a wrong earnings date, or something broken: send a message to HowManyTradingDays.com.";
 
@@ -36,7 +36,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             A question about the site, an advertising inquiry, an earnings date that looks wrong, or something
-            that isn&apos;t working — send a note. I read every message and reply by email, usually within a
+            that isn&apos;t working: send a note. I read every message and reply by email, usually within a
             day.
           </p>
         </header>

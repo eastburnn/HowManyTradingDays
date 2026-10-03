@@ -141,7 +141,7 @@ export async function sendContactEmail(m: ContactMessage): Promise<{ id: string 
   const received = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }) + " ET";
 
   const text = [
-    `HOW MANY TRADING DAYS — CONTACT FORM`,
+    `HOW MANY TRADING DAYS / CONTACT FORM`,
     ``,
     `From:  ${m.name} <${m.email}>`,
     `Topic: ${label}`,
@@ -149,7 +149,7 @@ export async function sendContactEmail(m: ContactMessage): Promise<{ id: string 
     ``,
     m.message,
     ``,
-    `—`,
+    `----------`,
     `Sent from the contact form at ${SITE}/contact. Reply to this email to answer ${m.name} directly.`,
   ].join("\n");
 
@@ -164,7 +164,7 @@ export async function sendContactEmail(m: ContactMessage): Promise<{ id: string 
       { label: "Received", value: received },
     ],
     bodyHtml: `<div style="white-space:pre-wrap;">${escapeHtml(m.message)}</div>`,
-    cta: { label: `Reply to ${m.name.split(" ")[0]}`, href: `mailto:${m.email}?subject=${encodeURIComponent(`Re: ${label} — How Many Trading Days`)}` },
+    cta: { label: `Reply to ${m.name.split(" ")[0]}`, href: `mailto:${m.email}?subject=${encodeURIComponent(`Re: ${label} (How Many Trading Days)`)}` },
     footerNote: `Sent from the contact form at ${SITE.replace("https://", "")}/contact. Replying to this email goes to the sender.`,
   });
 

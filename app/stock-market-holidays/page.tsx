@@ -46,7 +46,7 @@ export function generateMetadata(): Metadata {
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: "How Many Trading Days — U.S. stock market trading days left this year",
+          alt: "How Many Trading Days: U.S. stock market trading days left this year",
         },
       ],
       type: "website",
@@ -155,12 +155,12 @@ export default function StockMarketHolidaysPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             When a fixed-date holiday falls on a Saturday, the market closes the Friday before;
             when it falls on a Sunday, the market closes the following Monday. The one exception
-            is New Year&apos;s Day on a Saturday — no substitute day is observed, and trading
+            is New Year&apos;s Day on a Saturday: no substitute day is observed, and trading
             simply resumes Monday.
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
             Early-close sessions (1:00 p.m. ET) typically occur on July 3, the day after
-            Thanksgiving, and Christmas Eve — but only when those dates land on a weekday.
+            Thanksgiving, and Christmas Eve, but only when those dates land on a weekday.
           </p>
         </section>
 

@@ -74,7 +74,7 @@ export function timeOfDayShort(tod: EarningsEvent["timeOfDay"]): string {
     case "during-market":
       return "Mid-day";
     default:
-      return "—";
+      return "-";
   }
 }
 

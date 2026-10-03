@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import Script from "next/script";
 import { domine } from "./fonts";
 import ShareButton from "@/components/ShareButton";
@@ -152,8 +153,11 @@ export default function HomePage() {
         <section className="w-full">
           <div
             ref={cardRef}
-            className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-8 sm:p-8 flex flex-col items-center gap-3"
+            className="relative w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl px-8 pb-8 pt-12 sm:pt-8 flex flex-col items-center gap-3"
           >
+            {/* Share / save as image: in the corner, excluded from the export itself */}
+            <ShareButton cardRef={cardRef} />
+
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Trading Days Left in {year}
             </p>
@@ -188,38 +192,62 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* SHARE BUTTON */}
-        <div className="w-full flex justify-center -mt-8">
-          <ShareButton cardRef={cardRef} />
-        </div>
-
-        {/* CALCULATOR CTA */}
-        <a
-          href="/calculator"
-          className="
-            group w-full flex items-center justify-between
-            rounded-lg border border-slate-800 bg-slate-900/70
-            px-4 py-3 -mt-4
-            hover:border-slate-700 hover:bg-slate-900
-            transition-all duration-150 active:scale-[0.99]
-          "
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-              <rect x="4" y="2" width="16" height="20" rx="2" />
-              <line x1="8" y1="7" x2="16" y2="7" />
-              <line x1="8" y1="11" x2="16" y2="11" />
-              <line x1="8" y1="15" x2="12" y2="15" />
-            </svg>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-slate-100">Trading Days Calculator</span>
-              <span className="text-xs text-slate-500">See trading days remaining until any date</span>
+        {/* CALCULATOR + EARNINGS */}
+        <div className="w-full grid grid-cols-2 gap-3 -mt-4">
+          <Link
+            href="/calculator"
+            className="
+              group flex items-center justify-between gap-2
+              rounded-lg border border-slate-800 bg-slate-900/70
+              px-3 py-3 sm:px-4
+              hover:border-slate-700 hover:bg-slate-900
+              transition-all duration-150 active:scale-[0.99]
+            "
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="8" y1="7" x2="16" y2="7" />
+                <line x1="8" y1="11" x2="16" y2="11" />
+                <line x1="8" y1="15" x2="12" y2="15" />
+              </svg>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-slate-100 leading-tight">Trading Days Calculator</span>
+                <span className="text-xs text-slate-500 leading-tight">Count days to any date</span>
+              </div>
             </div>
-          </div>
-          <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </a>
+            <svg className="hidden sm:block w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+
+          <Link
+            href="/earnings"
+            className="
+              group flex items-center justify-between gap-2
+              rounded-lg border border-slate-800 bg-slate-900/70
+              px-3 py-3 sm:px-4
+              hover:border-slate-700 hover:bg-slate-900
+              transition-all duration-150 active:scale-[0.99]
+            "
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-slate-100 leading-tight">Earnings Dates</span>
+                <span className="text-xs text-slate-500 leading-tight">When companies report</span>
+              </div>
+            </div>
+            <svg className="hidden sm:block w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
 
         {/* FISCAL.AI AD (directly below live counter, above upcoming holidays) */}
         <aside

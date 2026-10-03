@@ -23,7 +23,7 @@ function describe(status: MarketStatus): { word: string; detail: string } {
     const closeLabel = status.isEarlyClose ? "1:00 p.m." : "4:00 p.m.";
     return {
       word: "open",
-      detail: `Closes in ${formatCountdown(closeMin - minutesNow)} (${closeLabel} ET${status.isEarlyClose ? " — early close" : ""})`,
+      detail: `Closes in ${formatCountdown(closeMin - minutesNow)} (${closeLabel} ET${status.isEarlyClose ? ", early close" : ""})`,
     };
   }
 

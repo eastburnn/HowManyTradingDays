@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   const to = parseISODate(toParam);
   if (!from || !to) {
     return NextResponse.json(
-      { error: "invalid date — use YYYY-MM-DD between 1950 and 2100" },
+      { error: "invalid date: use YYYY-MM-DD between 1950 and 2100" },
       { status: 400, headers: CORS_HEADERS }
     );
   }

@@ -44,7 +44,7 @@ export function generateMetadata(): Metadata {
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: "How Many Trading Days — U.S. stock market trading days left this year",
+          alt: "How Many Trading Days: U.S. stock market trading days left this year",
         },
       ],
       type: "website",
@@ -100,7 +100,7 @@ export default function TradingDaysInAYearPage() {
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             There are usually about <span className="font-semibold text-slate-200">252</span> trading
-            days in a year for the U.S. stock market — the exact number varies with how weekends
+            days in a year for the U.S. stock market. The exact number varies with how weekends
             and holidays fall. Below: this year&apos;s total and every year back
             to {START_YEAR}.
           </p>
@@ -146,7 +146,7 @@ export default function TradingDaysInAYearPage() {
           <div className="flex flex-col">
             <span className="text-sm font-medium text-slate-100">Looking for monthly counts?</span>
             <span className="text-xs text-slate-500">
-              Months average about 21 trading days — see every month and quarter of {year}
+              Months average about 21 trading days: see every month and quarter of {year}
             </span>
           </div>
           <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -160,7 +160,7 @@ export default function TradingDaysInAYearPage() {
             Trading days per year, {START_YEAR}–{END_YEAR}
           </h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Exact totals for every year — including unscheduled closures such as September 11 and
+            Exact totals for every year, including unscheduled closures such as September 11 and
             Hurricane Sandy, which most published counts miss. Totals range from{" "}
             <span className="font-semibold text-slate-200">{min}</span> to{" "}
             <span className="font-semibold text-slate-200">{max}</span> sessions.
@@ -191,7 +191,7 @@ export default function TradingDaysInAYearPage() {
                     <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.weekdays}</td>
                     <td className="px-4 py-2 text-center tabular-nums text-slate-400">{y.closedHolidays}</td>
                     <td className={`px-4 py-2 text-center tabular-nums whitespace-nowrap ${y.unscheduledClosures > 0 ? "text-amber-300 font-medium" : "text-slate-600"}`}>
-                      {y.unscheduledClosures > 0 ? y.unscheduledClosures : "—"}
+                      {y.unscheduledClosures > 0 ? y.unscheduledClosures : "-"}
                     </td>
                     <td className={`px-4 py-2 text-center tabular-nums font-semibold ${y.year === year ? "text-blue-200" : "text-slate-100"}`}>
                       {y.sessions}
@@ -204,7 +204,7 @@ export default function TradingDaysInAYearPage() {
           <p className="text-[11px] text-slate-500 leading-relaxed">
             Early-close sessions (1 p.m. ET) are counted as full trading days, per the standard
             convention. Counting them as half days instead, {year} has {current.halfDayAdjusted % 1 === 0 ? current.halfDayAdjusted : current.halfDayAdjusted.toFixed(1)} trading
-            days — the convention used by our{" "}
+            days, the convention used by our{" "}
             <Link href="/" className="underline text-slate-400 hover:text-slate-200 transition-colors">
               live countdown
             </Link>
@@ -221,7 +221,7 @@ export default function TradingDaysInAYearPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             Beyond the scheduled holiday calendar, U.S. markets have closed{" "}
             {UNSCHEDULED_CLOSURES.length} times since {START_YEAR} for national days of mourning
-            and emergencies — all reflected in the totals above. The low outlier is 2001, where
+            and emergencies, all reflected in the totals above. The low outlier is 2001, where
             the four-day closure after September 11 brought the year down to 248 sessions.
           </p>
           <ul className="space-y-2 text-sm">
@@ -265,7 +265,7 @@ export default function TradingDaysInAYearPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             The historical totals also reflect changes to the holiday calendar itself: Martin
             Luther King Jr. Day has been observed only since 1998, and Juneteenth only since
-            2022 — so earlier years correctly show fewer scheduled holidays, not a projection of
+            2022, so earlier years correctly show fewer scheduled holidays, not a projection of
             today&apos;s calendar backward.
           </p>
         </section>
@@ -278,7 +278,7 @@ export default function TradingDaysInAYearPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             U.S. equity markets close for New Year&apos;s Day, Martin Luther King Jr. Day,
             Presidents&apos; Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor
-            Day, Thanksgiving, and Christmas. In addition, a few sessions close early at 1 p.m. ET —
+            Day, Thanksgiving, and Christmas. In addition, a few sessions close early at 1 p.m. ET,
             typically July 3, the day after Thanksgiving, and Christmas Eve, when they fall on a
             weekday. See the{" "}
             <Link href="/stock-market-holidays" className="text-blue-300 hover:text-blue-200 transition-colors">

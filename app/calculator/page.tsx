@@ -121,7 +121,7 @@ export default function CalculatorPage() {
             Trading Days Calculator
           </h1>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Count U.S. stock market trading days and calendar days between today — or any start date — and a target date.
+            Count U.S. stock market trading days and calendar days between today (or any start date) and a target date.
           </p>
         </header>
 

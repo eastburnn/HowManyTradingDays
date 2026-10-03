@@ -9,7 +9,7 @@ export const revalidate = 86400;
 
 const title = "Is the Stock Market Open Today?";
 const description =
-  "Live U.S. stock market status — see whether the NYSE and Nasdaq are open right now, today's closing time, and the full holiday schedule.";
+  "Live U.S. stock market status: see whether the NYSE and Nasdaq are open right now, today's closing time, and the full holiday schedule.";
 
 export const metadata: Metadata = {
   title,
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "How Many Trading Days — U.S. stock market trading days left this year",
+        alt: "How Many Trading Days: U.S. stock market trading days left this year",
       },
     ],
     type: "website",
@@ -102,14 +102,14 @@ export default function IsMarketOpenPage() {
           </h2>
           <p className="text-sm text-slate-400 leading-relaxed">
             U.S. stock markets are open Monday through Friday, except for ten scheduled
-            holidays each year — New Year&apos;s Day, Martin Luther King Jr. Day,
+            holidays each year: New Year&apos;s Day, Martin Luther King Jr. Day,
             Presidents&apos; Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
             Labor Day, Thanksgiving, and Christmas. When one of these falls on a weekend,
             the closure moves to the nearest weekday (Friday before a Saturday holiday,
             Monday after a Sunday one).
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
-            A few sessions each year also end early at 1:00 p.m. ET instead of 4:00 p.m. —
+            A few sessions each year also end early at 1:00 p.m. ET instead of 4:00 p.m.,
             typically the day after Thanksgiving, Christmas Eve, and July 3 when they land on
             weekdays. Note that the stock market&apos;s schedule differs from the bank
             calendar: on federal holidays like{" "}

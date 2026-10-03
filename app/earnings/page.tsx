@@ -126,15 +126,15 @@ export default async function EarningsCalendarPage() {
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>How these dates are estimated</h2>
           <p className="text-sm text-slate-400 leading-relaxed">
             Every company on this calendar files its earnings releases with the SEC on Form 8-K. We read that
-            history — how many days after each fiscal quarter ended the company reported, on which weekday, and
-            at what time of day — and project the pattern onto the current quarter, using the same fiscal
+            history (how many days after each fiscal quarter ended the company reported, on which weekday, and
+            at what time of day) and project the pattern onto the current quarter, using the same fiscal
             quarter in prior years. Each ticker page shows the past dates the estimate is based on and how
             reliable that company&apos;s pattern has been. &ldquo;Window&rdquo; marks companies whose pattern is
             too irregular for a single date.
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
             Counts are in U.S. stock market trading days: weekdays excluding NYSE/Nasdaq holidays, with early-close
-            sessions counted as half days — the same engine behind the{" "}
+            sessions counted as half days, the same engine behind the{" "}
             <Link href="/" className="text-blue-300 hover:text-blue-200 transition-colors">
               live counter
             </Link>{" "}

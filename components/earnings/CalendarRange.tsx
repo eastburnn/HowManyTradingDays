@@ -85,7 +85,7 @@ export default function CalendarRange({ today, initialRows, initialDays, initial
   const heading = daysShown <= QUARTER_DAYS ? `Next ${daysShown} days` : `Through ${formatMediumDate(through)}`;
   const options = [
     { label: "Next 60 days", target: addDaysISO(today, 60) },
-    { label: "Next 90 days — a full quarter", target: addDaysISO(today, QUARTER_DAYS) },
+    { label: "Next 90 days (a full quarter)", target: addDaysISO(today, QUARTER_DAYS) },
     ...(maxDate ? [{ label: `Everything on file, through ${formatMediumDate(maxDate)}`, target: maxDate }] : []),
   ].filter((o) => o.target > through && (!maxDate || o.target <= maxDate));
 
@@ -110,7 +110,7 @@ export default function CalendarRange({ today, initialRows, initialDays, initial
         <div className="rounded-xl border border-dashed border-slate-800 px-4 py-4 text-center space-y-3">
           <p className="text-sm text-slate-400">
             {everything
-              ? "That's every date on file — estimates run about two quarters ahead."
+              ? "That's every date on file. Estimates run about two quarters ahead."
               : `Showing the next ${daysShown} days. See further ahead:`}
           </p>
           {options.length > 0 && (

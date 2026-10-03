@@ -3,9 +3,9 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 
-const title = "About — How Many Trading Days";
+const title = "About | How Many Trading Days";
 const description =
-  "How HowManyTradingDays.com counts U.S. market trading days — live 4 p.m. ET countdown, NYSE holiday rules, and half-day sessions.";
+  "How HowManyTradingDays.com counts U.S. market trading days: live 4 p.m. ET countdown, NYSE holiday rules, and half-day sessions.";
 
 export const metadata: Metadata = {
   title,
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "How Many Trading Days — U.S. stock market trading days left this year",
+        alt: "How Many Trading Days: U.S. stock market trading days left this year",
       },
     ],
     type: "website",
@@ -80,7 +80,7 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Date Calculator</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Count trading days and calendar days between any two dates — from today or a custom start date.
+              Count trading days and calendar days between any two dates, from today or a custom start date.
             </p>
           </div>
 

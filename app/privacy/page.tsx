@@ -3,7 +3,7 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 
-const title = "Privacy Policy — How Many Trading Days";
+const title = "Privacy Policy | How Many Trading Days";
 const description =
   "How HowManyTradingDays.com handles analytics, cookies, and affiliate links. We collect no accounts, no personal profiles, and sell no data.";
 
@@ -66,7 +66,18 @@ export default function PrivacyPage() {
             inbox by Resend, an email service, which processes them on our behalf. We never add your
             details to a marketing list or share them with anyone else. To prevent abuse we also keep
             a salted hash of the submitting IP address for a short time; the address itself is not
-            stored.
+            stored. The form is protected by Cloudflare Turnstile, which checks that a submission
+            comes from a person; Cloudflare may process your IP address and browser characteristics
+            for that check (see{" "}
+            <a
+              href="https://www.cloudflare.com/privacypolicy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-300 hover:text-blue-200 transition-colors"
+            >
+              Cloudflare&apos;s privacy policy
+            </a>
+            ).
           </p>
         </Section>
 
@@ -83,8 +94,8 @@ export default function PrivacyPage() {
             >
               Google Analytics opt-out browser add-on
             </a>
-            . We may publish aggregate, non-identifying usage statistics — such as monthly
-            visitor counts — for example on our advertising page.
+            . We may publish aggregate, non-identifying usage statistics, such as monthly
+            visitor counts, for example on our advertising page.
           </p>
           <p>
             We use <span className="text-slate-200">Microsoft Clarity</span> to understand how
@@ -134,7 +145,7 @@ export default function PrivacyPage() {
             Depending on where you live (for example, the EU under GDPR or California under
             CCPA), you may have rights to access, correct, or delete personal data. Because this
             site does not maintain accounts or store personal profiles, there is typically
-            nothing for us to look up — the analytics data we hold is not identifiable to you by
+            nothing for us to look up: the analytics data we hold is not identifiable to you by
             us. For anything related to Google&apos;s or Microsoft&apos;s processing, their
             privacy controls linked above are the effective path. You can also reach out with any
             question via the contact below.

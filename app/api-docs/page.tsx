@@ -21,7 +21,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "How Many Trading Days — U.S. stock market trading days left this year",
+        alt: "How Many Trading Days: U.S. stock market trading days left this year",
       },
     ],
     type: "website",
@@ -116,7 +116,7 @@ export default function ApiDocsPage() {
         >
             <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/trading-days?year=2026`}</CodeBlock>
-            <CodeBlock>{`// JavaScript (browser or Node — CORS is enabled)
+            <CodeBlock>{`// JavaScript (browser or Node, CORS is enabled)
 const res = await fetch(
   "https://howmanytradingdays.com/api/trading-days?year=2026"
 );
@@ -158,7 +158,7 @@ print(data["tradingDays"])  # 251`}</CodeBlock>
           url="https://howmanytradingdays.com/api/count?from=2026-11-02&to=2026-12-31"
           description={
             <>
-              Count trading days between any two dates (inclusive) — the{" "}
+              Count trading days between any two dates (inclusive), the{" "}
               <Link href="/calculator" className="text-blue-300 hover:text-blue-200 transition-colors">calculator</Link>,
               as an API. Both <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">from</code> and{" "}
               <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">to</code> are required, as YYYY-MM-DD.
@@ -185,7 +185,7 @@ curl "https://howmanytradingdays.com/api/count?from=2026-11-02&to=2026-12-31"`}<
           url="https://howmanytradingdays.com/api/is-trading-day?date=2026-11-27"
           description={
             <>
-              Check whether a specific date is a trading session — and if so, when it closes.
+              Check whether a specific date is a trading session, and if so, when it closes.
               Also returns the previous and next trading days.{" "}
               <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">date</code> defaults
               to today (ET).
@@ -214,7 +214,7 @@ curl "https://howmanytradingdays.com/api/is-trading-day?date=2026-11-27"`}</Code
           url="https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"
           description={
             <>
-              Add (or subtract) trading days from a date — useful for settlement math:{" "}
+              Add (or subtract) trading days from a date, useful for settlement math:{" "}
               <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">days=1</code> from
               a trade date gives the T+1 settlement date, automatically skipping weekends and
               holidays. <code className="text-slate-200 bg-slate-800/80 px-1 py-0.5 rounded">days</code> may
@@ -222,7 +222,7 @@ curl "https://howmanytradingdays.com/api/is-trading-day?date=2026-11-27"`}</Code
             </>
           }
         >
-          <CodeBlock>{`# curl — T+2 from a Friday lands on Tuesday
+          <CodeBlock>{`# curl: T+2 from a Friday lands on Tuesday
 curl "https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"`}</CodeBlock>
           <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
           <CodeBlock>{`{
@@ -248,12 +248,12 @@ curl "https://howmanytradingdays.com/api/offset?date=2026-08-21&days=2"`}</CodeB
         >
             <CodeBlock>{`# curl
 curl https://howmanytradingdays.com/api/market-status`}</CodeBlock>
-            <CodeBlock>{`// JavaScript — e.g. show an open/closed badge on your site
+            <CodeBlock>{`// JavaScript: e.g. show an open/closed badge on your site
 const res = await fetch("https://howmanytradingdays.com/api/market-status");
 const { isOpen, isEarlyClose, closesAtET } = await res.json();
 
 badge.textContent = isOpen
-  ? \`Market open — closes \${closesAtET} ET\`
+  ? \`Market open, closes \${closesAtET} ET\`
   : "Market closed";`}</CodeBlock>
             <p className="text-sm text-slate-400 leading-relaxed">Sample response:</p>
             <CodeBlock>{`{
@@ -282,7 +282,7 @@ badge.textContent = isOpen
               Holidays are computed algorithmically from NYSE/Nasdaq calendar rules, and
               historical results account for unscheduled closures (e.g. 9/11, days of mourning).
             </li>
-            <li>Responses are cached briefly at the edge. No rate limits, no key — please be reasonable.</li>
+            <li>Responses are cached briefly at the edge. No rate limits, no key, please be reasonable.</li>
             <li>Free for personal and commercial use. Attribution with a link is appreciated.</li>
           </ul>
         </section>
@@ -327,7 +327,7 @@ badge.textContent = isOpen
         {/* DISCLAIMER */}
         <p className="text-[10px] text-slate-600 leading-relaxed">
           Disclaimer: This API and its data are provided free of charge, &quot;as is,&quot; without
-          warranty of any kind — including accuracy, completeness, availability, or fitness for any
+          warranty of any kind, including accuracy, completeness, availability, or fitness for any
           purpose. Nothing here is financial, investment, or trading advice. You are solely
           responsible for how you use this API and for any decisions or outcomes that result. By
           using it, you agree that HowManyTradingDays.com and its creator bear no liability for any

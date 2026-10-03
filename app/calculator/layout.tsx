@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "How Many Trading Days — U.S. stock market trading days left this year",
+        alt: "How Many Trading Days: U.S. stock market trading days left this year",
       },
     ],
     type: "website",

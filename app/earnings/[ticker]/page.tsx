@@ -65,9 +65,9 @@ function accuracySentence(e: EarningsEvent): string {
   const q = `Q${e.fiscalQuarter}`;
   switch (e.confidence) {
     case "high":
-      return `Estimated from ${n} prior fiscal ${q} reports — companies in this tier have reported within 3 days of our estimate about 3 times out of 4.`;
+      return `Estimated from ${n} prior fiscal ${q} reports. Companies in this tier have reported within 3 days of our estimate about 3 times out of 4.`;
     case "medium":
-      return `Estimated from ${n} prior fiscal ${q} report${n === 1 ? "" : "s"} with a less regular pattern — expect the actual date within about a week of this one.`;
+      return `Estimated from ${n} prior fiscal ${q} report${n === 1 ? "" : "s"} with a less regular pattern. Expect the actual date within about a week of this one.`;
     default:
       return `This company's reporting dates vary too much for a precise estimate, so we show an expected window instead of a single date.`;
   }
@@ -103,10 +103,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
         : `${sym} Earnings Date: ${formatMediumDate(next.eventDate)} (${label}) | Countdown`;
     description =
       next.overdue && next.status === "estimated"
-        ? `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} but has not filed yet — expected any day. Past report dates from SEC filings.`
+        ? `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} but has not filed yet. Expected any day. Past report dates from SEC filings.`
         : next.confidence === "low" && next.status === "estimated"
         ? `${name} (${sym}) is expected to report ${fiscalLabel(next)} earnings between ${formatMediumDate(start)} and ${formatMediumDate(end)}. Trading-day countdown and past report dates from SEC filings.`
-        : `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)} — ${tradingDays} trading days away. Live countdown and past report dates.`;
+        : `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}, ${tradingDays} trading days away. Live countdown and past report dates.`;
   } else {
     title = `${sym} Earnings Date | When Does ${name} Report Earnings?`;
     description = `When ${name} (${sym}) reports earnings, with past report dates from SEC filings and a trading-day countdown.`;
@@ -381,9 +381,9 @@ export default async function EarningsTickerPage({ params }: Params) {
               {sym} earnings date history
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              The last {history.length} earnings releases, from {name}&apos;s SEC filings — its earnings 8-Ks, or
+              The last {history.length} earnings releases, from {name}&apos;s SEC filings, its earnings 8-Ks, or
               the quarterly report itself when results are published that way. The &ldquo;days after&rdquo;
-              column is how long after the fiscal quarter ended the company reported — the pattern behind the
+              column is how long after the fiscal quarter ended the company reported, the pattern behind the
               estimate above.
             </p>
             <div className="overflow-x-auto rounded-xl border border-slate-800">
@@ -431,7 +431,7 @@ export default async function EarningsTickerPage({ params }: Params) {
           <p className="text-sm text-slate-400 leading-relaxed">
             Companies report on a rhythm. We read every Form 8-K earnings release and 10-Q/10-K {name} has filed
             with the SEC, work out how many days after each fiscal quarter ended the results came out and on which
-            weekday, and project that pattern onto the current quarter — using the same fiscal quarter from prior
+            weekday, and project that pattern onto the current quarter, using the same fiscal quarter from prior
             years, since fourth-quarter reports run later than the others. The result is snapped to a trading day
             and capped at the SEC filing deadline for a {company.filerCategory.replace("-", " ")} filer.
           </p>
