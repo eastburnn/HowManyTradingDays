@@ -58,11 +58,12 @@ export default function StatusKey({ accuracy }: { accuracy: EstimateAccuracy | n
   return (
     <section aria-label="Key to the status chips" className="-mt-4 space-y-2">
       <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Key</p>
-      <ul className="space-y-2">
+      {/* The same light border as the calendar above, with a row per chip */}
+      <ul className="rounded-2xl border border-slate-300/30 divide-y divide-slate-300/20">
         {ENTRIES.map((e) => {
           const stat = e.status === "estimated" ? record[e.confidence] : undefined;
           return (
-            <li key={`${e.status}-${e.confidence}`} className="flex items-center gap-3">
+            <li key={`${e.status}-${e.confidence}`} className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
               <StatusBadge status={e.status} confidence={e.confidence} />
               <span className="text-xs text-slate-400 leading-relaxed">
                 {e.meaning}

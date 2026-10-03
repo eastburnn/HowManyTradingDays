@@ -175,18 +175,22 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
         >
           ‹
         </button>
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h2 className={`${domine.className} text-lg font-semibold text-slate-100 truncate`}>{monthLabel(month)}</h2>
-          {events && <span className="text-xs text-slate-500 whitespace-nowrap">{events.length} companies</span>}
-          {month !== monthKey(today) && (
-            <button
-              type="button"
-              onClick={() => setBrowseMonth(clampMonth(monthKey(today), minMonth, maxMonth))}
-              className="text-xs text-blue-300 hover:text-blue-200 transition-colors"
-            >
-              Today
-            </button>
-          )}
+        {/* Title centered between the arrows, with the count (and the way back to today) directly beneath it.
+            The count line keeps its height while the month loads so the grid below does not jump. */}
+        <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+          <h2 className={`${domine.className} max-w-full text-lg font-semibold text-slate-100 truncate`}>{monthLabel(month)}</h2>
+          <div className="flex h-4 items-center gap-2 text-xs text-slate-500">
+            {events && <span className="whitespace-nowrap">{events.length} companies</span>}
+            {month !== monthKey(today) && (
+              <button
+                type="button"
+                onClick={() => setBrowseMonth(clampMonth(monthKey(today), minMonth, maxMonth))}
+                className="text-blue-300 hover:text-blue-200 transition-colors"
+              >
+                Today
+              </button>
+            )}
+          </div>
         </div>
         <button
           type="button"
