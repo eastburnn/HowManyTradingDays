@@ -164,7 +164,7 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
   }
 
   return (
-    <section className="space-y-3" aria-label="Earnings by day">
+    <section className="space-y-3 rounded-2xl border border-slate-300/30 p-3 sm:p-4" aria-label="Earnings by day">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -246,17 +246,12 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
           </div>
         ))}
       </div>
-      {failed[month] ? (
+      {failed[month] && (
         <p className="text-xs text-rose-300">
           Couldn&apos;t load {monthLabel(month)}.{" "}
           <button type="button" onClick={retry} className="underline hover:text-rose-200">
             Try again
           </button>
-        </p>
-      ) : (
-        <p className="text-[11px] text-slate-500 leading-relaxed">
-          Companies reporting each day; darker means busier. Click a day for the list, then use ← and → to move
-          between days.
         </p>
       )}
 
