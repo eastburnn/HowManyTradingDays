@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { domine } from "@/app/fonts";
 
-const REFERENCE_LINKS = [
+const EXPLORE_LINKS = [
   { label: "Earnings Calendar", href: "/earnings" },
-  { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
+  { label: "Calculator", href: "/calculator" },
   { label: "Stock Market Holidays", href: "/stock-market-holidays" },
   { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },
   { label: "Trading Days in a Month", href: "/trading-days-in-a-month" },
 ];
 
 const SITE_LINKS = [
-  { label: "Calculator", href: "/calculator" },
   { label: "Free API", href: "/api-docs" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
@@ -80,7 +79,7 @@ export default function Footer() {
 
           {/* Links */}
           <div className="flex gap-16 sm:gap-12">
-            <LinkColumn heading="Reference" links={REFERENCE_LINKS} />
+            <LinkColumn heading="Explore" links={EXPLORE_LINKS} />
             <LinkColumn heading="Site" links={SITE_LINKS} />
           </div>
         </div>
