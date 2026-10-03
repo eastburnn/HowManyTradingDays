@@ -223,7 +223,7 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
     await withTransaction(async (client) => {
       await client.query(
         `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed','wire-rss',
-                                      null,null,null,false,$9,null,'high',0,false,null)`,
+                                      null,null,null,false,$9,null,'high',0::smallint,false,null)`,
         [
           company.cik,
           company.ticker,
