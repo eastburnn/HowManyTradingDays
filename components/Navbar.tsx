@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const REFERENCE_LINKS = [
-  { label: "Earnings Calendar", href: "/earnings" },
   { label: "Is the Market Open?", href: "/is-the-stock-market-open" },
   { label: "Stock Market Holidays", href: "/stock-market-holidays" },
   { label: "Trading Days in a Year", href: "/trading-days-in-a-year" },
@@ -15,6 +14,7 @@ const REFERENCE_LINKS = [
 const BEFORE_DROPDOWN = [
   { label: "Home", href: "/" },
   { label: "Calculator", href: "/calculator" },
+  { label: "Earnings", href: "/earnings" },
 ];
 
 const AFTER_DROPDOWN = [
@@ -67,7 +67,11 @@ export default function Navbar() {
         {/* Nav links */}
         <div className="flex items-center gap-0.5 sm:gap-1">
           {BEFORE_DROPDOWN.map(({ label, href }) => (
-            <Link key={href} href={href} className={linkClass(pathname === href)}>
+            <Link
+              key={href}
+              href={href}
+              className={linkClass(pathname === href || (href !== "/" && pathname.startsWith(href + "/")))}
+            >
               {label}
             </Link>
           ))}
