@@ -167,12 +167,13 @@ export function fiscalCalendar(
   const month = Number(fiscalYearEndMMDD.slice(0, 2));
   const day = Number(fiscalYearEndMMDD.slice(2));
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const monthDay = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  // Three-letter months (Jan, Dec) keep the range on one line inside the card.
+  const monthDay = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const end = new Date(2001, month - 1, day);
   const start = new Date(2001, month - 1, day + 1);
   const range = is5253Week ? `52/53-week year ending near ${monthDay(end)}` : `${monthDay(start)} – ${monthDay(end)}`;
   const note = currentYearEnd
-    ? `fiscal ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`
+    ? `FY ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`
     : "";
   return { range, note };
 }
