@@ -57,6 +57,7 @@ function shortName(raw: string): string {
 
 function accuracySentence(e: EarningsEvent): string {
   if (e.status === "confirmed") return "Date confirmed by the company.";
+  if (e.overdue) return "No earnings 8-K has reached the SEC yet. Companies occasionally shift a quarter's timing; the estimate will reset once results are filed.";
   const n = e.historyCount ?? 0;
   const q = `Q${e.fiscalQuarter}`;
   switch (e.confidence) {
@@ -92,11 +93,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     const label = next.status === "confirmed" ? "Confirmed" : "Estimated";
     const { tradingDays } = countdownFrom(today, next.eventDate);
     title =
-      next.confidence === "low" && next.status === "estimated"
+      next.overdue && next.status === "estimated"
+        ? `${sym} Earnings Date: Expected Any Day | When Does ${name} Report?`
+        : next.confidence === "low" && next.status === "estimated"
         ? `${sym} Earnings Date: Expected ${formatShortDate(start)}–${formatShortDate(end)} | Countdown`
         : `${sym} Earnings Date: ${formatMediumDate(next.eventDate)} (${label}) | Countdown`;
     description =
-      next.confidence === "low" && next.status === "estimated"
+      next.overdue && next.status === "estimated"
+        ? `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} but has not filed yet — expected any day. Past report dates from SEC filings.`
+        : next.confidence === "low" && next.status === "estimated"
         ? `${name} (${sym}) is expected to report ${fiscalLabel(next)} earnings between ${formatMediumDate(start)} and ${formatMediumDate(end)}. Trading-day countdown and past report dates from SEC filings.`
         : `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)} — ${tradingDays} trading days away. Live countdown and past report dates.`;
   } else {
@@ -136,7 +141,8 @@ export default async function EarningsTickerPage({ params }: Params) {
   const today = todayET();
   const justReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 7 : false;
 
-  const isWindow = next?.status === "estimated" && next.confidence === "low";
+  const isOverdue = next?.status === "estimated" && next.overdue;
+  const isWindow = next?.status === "estimated" && next.confidence === "low" && !isOverdue;
   const [winStart, winEnd] = next ? estimateWindow(next, today) : [today, today];
   const countdown = next ? countdownFrom(today, isWindow ? winStart : next.eventDate) : null;
   const countdownEnd = next && isWindow ? countdownFrom(today, winEnd) : null;
@@ -163,7 +169,9 @@ export default async function EarningsTickerPage({ params }: Params) {
               name: `When does ${name} (${sym}) report earnings?`,
               acceptedAnswer: {
                 "@type": "Answer",
-                text: isWindow
+                text: isOverdue
+                  ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed a release yet; it is expected any day.`
+                  : isWindow
                   ? `${name} is expected to report ${fiscalLabel(next)} earnings between ${formatLongDate(winStart)} and ${formatLongDate(winEnd)}.`
                   : `${name} is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`,
               },
@@ -173,7 +181,9 @@ export default async function EarningsTickerPage({ params }: Params) {
               name: `How many trading days until ${sym} earnings?`,
               acceptedAnswer: {
                 "@type": "Answer",
-                text: isWindow
+                text: isOverdue
+                  ? `The usual date has passed; the report is expected any day.`
+                  : isWindow
                   ? `Between ${countdown!.tradingDays} and ${countdownEnd!.tradingDays} U.S. stock market trading days, depending on the exact date.`
                   : `${countdown!.tradingDays} U.S. stock market trading days (${countdown!.calendarDays} calendar days) as of ${formatLongDate(today)}, counting weekdays and skipping market holidays.`,
               },
@@ -246,7 +256,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                     : "border-amber-400/40 bg-amber-400/10 text-amber-200"
                 }`}
               >
-                {statusLabel(next)}
+                {isOverdue ? "Past usual date" : statusLabel(next)}
               </span>
               <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-800/60 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
                 {timeOfDayLabel(next.timeOfDay)}
@@ -255,7 +265,11 @@ export default async function EarningsTickerPage({ params }: Params) {
 
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Next earnings date</p>
-              {isWindow ? (
+              {isOverdue ? (
+                <p className={`${domine.className} text-2xl sm:text-3xl font-semibold text-slate-100 text-balance`}>
+                  Expected any day
+                </p>
+              ) : isWindow ? (
                 <p className={`${domine.className} text-2xl sm:text-3xl font-semibold text-slate-100 text-balance`}>
                   {formatMediumDate(winStart)} – {formatMediumDate(winEnd)}
                 </p>
@@ -266,10 +280,16 @@ export default async function EarningsTickerPage({ params }: Params) {
               )}
               <p className="text-sm text-slate-400">
                 {fiscalLabel(next)} results · quarter ended {formatQuarterEnd(next.periodEnd)}
-                {next.status === "estimated" && !isWindow && next.windowDays ? ` · ±${next.windowDays} days` : ""}
+                {isOverdue && next.originalEstimate ? ` · usually reported by ${formatMediumDate(next.originalEstimate)}` : ""}
+                {next.status === "estimated" && !isWindow && !isOverdue && next.windowDays ? ` · ±${next.windowDays} days` : ""}
               </p>
             </div>
 
+            {isOverdue ? (
+              <p className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm text-slate-300 leading-relaxed">
+                {name} has passed the date its past pattern pointed to and has not filed an earnings release yet. The report could come any day; this page updates automatically when it does.
+              </p>
+            ) : (
             <EarningsCountdown
               eventDate={isWindow ? winStart : next.eventDate}
               windowEnd={isWindow ? winEnd : undefined}
@@ -280,6 +300,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 calendarDaysEnd: countdownEnd?.calendarDays,
               }}
             />
+            )}
 
             <p className="text-xs text-slate-500 leading-relaxed">
               {accuracySentence(next)}
@@ -416,7 +437,9 @@ export default async function EarningsTickerPage({ params }: Params) {
                   <span className="text-slate-600 group-open:rotate-90 transition-transform">›</span>
                 </summary>
                 <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-                  {isWindow
+                  {isOverdue
+                    ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed a release yet; it is expected any day.`
+                    : isWindow
                     ? `${name} is expected to report ${fiscalLabel(next)} earnings between ${formatLongDate(winStart)} and ${formatLongDate(winEnd)}.`
                     : `${name} is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`}
                 </p>
@@ -427,7 +450,9 @@ export default async function EarningsTickerPage({ params }: Params) {
                   <span className="text-slate-600 group-open:rotate-90 transition-transform">›</span>
                 </summary>
                 <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-                  {isWindow
+                  {isOverdue
+                    ? `The usual date has passed; the report is expected any day.`
+                    : isWindow
                     ? `Between ${countdown.tradingDays} and ${countdownEnd!.tradingDays} trading days, depending on the exact date.`
                     : `${countdown.tradingDays} trading days (${countdown.calendarDays} calendar days) as of ${formatLongDate(today)}, counting weekdays and skipping NYSE/Nasdaq holidays.`}
                 </p>

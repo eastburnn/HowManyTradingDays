@@ -215,16 +215,18 @@ type EventRow = {
   sourceAccession?: string | null;
   confidence?: ConfidenceTier | null;
   windowDays?: number | null;
+  overdue?: boolean;
+  originalEstimate?: string | null;
 };
 
 async function recordEvent(client: PoolClient, e: EventRow): Promise<void> {
   await client.query(
-    `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,$9,$10,$11,$12::smallint,$13,$14,$15,$16,$17,$18::smallint)`,
+    `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,$9,$10,$11,$12::smallint,$13,$14,$15,$16,$17,$18::smallint,$19,$20::date)`,
     [
       e.cik, e.ticker, e.fiscalYear, e.quarter, e.periodEnd, e.reportForm, e.eventDate, e.timeOfDay,
       e.status, e.sourceType, e.method ?? null, e.historyCount ?? null, e.sdDays ?? null,
       e.clamped ?? false, e.sourceUrl ?? null, e.sourceAccession ?? null,
-      e.confidence ?? null, e.windowDays ?? null,
+      e.confidence ?? null, e.windowDays ?? null, e.overdue ?? false, e.originalEstimate ?? null,
     ]
   );
 }
@@ -348,13 +350,16 @@ export function estimateUpcoming(
       }
 
       // An estimate already in the past is overdue: roll it to the next
-      // trading day and flag it low so the page never shows a negative count.
+      // trading day so it keeps surfacing, keep the original date, and flag
+      // it so pages say "expected any day" rather than "reports today".
       if (estimate.date < today) {
         estimate = {
           ...estimate,
+          originalDate: estimate.date,
           date: nextTradingDayOnOrAfter(today),
           confidence: "low" as ConfidenceTier,
           windowDays: 14,
+          overdue: true,
         };
       }
 
@@ -374,8 +379,8 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
   const today = opts.today ?? todayET();
   const company = await fetchCompany(cik, { cacheDir: opts.cacheDir, refresh: opts.refresh, sinceDate: "2015-01-01" });
   const active = isQuarterlyReporter(company);
-  const periods = active ? listFiscalPeriods(company.filings) : [];
-  const observations = active ? buildObservations(company.filings) : [];
+  const periods = active ? listFiscalPeriods(company.filings, company.fiscalYearEnd) : [];
+  const observations = active ? buildObservations(company.filings, company.fiscalYearEnd) : [];
   const unmatched = active ? findUnmatchedRelease(company, periods, observations) : null;
   const upcoming = active ? estimateUpcoming(company, periods, observations, today, unmatched) : [];
 
@@ -444,6 +449,8 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
         sourceAccession: u.sourceAccession,
         confidence: u.estimate.confidence,
         windowDays: u.estimate.windowDays,
+        overdue: u.estimate.overdue ?? false,
+        originalEstimate: u.estimate.originalDate ?? null,
       });
     }
 

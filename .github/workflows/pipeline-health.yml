@@ -1,0 +1,27 @@
+# Pipeline uptime monitor: fetches the earnings pipeline's health endpoint
+# every hour and fails the run when it is not healthy. GitHub emails the
+# repository owner about failed scheduled runs, so a stalled pipeline
+# (no ticks, stalled daily index, stale estimates, no new filings) surfaces
+# without any external monitoring account.
+#
+# Note: GitHub disables scheduled workflows after 60 days with no commits
+# to the repository; it emails a warning first.
+
+name: Pipeline health
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check /api/jobs/health
+        run: |
+          set -o pipefail
+          body=$(curl -sS --max-time 20 -w '\nHTTP %{http_code}' https://howmanytradingdays.com/api/jobs/health)
+          echo "$body"
+          echo "$body" | tail -1 | grep -q 'HTTP 200'

@@ -146,7 +146,7 @@ function runPredictions(companies: EdgarCompany[]): Prediction[] {
   const predictions: Prediction[] = [];
 
   for (const company of companies) {
-    const observations = buildObservations(company.filings);
+    const observations = buildObservations(company.filings, company.fiscalYearEnd);
     const train = observations.filter((o) => o.releaseDate <= TRAIN_END);
     const test = observations.filter((o) => o.releaseDate > TRAIN_END);
     if (test.length === 0) continue;

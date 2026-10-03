@@ -112,7 +112,33 @@ type Release = {
   acceptanceDateTime: string | null;
 };
 
-const PERIOD_FORMS: Record<string, ReportForm> = { "10-Q": "10-Q", "10-K": "10-K" };
+// Transition reports (10-KT / 10-QT) cover a stub period after a fiscal
+// year-end change; treat them like their regular counterparts.
+const PERIOD_FORMS: Record<string, ReportForm> = {
+  "10-Q": "10-Q",
+  "10-K": "10-K",
+  "10-QT": "10-Q",
+  "10-KT": "10-K",
+};
+
+/**
+ * The fiscal year end a period rolls up to, from the company's declared
+ * year end (EDGAR's "MMDD"): the first occurrence on or after the period
+ * end, allowing a week of slack so a 52/53-week year end that drifts a few
+ * days past its nominal date still counts as that year's Q4.
+ */
+function projectedFiscalYearEnd(periodEnd: string, mmdd: string): string | null {
+  if (!/^\d{4}$/.test(mmdd)) return null;
+  const month = Number(mmdd.slice(0, 2));
+  const day = Number(mmdd.slice(2, 4));
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const year = parseISO(periodEnd).getFullYear();
+  for (const y of [year - 1, year, year + 1]) {
+    const candidate = toISODate(new Date(y, month - 1, day));
+    if (daysBetween(periodEnd, candidate) >= -7) return candidate;
+  }
+  return null;
+}
 
 /**
  * Assign a fiscal quarter to a period end given the fiscal-year-end date it
@@ -134,10 +160,12 @@ export type FiscalPeriod = {
 
 /**
  * Every 10-Q/10-K period in the filing history, labeled with its fiscal year
- * and quarter, oldest first. Fiscal year ends are the 10-K period ends; a
- * period belongs to the first fiscal year end on or after it.
+ * and quarter, oldest first. Up to the latest 10-K, fiscal year ends are the
+ * actual 10-K period ends. After it, the company's declared year end
+ * (`fiscalYearEndMMDD`, from EDGAR) is used, so a change of fiscal year is
+ * reflected as soon as the company declares it, not a year later.
  */
-export function listFiscalPeriods(filings: EdgarFiling[]): FiscalPeriod[] {
+export function listFiscalPeriods(filings: EdgarFiling[], fiscalYearEndMMDD?: string | null): FiscalPeriod[] {
   // Deduped by period end (keep the earliest filing of each)
   const periodsByEnd = new Map<string, PeriodReport>();
   for (const f of filings) {
@@ -157,11 +185,16 @@ export function listFiscalPeriods(filings: EdgarFiling[]): FiscalPeriod[] {
   for (const period of periods) {
     let fye = fiscalYearEnds.find((e) => e >= period.periodEnd);
     if (!fye) {
-      // Periods after the latest 10-K: project the FYE forward a year
-      if (!lastFYE) continue;
-      const projected = parseISO(lastFYE);
-      projected.setFullYear(projected.getFullYear() + 1);
-      fye = toISODate(projected);
+      // Periods after the latest 10-K: use the declared year end, else roll
+      // the last 10-K's year end forward until it covers this period.
+      fye = fiscalYearEndMMDD ? projectedFiscalYearEnd(period.periodEnd, fiscalYearEndMMDD) ?? undefined : undefined;
+      if (!fye) {
+        if (!lastFYE) continue;
+        const projected = parseISO(lastFYE);
+        do projected.setFullYear(projected.getFullYear() + 1);
+        while (daysBetween(period.periodEnd, toISODate(projected)) < -7);
+        fye = toISODate(projected);
+      }
     }
     const quarter = period.form === "10-K" ? 4 : quarterFor(period.periodEnd, fye);
     if (!quarter) continue;
@@ -170,8 +203,8 @@ export function listFiscalPeriods(filings: EdgarFiling[]): FiscalPeriod[] {
   return out;
 }
 
-export function buildObservations(filings: EdgarFiling[]): EarningsObservation[] {
-  const periods = listFiscalPeriods(filings);
+export function buildObservations(filings: EdgarFiling[], fiscalYearEndMMDD?: string | null): EarningsObservation[] {
+  const periods = listFiscalPeriods(filings, fiscalYearEndMMDD);
   if (periods.length === 0) return [];
 
   // Earnings releases: 8-K Item 2.02. The 8-K's reportDate is the event date.

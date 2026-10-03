@@ -59,6 +59,10 @@ export type Estimate = {
   clampedToDeadline: boolean;
   /** Most common time of day across the observations */
   timeOfDay: EarningsObservation["timeOfDay"];
+  /** The pattern's date has passed with no release filed; `date` was rolled to today */
+  overdue?: boolean;
+  /** The date the pattern originally predicted, kept when overdue */
+  originalDate?: string;
 };
 
 export type EstimateInput = {

@@ -25,6 +25,8 @@ export type EarningsEvent = {
   clampedToDeadline: boolean;
   confidence: ConfidenceTier | null;
   windowDays: number | null;
+  overdue: boolean;
+  originalEstimate: string | null;
   sourceType: string;
   sourceUrl: string | null;
   firstSeenAt: string;
@@ -56,14 +58,19 @@ export type CompanyEarnings = {
   history: EarningsEvent[];
 };
 
-const EVENT_COLUMNS = `
-  id, cik, ticker, fiscal_year as "fiscalYear", fiscal_quarter as "fiscalQuarter",
-  period_end::text as "periodEnd", report_form as "reportForm", event_date::text as "eventDate",
-  time_of_day as "timeOfDay", status, method, history_count as "historyCount",
-  sd_days::float as "sdDays", clamped_to_deadline as "clampedToDeadline", confidence,
-  window_days as "windowDays", source_type as "sourceType", source_url as "sourceUrl",
-  first_seen_at::text as "firstSeenAt", last_verified_at::text as "lastVerifiedAt"
+/** Event column list; pass an alias when the query joins other tables. */
+function eventColumns(alias = ""): string {
+  const p = alias ? alias + "." : "";
+  return `
+  ${p}id, ${p}cik, ${p}ticker, ${p}fiscal_year as "fiscalYear", ${p}fiscal_quarter as "fiscalQuarter",
+  ${p}period_end::text as "periodEnd", ${p}report_form as "reportForm", ${p}event_date::text as "eventDate",
+  ${p}time_of_day as "timeOfDay", ${p}status, ${p}method, ${p}history_count as "historyCount",
+  ${p}sd_days::float as "sdDays", ${p}clamped_to_deadline as "clampedToDeadline", ${p}confidence,
+  ${p}window_days as "windowDays", ${p}overdue, ${p}original_estimate::text as "originalEstimate",
+  ${p}source_type as "sourceType", ${p}source_url as "sourceUrl",
+  ${p}first_seen_at::text as "firstSeenAt", ${p}last_verified_at::text as "lastVerifiedAt"
 `;
+}
 
 const COMPANY_COLUMNS = `
   cik, ticker, tickers, name, exchange, filer_category as "filerCategory",
@@ -91,14 +98,14 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
 
   const [upcoming, history] = await Promise.all([
     query<EarningsEvent>(
-      `select ${EVENT_COLUMNS} from earnings_current
+      `select ${eventColumns()} from earnings_current
         where cik = $1 and status in ('estimated','confirmed')
           and event_date >= (now() at time zone 'America/New_York')::date
         order by event_date asc, id desc`,
       [company.cik]
     ),
     query<EarningsEvent>(
-      `select ${EVENT_COLUMNS} from earnings_current
+      `select ${eventColumns()} from earnings_current
         where cik = $1 and status = 'reported'
         order by event_date desc
         limit 8`,
@@ -114,7 +121,7 @@ export type UpcomingRow = EarningsEvent & { name: string };
 /** Upcoming events across the universe within a date range, soonest first */
 export async function getUpcomingEvents(fromISO: string, toISO: string, limit = 500): Promise<UpcomingRow[]> {
   return query<UpcomingRow>(
-    `select ${EVENT_COLUMNS.replace(/\bid,/, "e.id,").replace(/\bcik,/, "e.cik,").replace(/\bticker,/, "e.ticker,")}, c.name
+    `select ${eventColumns("e")}, c.name
        from earnings_next e
        join companies c on c.cik = e.cik
       where e.event_date between $1::date and $2::date and c.active
