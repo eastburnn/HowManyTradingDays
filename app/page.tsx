@@ -142,8 +142,14 @@ export default function HomePage() {
           </h1>
 
           {/* One line about the whole site; the counting rules live in the FAQ below */}
-          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed text-balance">
-            Live U.S. market calendar insights: trading days, holidays, and earnings dates.
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            {/* Phones get a shorter, slightly tighter version so it stays on one line */}
+            <span className="sm:hidden text-[11px] tracking-tight">
+              U.S. market calendar insights: trading days, holidays &amp; earnings dates.
+            </span>
+            <span className="hidden sm:inline">
+              Live U.S. market calendar insights: trading days, holidays, and earnings dates.
+            </span>
           </p>
         </header>
 
