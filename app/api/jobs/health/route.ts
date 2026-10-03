@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const health = await checkHealth();
-    return NextResponse.json(health, {
+    // Which build is answering: lets a deploy be verified exactly.
+    return NextResponse.json({ ...health, commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null }, {
       status: health.ok ? 200 : 503,
       headers: { "Cache-Control": "no-store" },
     });

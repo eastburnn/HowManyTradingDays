@@ -234,9 +234,11 @@ export async function processFeedItems(
   pageMaxPerRun = PAGE_MAX_PER_RUN
 ): Promise<ProcessStats> {
   const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
-  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; cik?: number } | null }>(
+  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; quarterRetries?: number; cik?: number } | null }>(
     `select id, feed, title, link, published_at::text, parsed from feed_items
-      where parse_status = 'pending' order by id asc limit $1`,
+      where parse_status = 'pending'
+        and (parsed->>'retryAfter' is null or (parsed->>'retryAfter')::timestamptz <= now())
+      order by id asc limit $1`,
     [limit]
   );
 
@@ -337,6 +339,25 @@ export async function processFeedItems(
       if (extra.length) company = await resolveCik({ ...parsed, tickers: [...parsed.tickers, ...extra] });
     }
     const target = company ? await chooseQuarter(company.cik, parsed) : null;
+
+    if (company && !target && parsed.date >= todayET() && !item.parsed?.quarterRetries) {
+      // The company is known but no quarter fits — usually its estimates are
+      // missing or stale (a new listing, a quarter not yet rolled forward).
+      // Ask for a refresh and retry once after it has had time to run.
+      await query(`update companies set refresh_requested_at = coalesce(refresh_requested_at, now()) where cik = $1`, [company.cik]);
+      await query(`update feed_items set parsed = coalesce(parsed, '{}'::jsonb) || $2::jsonb where id = $1`, [
+        item.id,
+        JSON.stringify({
+          quarterRetries: 1,
+          retryAfter: new Date(Date.now() + 20 * 60_000).toISOString(),
+          cik: company.cik,
+          method,
+          parsed,
+          description,
+        }),
+      ]);
+      continue;
+    }
 
     if (!company || !target) {
       await query(`update feed_items set parse_status = 'failed', parsed = $2 where id = $1`, [
