@@ -62,7 +62,7 @@ export default function StatusKey({ accuracy }: { accuracy: EstimateAccuracy | n
         {ENTRIES.map((e) => {
           const stat = e.status === "estimated" ? record[e.confidence] : undefined;
           return (
-            <li key={`${e.status}-${e.confidence}`} className="flex items-start gap-3">
+            <li key={`${e.status}-${e.confidence}`} className="flex items-center gap-3">
               <StatusBadge status={e.status} confidence={e.confidence} />
               <span className="text-xs text-slate-400 leading-relaxed">
                 {e.meaning}
