@@ -5,7 +5,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 
 const title = "About | How Many Trading Days";
 const description =
-  "How HowManyTradingDays.com counts U.S. market trading days: live 4 p.m. ET countdown, NYSE holiday rules, and half-day sessions.";
+  "How HowManyTradingDays.com works: the live 4 p.m. ET trading-day countdown, NYSE holiday rules, half-day sessions, and an earnings calendar built from SEC filings.";
 
 export const metadata: Metadata = {
   title,
@@ -50,12 +50,27 @@ export default function AboutPage() {
             About
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            A live reference tool for U.S. equity market participants who think in trading days.
+            A live U.S. market calendar for people who think in trading days: the countdown, the holidays, and
+            when companies report.
           </p>
         </header>
 
         {/* Feature cards */}
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
+            <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-semibold text-slate-100">Earnings Calendar</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Upcoming earnings dates for every NYSE and Nasdaq company, estimated from each company&apos;s own SEC
+              filing history and upgraded to confirmed when the company announces, with a countdown in trading days
+              to each report. Browse by month, scan the next quarter, or open any ticker&apos;s page.
+            </p>
+          </div>
+
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 flex flex-col gap-2">
             <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -128,7 +143,7 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Free API</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Five JSON endpoints for developers - trading-day counts, date math, and live status. No key required.
+              Five JSON endpoints for developers: trading-day counts, date math, and live status. No key required.
             </p>
           </div>
         </div>
@@ -139,13 +154,26 @@ export default function AboutPage() {
           <p className="text-sm text-slate-400 leading-relaxed">
             Trading days are weekdays when U.S. equity markets are open. The counter starts from today
             (or tomorrow if it&apos;s already past 4&nbsp;p.m. Eastern Time) and counts forward,
-            skipping weekends and all official NYSE/Nasdaq holidays. Scheduled early-close sessions -
-            like the day after Thanksgiving or Christmas Eve - are counted as half days (0.5).
+            skipping weekends and all official NYSE/Nasdaq holidays. Scheduled early-close sessions,
+            like the day after Thanksgiving or Christmas Eve, are counted as half days (0.5).
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
             All holiday dates are derived algorithmically each year using standard calendar rules
             (e.g. the Easter algorithm for Good Friday, nth-weekday formulas for floating holidays),
             so the site stays accurate without any ongoing maintenance.
+          </p>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Earnings dates start from the SEC. Every public company files its earnings releases on Form 8-K, so
+            the site reads each company&apos;s filing history (how many days after a fiscal quarter ended it
+            reported, on which weekday, and at what time of day) and projects that pattern onto the current
+            quarter. When the company announces its date, in a press release or on its own investor-relations
+            site, the estimate is upgraded to confirmed, and once the release is filed the date is marked
+            reported. The{" "}
+            <Link href="/earnings" className="underline text-slate-300 hover:text-slate-100 transition-colors">
+              calendar
+            </Link>{" "}
+            shows how often estimates have landed within 3 and 7 days of the actual date, updated as each
+            quarter plays out.
           </p>
         </section>
 
@@ -219,14 +247,14 @@ export default function AboutPage() {
           </Link>
 
           <Link
-            href="/trading-days-in-a-year"
+            href="/earnings"
             className="group flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 hover:border-slate-700 hover:bg-slate-900/70 transition-all duration-150"
           >
             <div className="flex items-center gap-2.5">
               <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span className="text-sm font-medium text-slate-100">Days in a Year</span>
+              <span className="text-sm font-medium text-slate-100">Earnings Dates</span>
             </div>
             <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
