@@ -74,7 +74,7 @@ export default function Footer() {
               >
                 FolioStuff
               </a>{" "}
-              for more investing tools like this one.
+              for more investing tools.
             </p>
           </div>
 

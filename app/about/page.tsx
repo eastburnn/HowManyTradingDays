@@ -65,8 +65,8 @@ export default function AboutPage() {
             </div>
             <h2 className="text-sm font-semibold text-slate-100">Earnings Calendar</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Upcoming earnings dates for every NYSE and Nasdaq company, estimated from SEC filings and confirmed
-              from company announcements, with a countdown in trading days to each report.
+              Every NYSE and Nasdaq company&apos;s next earnings date, estimated from SEC filings or confirmed by
+              the company, with a trading-day countdown.
             </p>
           </div>
 
@@ -207,7 +207,7 @@ export default function AboutPage() {
             >
               FolioStuff
             </a>{" "}
-            for more investing tools like this one.
+            for more investing tools.
           </p>
         </section>
 
