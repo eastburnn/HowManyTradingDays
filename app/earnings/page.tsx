@@ -4,6 +4,7 @@ import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import TickerSearch from "@/components/earnings/TickerSearch";
 import MonthCalendar from "@/components/earnings/MonthCalendar";
+import StatusKey from "@/components/earnings/StatusKey";
 import CalendarRange from "@/components/earnings/CalendarRange";
 import { getEventDateBounds, getEventsInRange } from "@/lib/earnings/queries";
 import { type RangeRow, computeDistances, monthKey, shiftMonth, toCalendarEvent } from "@/lib/earnings/calendar";
@@ -78,6 +79,8 @@ export default async function EarningsCalendarPage() {
         <TickerSearch />
 
         <MonthCalendar today={today} minMonth={minMonth} maxMonth={maxMonth} />
+
+        <StatusKey />
 
         <CalendarRange
           today={today}
