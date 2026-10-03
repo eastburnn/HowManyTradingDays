@@ -10,7 +10,7 @@ const ENTRIES: Entry[] = [
   {
     status: "estimated",
     confidence: "low",
-    meaning: "The company's pattern is too irregular for a single date, so a range of likely days is shown instead.",
+    meaning: "The pattern is too irregular for one date, so a range of likely days is shown.",
   },
   {
     status: "estimated",
@@ -43,11 +43,11 @@ function trackRecord(accuracy: EstimateAccuracy | null): Partial<Record<Tier, st
   return {
     high:
       estimated.checked >= MIN_CHECKED
-        ? `Within 3 days of the actual date ${pct(estimated.within3, estimated.checked)} of the time, and within 7 days ${pct(estimated.within7, estimated.checked)}, across ${estimated.checked.toLocaleString("en-US")} checked.`
+        ? `Within 3 days of the actual date ${pct(estimated.within3, estimated.checked)} of the time, and within 7 days ${pct(estimated.within7, estimated.checked)}.`
         : undefined,
     low:
       window.checked >= MIN_CHECKED
-        ? `The actual date has fallen inside the range ${pct(window.inside, window.checked)} of the time, across ${window.checked.toLocaleString("en-US")} checked.`
+        ? `The actual date has fallen inside the range ${pct(window.inside, window.checked)} of the time.`
         : undefined,
   };
 }
