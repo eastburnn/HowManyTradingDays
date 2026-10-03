@@ -110,24 +110,27 @@ export default function CalculatorPage() {
   }, [selectedDate, effectiveStart]);
 
   return (
-    <main className="flex-1 flex items-center justify-center px-4">
-      <div className="max-w-xl w-full flex flex-col items-center gap-10 py-12">
+    <main className="flex-1 flex items-start justify-center px-4">
+      <div className="max-w-xl w-full flex flex-col gap-8 py-12">
 
         <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Calculator" }]} />
 
-        {/* HEADER */}
-        <header className="text-center space-y-2 -mt-4">
+        {/* HEADER: left-aligned, same shape as the earnings calendar page */}
+        <header className="space-y-2">
           <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
             Trading Days Calculator
           </h1>
-          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Count U.S. stock market trading days and calendar days between today (or any start date) and a target date.
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Count U.S. stock market trading days and calendar days between today, or any start date, and a target
+            date. Pick a day on the calendar or jump to a month end, year end, or the next market holiday. Weekends
+            and NYSE/Nasdaq holidays are skipped and early closes count as half days, which makes it the right count
+            for option expirations, vesting dates, earnings dates, and any other deadline measured in sessions.
           </p>
         </header>
 
-        {/* DATE PICKER */}
+        {/* DATE PICKER: the same light container as the earnings calendar */}
         <section className="w-full">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 flex flex-col gap-5">
+          <div className="w-full rounded-2xl border border-slate-300/30 p-4 sm:p-6 flex flex-col gap-5">
             {/* START DATE (optional) */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">

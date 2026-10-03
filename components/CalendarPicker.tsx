@@ -119,7 +119,7 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
       <div className="flex items-center justify-between mb-3 gap-2">
         <button
           onClick={prevMonth}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition flex-shrink-0"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800/70 transition-colors"
           aria-label="Previous month"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -134,11 +134,11 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
               value={displayMonth}
               onChange={(e) => setDisplayMonth(Number(e.target.value))}
               className="
-                appearance-none bg-slate-800 border border-slate-700 rounded-lg
+                appearance-none bg-transparent border border-slate-700 rounded-lg
                 text-sm font-semibold text-slate-100
                 pl-2.5 pr-6 py-1
                 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50
-                cursor-pointer hover:bg-slate-700 transition
+                cursor-pointer hover:bg-slate-800/70 transition-colors
               "
             >
               {MONTH_NAMES.map((name, i) => (
@@ -156,11 +156,11 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
               value={displayYear}
               onChange={(e) => setDisplayYear(Number(e.target.value))}
               className="
-                appearance-none bg-slate-800 border border-slate-700 rounded-lg
+                appearance-none bg-transparent border border-slate-700 rounded-lg
                 text-sm font-semibold text-slate-100
                 pl-2.5 pr-6 py-1
                 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50
-                cursor-pointer hover:bg-slate-700 transition
+                cursor-pointer hover:bg-slate-800/70 transition-colors
               "
             >
               {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() + i).map((yr) => (
@@ -175,7 +175,7 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
 
         <button
           onClick={nextMonth}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition flex-shrink-0"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800/70 transition-colors"
           aria-label="Next month"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -185,33 +185,32 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
       </div>
 
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7 gap-1 mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
         {DAYS_OF_WEEK.map((d) => (
-          <div key={d} className="text-center text-[10px] font-medium text-slate-500 py-1">
+          <div key={d} className="py-1">
             {d}
           </div>
         ))}
       </div>
 
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-y-0.5">
+      {/* Day cells: bordered boxes like the earnings calendar, blue for the selection, a ring for today */}
+      <div className="grid grid-cols-7 gap-1">
         {cells.map((cell) => {
           const isSelected = cell.iso === value;
           const isToday = cell.iso === todayISO;
           const isDisabled = cell.iso < minDate;
           const isAdjacent = cell.belongsTo !== "current";
 
-          let textClass = "";
-          if (isDisabled && isAdjacent) {
-            textClass = "text-slate-700 cursor-default";
+          let cellClass = "";
+          if (isSelected) {
+            cellClass = "border-blue-400/70 bg-blue-500/30 text-white font-semibold";
           } else if (isDisabled) {
-            textClass = "text-slate-600 cursor-default";
+            cellClass = `border-slate-800/40 cursor-default ${isAdjacent ? "text-slate-700" : "text-slate-600"}`;
           } else if (isAdjacent) {
-            // Adjacent months: muted gray, but still clickable
-            textClass = "text-slate-600 hover:text-slate-400 cursor-pointer";
+            // Adjacent months: muted, but still clickable
+            cellClass = "border-slate-800/60 text-slate-600 hover:border-slate-500 hover:text-slate-400 cursor-pointer";
           } else {
-            // Current month: bright white
-            textClass = "text-slate-100 cursor-pointer";
+            cellClass = `border-slate-800 hover:border-slate-500 cursor-pointer ${isToday ? "text-blue-300" : "text-slate-100"}`;
           }
 
           return (
@@ -220,25 +219,13 @@ export default function CalendarPicker({ value, minDate, onChange, initialDate }
               disabled={isDisabled}
               onClick={() => !isDisabled && handleSelect(cell.iso, cell.belongsTo)}
               className={`
-                relative flex items-center justify-center
-                h-8 w-full rounded-lg text-xs font-medium
+                flex h-9 w-full items-center justify-center rounded-lg border text-xs font-medium
                 transition-colors duration-100
-                ${isSelected
-                  ? "bg-blue-600 text-white font-semibold"
-                  : isDisabled
-                    ? ""
-                    : isAdjacent
-                      ? "hover:bg-slate-800/60"
-                      : "hover:bg-slate-800"
-                }
-                ${!isSelected ? textClass : ""}
+                ${cellClass}
+                ${isToday ? "ring-1 ring-blue-400/70" : ""}
               `}
             >
               {cell.day}
-              {/* Today dot */}
-              {isToday && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
-              )}
             </button>
           );
         })}
