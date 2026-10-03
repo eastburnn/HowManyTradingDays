@@ -368,7 +368,13 @@ export default async function EarningsTickerPage({ params }: Params) {
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Fiscal year</p>
                 <p className="mt-1 text-sm font-medium text-slate-100">{fiscal.range}</p>
-                {fiscal.note && <p className="text-xs text-slate-400">{fiscal.note}</p>}
+                {fiscal.current && (
+                  <p className="text-xs text-slate-400">
+                    {fiscal.current.label}
+                    <br />
+                    {fiscal.current.date}
+                  </p>
+                )}
               </div>
             )}
           </div>

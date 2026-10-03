@@ -152,8 +152,9 @@ export function formatQuarterEnd(iso: string): string {
 }
 
 /**
- * A company's fiscal calendar in a line: the year's start and end days from
- * EDGAR's declared year end ("MMDD"), and when the current fiscal year ends.
+ * A company's fiscal calendar for the company page card: the year's start and
+ * end days from EDGAR's declared year end ("MMDD"), plus the current fiscal
+ * year's end as two lines ("Fiscal year 2027 ends" / "May 31, 2027").
  * 52/53-week filers get the actual (drifting) year-end date instead of a
  * fixed range.
  */
@@ -162,7 +163,7 @@ export function fiscalCalendar(
   is5253Week: boolean,
   currentYearEnd: string | null,
   today: string
-): { range: string; note: string } | null {
+): { range: string; current: { label: string; date: string } | null } | null {
   if (!fiscalYearEndMMDD || !/^\d{4}$/.test(fiscalYearEndMMDD)) return null;
   const month = Number(fiscalYearEndMMDD.slice(0, 2));
   const day = Number(fiscalYearEndMMDD.slice(2));
@@ -172,8 +173,11 @@ export function fiscalCalendar(
   const end = new Date(2001, month - 1, day);
   const start = new Date(2001, month - 1, day + 1);
   const range = is5253Week ? `52/53-week year ending near ${monthDay(end)}` : `${monthDay(start)} – ${monthDay(end)}`;
-  const note = currentYearEnd
-    ? `Fiscal year ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`
-    : "";
-  return { range, note };
+  const current = currentYearEnd
+    ? {
+        label: `Fiscal year ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"}`,
+        date: formatMediumDate(currentYearEnd),
+      }
+    : null;
+  return { range, current };
 }
