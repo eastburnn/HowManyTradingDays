@@ -30,6 +30,11 @@ export function formatShortDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** "Thu, Oct 29, 2026": the weekday without the length of the long form, for search snippets */
+export function formatWeekdayDate(iso: string): string {
+  return parseISODate(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+}
+
 export function weekdayOf(iso: string): string {
   return parseISODate(iso).toLocaleDateString("en-US", { weekday: "long" });
 }
@@ -121,6 +126,69 @@ export function estimateWindow(
 }
 
 /**
+ * Brands whose own casing is not plain title case. EDGAR stores names in
+ * capitals, so "FEDEX CORP" would otherwise become "Fedex Corp" in titles
+ * and headings. Keyed by the upper-case word.
+ */
+const BRAND_CASE: Record<string, string> = {
+  FEDEX: "FedEx",
+  EBAY: "eBay",
+  PAYPAL: "PayPal",
+  "MCDONALD'S": "McDonald's",
+  MCDONALDS: "McDonald's",
+  NVIDIA: "NVIDIA",
+  BLACKROCK: "BlackRock",
+  JPMORGAN: "JPMorgan",
+  PEPSICO: "PepsiCo",
+  GLOBALFOUNDRIES: "GlobalFoundries",
+  DOORDASH: "DoorDash",
+  CARMAX: "CarMax",
+  DRAFTKINGS: "DraftKings",
+  CONOCOPHILLIPS: "ConocoPhillips",
+  DUPONT: "DuPont",
+  MICROSTRATEGY: "MicroStrategy",
+  BIONTECH: "BioNTech",
+  NETAPP: "NetApp",
+  DOCUSIGN: "DocuSign",
+  GITLAB: "GitLab",
+  HUBSPOT: "HubSpot",
+  MONGODB: "MongoDB",
+  ZOOMINFO: "ZoomInfo",
+  CROWDSTRIKE: "CrowdStrike",
+  SOFI: "SoFi",
+  GOPRO: "GoPro",
+  GODADDY: "GoDaddy",
+  SERVICENOW: "ServiceNow",
+  IROBOT: "iRobot",
+  AUTOZONE: "AutoZone",
+  BORGWARNER: "BorgWarner",
+  UNITEDHEALTH: "UnitedHealth",
+  TRANSDIGM: "TransDigm",
+  KEYCORP: "KeyCorp",
+  JETBLUE: "JetBlue",
+  SOLAREDGE: "SolarEdge",
+  SUNPOWER: "SunPower",
+  CHARGEPOINT: "ChargePoint",
+  QUANTUMSCAPE: "QuantumScape",
+  AMERISOURCEBERGEN: "AmerisourceBergen",
+  MASTERCRAFT: "MasterCraft",
+  FORMFACTOR: "FormFactor",
+  LOWES: "Lowe's",
+  "LOWE'S": "Lowe's",
+  MACYS: "Macy's",
+  "MACY'S": "Macy's",
+  KOHLS: "Kohl's",
+  "KOHL'S": "Kohl's",
+  OREILLY: "O'Reilly",
+  "O'REILLY": "O'Reilly",
+  AGCO: "AGCO",
+  AMETEK: "AMETEK",
+  PACCAR: "PACCAR",
+  AAON: "AAON",
+  IDEX: "IDEX",
+};
+
+/**
  * SEC registrant names are shouty and suffixed ("COSTCO WHOLESALE CORP /NEW",
  * "ACUITY INC. (DE)"). Clean them for display without touching mixed-case
  * names companies filed themselves ("Apple Inc.").
@@ -139,6 +207,8 @@ export function displayName(raw: string): string {
     .split(" ")
     .map((w, i) => {
       const bare = w.replace(/[.,]/g, "");
+      const brand = BRAND_CASE[bare.toUpperCase()];
+      if (brand) return w.replace(bare, brand); // "fedex," → "FedEx,"
       if (i > 0 && small.has(bare)) return w;
       if (bare.length <= 3 && !suffix.has(bare)) return w.toUpperCase(); // acronyms: KB, RPM, AT&T
       return w.charAt(0).toUpperCase() + w.slice(1);

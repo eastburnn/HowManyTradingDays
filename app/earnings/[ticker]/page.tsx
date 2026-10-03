@@ -16,6 +16,7 @@ import {
   formatMediumDate,
   formatQuarterEnd,
   formatShortDate,
+  formatWeekdayDate,
   parseISODate,
   statusLabel,
   timeOfDayLabel,
@@ -52,10 +53,11 @@ function countdownFrom(todayISO: string, targetISO: string) {
 }
 
 function shortName(raw: string): string {
-  // "Apple Inc." → "Apple"; "KKR Real Estate Finance Trust Inc." → "KKR Real Estate Finance Trust"
-  return displayName(raw)
-    .replace(/,?\s+(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|l\.p|n\.v|s\.a|holdings?)\.?$/i, "")
-    .replace(/\s+$/, "");
+  // "Apple Inc." → "Apple"; "PayPal Holdings, Inc." → "PayPal"; "KKR Real Estate Finance Trust Inc." → "KKR Real Estate Finance Trust"
+  const suffix = /,?\s+(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|l\.p|n\.v|s\.a|holdings?)\.?$/i;
+  let name = displayName(raw).replace(suffix, "");
+  if (name.includes(" ")) name = name.replace(suffix, ""); // a second suffix, but never down to nothing
+  return name.replace(/\s+$/, "");
 }
 
 function accuracySentence(e: EarningsEvent): string {
@@ -77,6 +79,32 @@ function accuracySentence(e: EarningsEvent): string {
    METADATA
 ----------------------------------------------*/
 
+// Google shows about 60 characters of a title and 155 to 160 of a description.
+const TITLE_MAX = 60;
+const DESC_MAX = 158;
+
+/** The first candidate that fits a search result, else the shortest one */
+function fitTitle(candidates: string[]): string {
+  return candidates.find((c) => c.length <= TITLE_MAX) ?? candidates[candidates.length - 1];
+}
+
+/** The body plus the longest tail that still fits, else the body alone: never a sentence cut mid-way */
+function fitDescription(body: string, tails: string[]): string {
+  for (const tail of tails) {
+    const full = `${body} ${tail}`;
+    if (full.length <= DESC_MAX) return full;
+  }
+  if (body.length <= DESC_MAX) return body;
+  return body.slice(0, DESC_MAX - 1).replace(/\s+\S*$/, "") + "…";
+}
+
+/** What the page offers beyond the date, longest first */
+const SOURCES = [
+  "Trading-day countdown and past report dates from SEC filings.",
+  "Countdown and past report dates from SEC filings.",
+  "Countdown and past report dates.",
+];
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { ticker } = await params;
   const data = await getCompanyEarnings(ticker);
@@ -89,32 +117,60 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const canonical = `/earnings/${sym.toLowerCase()}`;
   const today = todayET();
 
+  // Titles lead with the name and ticker people search for, then the date and
+  // whether it is confirmed; longer names drop the quarter, then the ticker.
   let title: string;
   let description: string;
-  if (next) {
+  if (next && next.overdue && next.status === "estimated") {
+    title = fitTitle([
+      `${name} (${sym}) Earnings Date: Expected Any Day`,
+      `${name} Earnings Date: Expected Any Day`,
+      `${sym} Earnings Date: Expected Any Day`,
+    ]);
+    description = fitDescription(
+      `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} and has not filed yet, so the report is expected any day.`,
+      ["Past report dates and times from SEC filings.", "Past report dates from SEC filings."]
+    );
+  } else if (next && next.confidence === "low" && next.status === "estimated") {
     const [start, end] = estimateWindow(next, today);
+    const range = `${formatShortDate(start)}–${formatShortDate(end)}`;
+    title = fitTitle([
+      `${name} (${sym}) Earnings Date: Expected ${range}`,
+      `${name} Earnings Date: Expected ${range}`,
+      `${sym} Earnings Date: Expected ${range}`,
+    ]);
+    description = fitDescription(
+      `${name} (${sym}) is expected to report ${fiscalLabel(next)} earnings between ${formatMediumDate(start)} and ${formatMediumDate(end)}.`,
+      SOURCES
+    );
+  } else if (next) {
     const label = next.status === "confirmed" ? "Confirmed" : "Estimated";
-    const { tradingDays } = countdownFrom(today, next.eventDate);
-    title =
-      next.overdue && next.status === "estimated"
-        ? `${sym} Earnings Date: Expected Any Day | When Does ${name} Report?`
-        : next.confidence === "low" && next.status === "estimated"
-        ? `${sym} Earnings Date: Expected ${formatShortDate(start)}–${formatShortDate(end)} | Countdown`
-        : `${sym} Earnings Date: ${formatMediumDate(next.eventDate)} (${label}) | Countdown`;
-    description =
-      next.overdue && next.status === "estimated"
-        ? `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} but has not filed yet. Expected any day. Past report dates from SEC filings.`
-        : next.confidence === "low" && next.status === "estimated"
-        ? `${name} (${sym}) is expected to report ${fiscalLabel(next)} earnings between ${formatMediumDate(start)} and ${formatMediumDate(end)}. Trading-day countdown and past report dates from SEC filings.`
-        : `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}, ${tradingDays} trading days away. Live countdown and past report dates.`;
+    const date = formatMediumDate(next.eventDate);
+    title = fitTitle([
+      `${name} (${sym}) Q${next.fiscalQuarter} ${next.fiscalYear} Earnings Date: ${date} (${label})`,
+      `${name} (${sym}) Earnings Date: ${date} (${label})`,
+      `${name} Earnings Date: ${date} (${label})`,
+      `${sym} Earnings Date: ${date} (${label})`,
+    ]);
+    description = fitDescription(
+      `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatWeekdayDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`,
+      SOURCES
+    );
   } else {
-    title = `${sym} Earnings Date | When Does ${name} Report Earnings?`;
-    description = `When ${name} (${sym}) reports earnings, with past report dates from SEC filings and a trading-day countdown.`;
+    title = fitTitle([
+      `When Does ${name} (${sym}) Report Earnings? Dates & History`,
+      `${name} (${sym}) Earnings Date & History`,
+      `${sym} Earnings Date & History`,
+    ]);
+    description = fitDescription(
+      `When ${name} (${sym}) reports earnings: past report dates and times from SEC filings, with a trading-day countdown once the next date is known.`,
+      []
+    );
   }
 
   return {
     title,
-    description: description.length > 158 ? description.slice(0, 155).replace(/\s+\S*$/, "") + "…" : description,
+    description,
     alternates: { canonical },
     robots: company.indexed ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
