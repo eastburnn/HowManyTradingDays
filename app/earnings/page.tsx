@@ -74,10 +74,10 @@ export default async function EarningsCalendarPage() {
             Earnings Calendar
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            When U.S. companies report earnings, with a countdown in trading days to each date. Dates are
-            estimated from each company&apos;s SEC filing history and upgraded to confirmed when the company
-            announces. Browse by month, scan the next 30 days (or a full quarter), or look up any NYSE or Nasdaq
-            ticker.
+            See upcoming earnings dates for every NYSE and Nasdaq company, with a countdown in trading days to
+            each report. Dates are estimated from each company&apos;s SEC filing history and upgraded to
+            confirmed once the company announces. Browse by month, scan the next 30 days or a full quarter, or
+            look up any ticker.
           </p>
         </header>
 
