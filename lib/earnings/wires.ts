@@ -36,6 +36,8 @@ export type FeedItem = {
   link: string | null;
   description: string;
   publishedAt: string | null; // ISO
+  /** Known company, when the feed belongs to one (its own IR site) */
+  cik?: number;
 };
 
 /* ---------------------------------------------

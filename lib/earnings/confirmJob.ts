@@ -43,10 +43,11 @@ const PAGE_WORTHY = new Set(["no future date found", "no quarter token"]);
 const PAGE_MAX_PER_RUN = 10;
 const PAGE_HOSTS = new Set(["www.prnewswire.com", "www.globenewswire.com"]);
 
-function pageReadable(link: string | null): link is string {
+/** Wire release pages, and a company's own pages when the item came from its IR feed */
+function pageReadable(link: string | null, feed: string): link is string {
   if (!link) return false;
   try {
-    return PAGE_HOSTS.has(new URL(link).hostname);
+    return PAGE_HOSTS.has(new URL(link).hostname) || feed.startsWith("ir-");
   } catch {
     return false;
   }
@@ -78,15 +79,17 @@ export async function stageItems(feedKey: string, items: FeedItem[]): Promise<nu
     ]
   );
   if (inserted.length) {
-    const byGuid = new Map(sorted.map((i) => [i.guid.slice(0, 500), i.description.slice(0, 4000)]));
+    const byGuid = new Map(sorted.map((i) => [i.guid.slice(0, 500), i]));
     const rows = await query<{ id: number; guid: string }>(`select id, guid from feed_items where id = any($1::bigint[])`, [
       inserted.map((r) => r.id),
     ]);
+    // A feed that belongs to one company (its IR site) pins the company, so
+    // name/ticker resolution is never needed for its items.
     await query(
-      `update feed_items f set parsed = jsonb_build_object('description', t.description)
-         from unnest($1::bigint[], $2::text[]) as t(id, description)
+      `update feed_items f set parsed = jsonb_strip_nulls(jsonb_build_object('description', t.description, 'cik', t.cik))
+         from unnest($1::bigint[], $2::text[], $3::int[]) as t(id, description, cik)
         where f.id = t.id`,
-      [rows.map((r) => r.id), rows.map((r) => byGuid.get(r.guid) ?? "")]
+      [rows.map((r) => r.id), rows.map((r) => byGuid.get(r.guid)?.description.slice(0, 4000) ?? ""), rows.map((r) => byGuid.get(r.guid)?.cik ?? null)]
     );
   }
   return inserted.length;
@@ -255,7 +258,7 @@ export async function processFeedItems(
     const readPage = async (): Promise<string> => {
       if (page !== null) return page;
       page = "";
-      if (!pageReadable(item.link) || stats.pageReads >= pageMaxPerRun) return page;
+      if (!pageReadable(item.link, item.feed) || stats.pageReads >= pageMaxPerRun) return page;
       stats.pageReads += 1;
       try {
         page = await fetchReleaseOpening(item.link);
@@ -368,8 +371,18 @@ export async function processFeedItems(
       continue;
     }
 
+    // An events feed names the date but not the hour; keep the time of day
+    // the company's pattern already gave the quarter.
+    if (parsed.timeOfDay === "unknown" && item.feed === "ir-events") {
+      const cur = await query<{ time_of_day: ParsedAdvisory["timeOfDay"] }>(
+        `select time_of_day from earnings_events where id = $1`,
+        [target.id]
+      );
+      if (cur[0]?.time_of_day && cur[0].time_of_day !== "unknown") parsed.timeOfDay = cur[0].time_of_day;
+    }
+
     await withTransaction(async (client) => {
-      const sourceType = fromEdgar ? "edgar-fts" : "wire-rss";
+      const sourceType = fromEdgar ? "edgar-fts" : item.feed.startsWith("ir-") ? "ir-site" : "wire-rss";
       if (target.status === "reported") {
         // Overriding a preliminary-8-K "reported" row: the write function
         // never lets a confirmation replace a report, so supersede it here,
@@ -417,7 +430,7 @@ export async function processFeedItems(
 export async function recentlyConfirmedTickers(sinceISO: string): Promise<string[]> {
   const rows = await query<{ ticker: string }>(
     `select distinct ticker from earnings_events
-      where status = 'confirmed' and source_type in ('wire-rss','edgar-fts') and created_at >= $1::timestamptz`,
+      where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site') and created_at >= $1::timestamptz`,
     [sinceISO]
   );
   return rows.map((r) => r.ticker);

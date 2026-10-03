@@ -45,7 +45,7 @@ const QUARTER_WORDS: Record<string, 1 | 2 | 3 | 4> = {
 };
 
 // "third quarter", "Q3", "3Q", "third-quarter", "fourth quarter and full year", "full year", "year-end"
-const QUARTER_TOKEN =
+export const QUARTER_TOKEN =
   /\b(?:(first|second|third|fourth|1st|2nd|3rd|4th)[\s-]+quarter|q([1-4])\b|([1-4])q\b|(full[\s-]year|fiscal[\s-]year|year[\s-]end|annual)\b)/i;
 
 // Future-tense scheduling language. Must be present in the TITLE.

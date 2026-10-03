@@ -121,8 +121,9 @@ export async function fetchGnwSearch(keyword: string, page = 1): Promise<FeedIte
 export async function fetchReleaseOpening(url: string): Promise<string> {
   const html = await politeFetch(url);
   const body = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ");
-  // The release body starts at the dateline ("CITY, State, Oct. 2, 2026 /PRNewswire/" or "(GLOBE NEWSWIRE)")
+  // The release body starts at the dateline ("CITY, State, Oct. 2, 2026 /PRNewswire/",
+  // "(GLOBE NEWSWIRE)", or "--(BUSINESS WIRE)--" on a company's own site)
   const text = clean(body);
-  const at = text.search(/\/PRNewswire\/|\(GLOBE NEWSWIRE\)/);
+  const at = text.search(/\/PRNewswire\/|\(GLOBE NEWSWIRE\)|\(BUSINESS WIRE\)/);
   return at >= 0 ? text.slice(Math.max(0, at - 200), at + 2500) : text.slice(0, 2500);
 }

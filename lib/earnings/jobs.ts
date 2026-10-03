@@ -23,6 +23,8 @@ import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
 import { type FeedStats, type ProcessStats, pollFeeds, processFeedItems, recentlyConfirmedTickers } from "./confirmJob";
 import { searchEdgarAdvisories, stageEdgarAdvisories } from "./edgarAdvisories";
+import { type IrSource, discoverIrSource, readIrSource } from "./irSites";
+import { stageItems } from "./confirmJob";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const STALE_AFTER_DAYS = 7; // every active company refreshes at least this often
@@ -40,6 +42,7 @@ export type TickStats = {
   advisories: ProcessStats | null;
   edgarAdvisories: { candidates: number; staged: number } | null;
   listings: { missing: number; deactivated: string[]; reactivated: string[] } | null;
+  irDiscovered: { checked: number; found: string[] } | null;
   budgetMs: number;
   elapsedMs: number;
 };
@@ -211,6 +214,83 @@ async function sweepEdgarAdvisoriesDaily(today: string, stats: TickStats): Promi
 }
 
 /* ---------------------------------------------
+   2d. INVESTOR-RELATIONS SITES
+----------------------------------------------*/
+
+const IR_DISCOVER_PER_TICK = 20;
+const IR_POLL_PER_RUN = 15;
+const IR_POLL_INTERVAL_HOURS = 20;
+
+/** Text of a company's latest earnings release exhibit on EDGAR, for IR-host discovery */
+async function latestReleaseText(cik: number): Promise<string> {
+  const [row] = await query<{ accession: string | null }>(
+    `select source_accession as accession from earnings_current
+      where cik = $1 and status = 'reported' and source_type = 'edgar-8k' and source_accession is not null
+      order by event_date desc limit 1`,
+    [cik]
+  );
+  if (!row?.accession) return "";
+  const folder = `https://www.sec.gov/Archives/edgar/data/${cik}/${row.accession.replace(/-/g, "")}/`;
+  const index = await (await fetch(folder, { headers: { "User-Agent": SEC_USER_AGENT } })).text();
+  const docs = [...index.matchAll(/href="(\/Archives\/edgar\/data\/[^"]+\.(?:htm|txt))"/gi)].map((m) => m[1]).filter((h) => !/index/i.test(h));
+  const exhibit = docs.find((d) => /ex[-_]?99|99-?1|exhibit/i.test(d)) ?? docs[0];
+  if (!exhibit) return "";
+  await new Promise((r) => setTimeout(r, 150)); // stay well under EDGAR's request rate
+  const html = await (await fetch(`https://www.sec.gov${exhibit}`, { headers: { "User-Agent": SEC_USER_AGENT } })).text();
+  return html.replace(/<[^>]+>/g, " ").slice(0, 60_000);
+}
+
+/** Find IR feeds for companies not yet looked at (largest first), a few per tick */
+async function discoverIrSourcesBatch(deadline: number, stats: TickStats): Promise<void> {
+  const todo = await query<{ cik: number; ticker: string; name: string }>(
+    `select c.cik, c.ticker, c.name from companies c
+      where c.active and not exists (select 1 from ir_sources s where s.cik = c.cik and s.discovered_at > now() - interval '30 days')
+      order by (c.filer_category = 'large-accelerated') desc, (c.filer_category = 'accelerated') desc, c.indexed desc, c.ticker
+      limit $1`,
+    [IR_DISCOVER_PER_TICK]
+  );
+  const found: string[] = [];
+  for (const c of todo) {
+    if (Date.now() > deadline) break;
+    try {
+      const src = await discoverIrSource(c.cik, await latestReleaseText(c.cik), { name: c.name, ticker: c.ticker });
+      if (src.platform === "q4" || src.platform === "investis" || src.platform === "rss") found.push(`${c.ticker}:${src.platform}`);
+    } catch (err) {
+      console.error(`[tick] IR discovery ${c.ticker}:`, (err as Error).message);
+    }
+  }
+  stats.irDiscovered = { checked: todo.length, found };
+}
+
+/** Read the feeds of the companies least recently read (daily each), staging what they carry */
+export async function pollIrSourcesBatch(limit = IR_POLL_PER_RUN): Promise<{ polled: number; staged: number; failed: number }> {
+  const today = todayET();
+  const due = await query<IrSource>(
+    `select cik, host, platform, events_url, releases_url from ir_sources
+      where platform in ('q4','investis','rss')
+        and (last_polled_at is null or last_polled_at < now() - ($2 || ' hours')::interval)
+      order by last_polled_at asc nulls first limit $1`,
+    [limit, IR_POLL_INTERVAL_HOURS]
+  );
+  let staged = 0;
+  let failed = 0;
+  for (const src of due) {
+    const r = await readIrSource(src, today);
+    staged += await stageItems("ir-events", r.events);
+    staged += await stageItems("ir-releases", r.releases);
+    const ok = r.fetched > 0 && r.failed === 0;
+    if (!ok) failed += 1;
+    await query(
+      `update ir_sources set last_polled_at = now(), last_status = $2,
+              consecutive_failures = case when $3 then 0 else consecutive_failures + 1 end
+        where cik = $1`,
+      [src.cik, ok ? "ok" : `failed ${r.failed}/${r.fetched || 1}`, ok]
+    );
+  }
+  return { polled: due.length, staged, failed };
+}
+
+/* ---------------------------------------------
    3. REFRESH BATCH (requested first, then stalest)
 ----------------------------------------------*/
 
@@ -271,6 +351,7 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     advisories: null,
     edgarAdvisories: null,
     listings: null,
+    irDiscovered: null,
     budgetMs,
     elapsedMs: 0,
   };
@@ -295,7 +376,13 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     stats.feeds = await pollFeeds({ includeLists: true });
     stats.advisories = await processFeedItems();
     for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
-    await refreshBatch(deadline, today, stats, touched);
+    await refreshBatch(deadline - 45_000, today, stats, touched);
+    // IR-site discovery takes what is left of the budget (a few companies per tick)
+    try {
+      await discoverIrSourcesBatch(deadline, stats);
+    } catch (err) {
+      console.error("[tick] IR discovery failed:", (err as Error).message);
+    }
 
     for (const ticker of touched) {
       try {
@@ -364,7 +451,7 @@ export async function checkHealth(): Promise<Health> {
       (select count(*) from earnings_next) as with_upcoming,
       (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h,
       (select count(*) from feed_items where fetched_at > now() - interval '6 hours') as feed_items_6h,
-      (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts') and created_at > now() - interval '7 days') as confirmed_7d
+      (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site') and created_at > now() - interval '7 days') as confirmed_7d
   `, [today]);
   const done = (await getState<string[]>("daily_index_done")) ?? [];
   const lastIndexDay = done.length ? done[done.length - 1] : null;
@@ -415,7 +502,13 @@ export async function checkHealth(): Promise<Health> {
    FEEDS-ONLY RUN (every 5 minutes)
 ----------------------------------------------*/
 
-export type FeedRunStats = { feeds: FeedStats; advisories: ProcessStats; revalidated: number; elapsedMs: number };
+export type FeedRunStats = {
+  feeds: FeedStats;
+  irSites: { polled: number; staged: number; failed: number } | null;
+  advisories: ProcessStats;
+  revalidated: number;
+  elapsedMs: number;
+};
 
 export async function runFeeds(): Promise<FeedRunStats> {
   const started = Date.now();
@@ -423,6 +516,12 @@ export async function runFeeds(): Promise<FeedRunStats> {
   const [run] = await query<{ id: number }>(`insert into job_runs (job) values ('feeds') returning id`);
   try {
     const feeds = await pollFeeds();
+    let irSites: FeedRunStats["irSites"] = null;
+    try {
+      irSites = await pollIrSourcesBatch();
+    } catch (err) {
+      console.error("[feeds] IR sites:", (err as Error).message);
+    }
     const advisories = await processFeedItems();
     let revalidated = 0;
     for (const ticker of await recentlyConfirmedTickers(startedISO)) {
@@ -436,7 +535,7 @@ export async function runFeeds(): Promise<FeedRunStats> {
         revalidatePath("/earnings");
       } catch {}
     }
-    const stats: FeedRunStats = { feeds, advisories, revalidated, elapsedMs: Date.now() - started };
+    const stats: FeedRunStats = { feeds, irSites, advisories, revalidated, elapsedMs: Date.now() - started };
     await query(`update job_runs set finished_at = now(), status = 'ok', stats = $2 where id = $1`, [run.id, JSON.stringify(stats)]);
     return stats;
   } catch (err) {

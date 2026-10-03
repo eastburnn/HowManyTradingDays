@@ -14,7 +14,8 @@
     "earnings:sweep": "tsx --env-file=.env.local scripts/earnings/sweep-advisories.ts",
     "earnings:retract": "tsx --env-file=.env.local scripts/earnings/retract-confirmation.ts",
     "earnings:backfill-wires": "tsx --env-file=.env.local scripts/earnings/backfill-wires.ts",
-    "earnings:revert-early": "tsx --env-file=.env.local scripts/earnings/revert-early-reports.ts"
+    "earnings:revert-early": "tsx --env-file=.env.local scripts/earnings/revert-early-reports.ts",
+    "earnings:ir": "tsx --env-file=.env.local scripts/earnings/ir-sites.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
