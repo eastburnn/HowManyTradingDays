@@ -13,9 +13,13 @@ import { addDaysISO, displayName, formatMediumDate } from "@/lib/earnings/format
 
 export const revalidate = 3600;
 
-const title = "Earnings Calendar with Trading-Day Countdowns";
+// Search snippet: the year in the title matches how people search ("earnings
+// calendar 2026") and rolls over with the hourly regeneration; the description
+// stays under 155 characters so Google shows all of it.
+const year = new Date().getFullYear();
+const title = `Earnings Calendar ${year}: Upcoming Earnings Dates by Day & Month`;
 const description =
-  "Upcoming U.S. earnings dates for NYSE and Nasdaq companies, by day and by month, estimated from SEC filings and confirmed from company announcements, with a countdown in trading days to each report.";
+  "Upcoming earnings dates for every NYSE and Nasdaq stock, by day and month. Confirmed and estimated dates from SEC filings, plus a trading-day countdown.";
 
 export const metadata: Metadata = {
   title,
