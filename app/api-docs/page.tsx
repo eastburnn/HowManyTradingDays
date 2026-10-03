@@ -284,6 +284,13 @@ badge.textContent = isOpen
             </li>
             <li>Responses are cached briefly at the edge. No rate limits, no key, please be reasonable.</li>
             <li>Free for personal and commercial use. Attribution with a link is appreciated.</li>
+            <li>
+              Provided as is, with no guarantee of accuracy or availability. Use of the API is subject to the{" "}
+              <Link href="/terms" className="text-blue-300 hover:text-blue-200 transition-colors">
+                Terms of Service
+              </Link>
+              .
+            </li>
           </ul>
         </section>
 

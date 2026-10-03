@@ -152,7 +152,11 @@ export default async function EarningsCalendarPage() {
 
         <p className="text-[10px] text-slate-500 text-center leading-relaxed">
           Estimated dates are projections from public SEC filings, not company announcements. Confirm with the
-          company before making decisions. Not investment advice.
+          company before making decisions. Not investment advice. See the{" "}
+          <Link href="/terms" className="underline hover:text-slate-300 transition-colors">
+            Terms of Service
+          </Link>
+          .
         </p>
       </div>
     </main>

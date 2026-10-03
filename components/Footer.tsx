@@ -13,6 +13,7 @@ const SITE_LINKS = [
   { label: "Free API", href: "/api-docs" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
+  { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
 ];
 
