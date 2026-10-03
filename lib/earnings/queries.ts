@@ -138,3 +138,50 @@ export async function getIndexedTickers(): Promise<{ ticker: string; lastRefresh
        from companies where active and indexed order by ticker`
   );
 }
+
+/* ---------------------------------------------
+   TYPEAHEAD SEARCH
+----------------------------------------------*/
+
+export type SearchHit = {
+  ticker: string;
+  name: string;
+  nextDate: string | null;
+  status: "estimated" | "confirmed" | null;
+  confidence: string | null;
+  overdue: boolean | null;
+};
+
+/**
+ * Match active companies by ticker prefix (primary or secondary symbols) or
+ * by company-name substring. Exact ticker first, then ticker prefix, then
+ * name-starts-with, then name-word-starts-with; large caps ahead of small.
+ */
+export async function searchCompanies(q: string, limit = 8): Promise<SearchHit[]> {
+  const raw = q.trim();
+  if (!raw) return [];
+  const like = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
+  // Spelling-insensitive name key: 'jp morgan' should find 'JPMORGAN CHASE & CO'
+  const compact = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return query<SearchHit>(
+    `select c.ticker, c.name, n.event_date::text as "nextDate", n.status, n.confidence, n.overdue
+       from companies c
+       left join earnings_next n on n.cik = c.cik
+      where c.active and (
+            upper(c.ticker) like upper($1) || '%'
+         or exists (select 1 from unnest(c.tickers) t where t like upper($1) || '%')
+         or ($3 and c.name ilike '%' || $1 || '%')
+         or ($3 and regexp_replace(lower(c.name), '[^a-z0-9]', '', 'g') like '%' || $4 || '%')
+      )
+      order by (upper(c.ticker) = upper($1)) desc,
+               (upper(c.ticker) like upper($1) || '%') desc,
+               c.indexed desc,
+               (c.name ilike $1 || '%') desc,
+               (c.name ilike '% ' || $1 || '%') desc,
+               (c.filer_category = 'large-accelerated') desc,
+               (c.filer_category = 'accelerated') desc,
+               length(c.name) asc
+      limit $2`,
+    [like, limit, raw.length >= 2, compact]
+  );
+}
