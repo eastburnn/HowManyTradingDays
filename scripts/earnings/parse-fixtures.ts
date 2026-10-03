@@ -53,6 +53,26 @@ const FIXTURES: Fixture[] = [
     description: "Stark Industries (NYSE: STRK) ...",
     expect: { ok: true, date: "2027-08-06", quarter: 2 }, // Aug 6 is past relative to Oct 5 → rolls to next year, then rejected as too far out
   },
+  {
+    title: "Company schedules earnings conference call to announce third quarter 2026 results",
+    description: "CHICAGO, October 6, 2026 -- Example Bancorp (NASDAQ: EXBC) will release third quarter 2026 results after the market closes on Thursday, October 22, 2026.",
+    expect: { ok: true, date: "2026-10-22", tod: "postmarket", quarter: 3, tickers: ["EXBC"] },
+  },
+  {
+    title: "Company schedules earnings conference call to announce third quarter 2026 results",
+    description: "Houston, Texas, September 22, 2026 – Talos Energy Inc. (NYSE: TALO) today announced the closing of its acquisition, effective September 30, 2026. Talos will release its third quarter 2026 results on November 3, 2026, after market close, and host a conference call on November 4, 2026 at 10:00 a.m. CT.",
+    expect: { ok: true, date: "2026-11-03", tod: "postmarket", quarter: 3, tickers: ["TALO"] },
+  },
+  {
+    title: "Company schedules earnings conference call to announce third quarter 2026 results",
+    description: "Houston, Texas, September 22, 2026 – Talos Energy Inc. (NYSE: TALO) today announced the closing of its acquisition. The transaction is effective September 30, 2026 and will be reported in the Company's third quarter results. Talos will release its third quarter 2026 results on November 3, 2026, after market close.",
+    expect: { ok: true, date: "2026-11-03", tod: "postmarket", quarter: 3, tickers: ["TALO"] },
+  },
+  {
+    title: "Company schedules earnings conference call to announce third quarter 2026 results",
+    description: "Updated full-year 2026 guidance will be provided in conjunction with the Company's third quarter 2026 earnings release. THIRD QUARTER 2026 RESULTS AND EARNINGS CONFERENCE CALL The Company intends to release third quarter 2026 results for the period ended September 30, 2026, on Tuesday, November 3, 2026, after the U.S. financial market closes. In addition to this release, Talos (NYSE: TALO) will host a conference call on November 4, 2026.",
+    expect: { ok: true, date: "2026-11-03", tod: "postmarket", quarter: 3, tickers: ["TALO"] },
+  },
   // ---- must NOT match ----
   { title: "Acme Corp Reports Third Quarter 2026 Financial Results", description: "Revenue of $1.2 billion...", expect: { ok: false } },
   { title: "Globex Announces Record Fourth Quarter Results", description: "...", expect: { ok: false } },

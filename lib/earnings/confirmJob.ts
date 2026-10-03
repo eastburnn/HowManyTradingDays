@@ -10,8 +10,18 @@
  */
 
 import { query, withTransaction } from "./db";
-import { FEEDS, fetchFeed } from "./wires";
-import { type ParsedAdvisory, parseAdvisory } from "./confirm";
+import { FEEDS, type FeedItem, fetchFeed } from "./wires";
+import { fetchPrnConferenceCalls } from "./wireArchives";
+
+// Feeds that are advisory streams by construction (EDGAR's pre-filtered 8-K
+// search, PR Newswire's Conference Call Announcements category): a title-level
+// regex miss is still worth a model call. A plain keyword search is not —
+// GlobeNewswire's "earnings conference call" results are mostly results
+// releases, and the regex already rejects those correctly.
+export const ARCHIVE_FEEDS = new Set(["edgar-fts", "prn-calls"]);
+import { type ParsedAdvisory, dateMentioned, parseAdvisory } from "./confirm";
+import { getDayInfo } from "@/lib/tradingDays";
+import { parseISO } from "./fiscal";
 import { llmAvailable, parseAdvisoryWithModel } from "./llmParse";
 import { displayName } from "./format";
 
@@ -29,42 +39,63 @@ const LLM_MAX_ATTEMPTS = 2;
    POLL
 ----------------------------------------------*/
 
-export async function pollFeeds(): Promise<FeedStats> {
+/**
+ * Stage items for a feed. Oldest first, so ids ascend chronologically and a
+ * later correction ("updates the time of its call") is processed after — and
+ * therefore supersedes — the original announcement.
+ */
+export async function stageItems(feedKey: string, items: FeedItem[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const sorted = items.slice().sort((a, b) => (a.publishedAt ?? "").localeCompare(b.publishedAt ?? ""));
+  const inserted = await query<{ id: number }>(
+    `insert into feed_items (feed, guid, title, link, published_at)
+     select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::timestamptz[])
+     on conflict (feed, guid) do nothing
+     returning id`,
+    [
+      sorted.map(() => feedKey),
+      sorted.map((i) => i.guid.slice(0, 500)),
+      sorted.map((i) => i.title.slice(0, 1000)),
+      sorted.map((i) => i.link),
+      sorted.map((i) => i.publishedAt),
+    ]
+  );
+  if (inserted.length) {
+    const byGuid = new Map(sorted.map((i) => [i.guid.slice(0, 500), i.description.slice(0, 4000)]));
+    const rows = await query<{ id: number; guid: string }>(`select id, guid from feed_items where id = any($1::bigint[])`, [
+      inserted.map((r) => r.id),
+    ]);
+    await query(
+      `update feed_items f set parsed = jsonb_build_object('description', t.description)
+         from unnest($1::bigint[], $2::text[]) as t(id, description)
+        where f.id = t.id`,
+      [rows.map((r) => r.id), rows.map((r) => byGuid.get(r.guid) ?? "")]
+    );
+  }
+  return inserted.length;
+}
+
+export async function pollFeeds(opts: { includeLists?: boolean } = {}): Promise<FeedStats> {
   const stats: FeedStats = { feeds: 0, feedErrors: 0, newItems: 0 };
+
+  // PR Newswire's "Conference Call Announcements" category has no RSS feed;
+  // its listing page is the advisory stream itself.
+  if (opts.includeLists) {
+    stats.feeds += 1;
+    try {
+      stats.newItems += await stageItems("prn-calls", await fetchPrnConferenceCalls(1, 100));
+    } catch (err) {
+      stats.feedErrors += 1;
+      console.error("[feeds] prn-calls:", (err as Error).message);
+    }
+  }
+
   for (const feed of FEEDS) {
     stats.feeds += 1;
     try {
       const items = await fetchFeed(feed);
       if (items.length === 0) continue;
-      const inserted = await query<{ id: number }>(
-        `insert into feed_items (feed, guid, title, link, published_at)
-         select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::timestamptz[])
-         on conflict (feed, guid) do nothing
-         returning id`,
-        [
-          items.map(() => feed.key),
-          items.map((i) => i.guid.slice(0, 500)),
-          items.map((i) => i.title.slice(0, 1000)),
-          items.map((i) => i.link),
-          items.map((i) => i.publishedAt),
-        ]
-      );
-      stats.newItems += inserted.length;
-      // Descriptions are needed for parsing but not worth storing long-term:
-      // keep them only on the new rows, in `parsed`, until processed.
-      if (inserted.length) {
-        const byGuid = new Map(items.map((i) => [i.guid.slice(0, 500), i.description.slice(0, 4000)]));
-        const rows = await query<{ id: number; guid: string }>(
-          `select id, guid from feed_items where id = any($1::bigint[])`,
-          [inserted.map((r) => r.id)]
-        );
-        await query(
-          `update feed_items f set parsed = jsonb_build_object('description', t.description)
-             from unnest($1::bigint[], $2::text[]) as t(id, description)
-            where f.id = t.id`,
-          [rows.map((r) => r.id), rows.map((r) => byGuid.get(r.guid) ?? "")]
-        );
-      }
+      stats.newItems += await stageItems(feed.key, items);
     } catch (err) {
       stats.feedErrors += 1;
       console.error(`[feeds] ${feed.key}:`, (err as Error).message);
@@ -157,10 +188,10 @@ async function chooseQuarter(cik: number, parsed: ParsedAdvisory): Promise<Candi
    PROCESS
 ----------------------------------------------*/
 
-export async function processFeedItems(limit = 200): Promise<ProcessStats> {
+export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_RUN): Promise<ProcessStats> {
   const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0 };
-  const pending = await query<{ id: number; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number } | null }>(
-    `select id, title, link, published_at::text, parsed from feed_items
+  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; cik?: number } | null }>(
+    `select id, feed, title, link, published_at::text, parsed from feed_items
       where parse_status = 'pending' order by id asc limit $1`,
     [limit]
   );
@@ -173,7 +204,10 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
     let method: "regex" | "llm" = "regex";
 
     // Fallback: a scheduling-shaped headline the regex couldn't finish.
-    if (!outcome.ok && LLM_WORTHY.has(outcome.reason) && llmAvailable() && stats.llmCalls < LLM_MAX_PER_RUN) {
+    const fromEdgar = item.feed === "edgar-fts";
+    const fromArchive = ARCHIVE_FEEDS.has(item.feed);
+    const worthModel = !outcome.ok && (LLM_WORTHY.has(outcome.reason) || (fromArchive && outcome.reason === "no scheduling language in title"));
+    if (!outcome.ok && worthModel && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
       const attempts = (item.parsed?.llmAttempts ?? 0) + 1;
       stats.llmCalls += 1;
       const llm = await parseAdvisoryWithModel(item.title, description, published);
@@ -193,10 +227,22 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
       }
     }
 
+    // Sanity guards on any parsed date: companies report on trading days, and a
+    // model-supplied date must be stated literally in the text (no "early
+    // November" → November 1).
+    if (outcome.ok) {
+      const d = outcome.parsed.date;
+      if (!getDayInfo(parseISO(d)).isTradingDay) {
+        outcome = { ok: false, reason: `date ${d} is not a trading day (${method})` };
+      } else if (method === "llm" && !dateMentioned(`${item.title} ${description}`, d)) {
+        outcome = { ok: false, reason: `llm date ${d} not stated in text` };
+      }
+    }
+
     if (!outcome.ok) {
       // Only scheduling-shaped headlines are worth keeping for review.
       const review = outcome.reason !== "no scheduling language in title" && outcome.reason !== "not about earnings/results";
-      await query(`update feed_items set parse_status = $2, parsed = $3 where id = $1`, [
+      await query(`update feed_items set parse_status = $2, parsed = coalesce(parsed, '{}'::jsonb) || $3::jsonb where id = $1`, [
         item.id,
         review ? "failed" : "ignored",
         JSON.stringify({ reason: outcome.reason }),
@@ -208,13 +254,15 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
 
     stats.matched += 1;
     const parsed = outcome.parsed;
-    const company = await resolveCik(parsed);
+    const company = item.parsed?.cik
+      ? (await query<{ cik: number; ticker: string }>(`select cik, ticker from companies where cik = $1 and active`, [item.parsed.cik]))[0] ?? null
+      : await resolveCik(parsed);
     const target = company ? await chooseQuarter(company.cik, parsed) : null;
 
     if (!company || !target) {
       await query(`update feed_items set parse_status = 'failed', parsed = $2 where id = $1`, [
         item.id,
-        JSON.stringify({ reason: company ? "no matching upcoming quarter" : "company not resolved", method, parsed }),
+        JSON.stringify({ reason: company ? "no matching upcoming quarter" : "company not resolved", method, parsed, description }),
       ]);
       stats.failed += 1;
       continue;
@@ -222,7 +270,7 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
 
     await withTransaction(async (client) => {
       await client.query(
-        `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed','wire-rss',
+        `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed',$10,
                                       null,null,null,false,$9,null,'high',0::smallint,false,null)`,
         [
           company.cik,
@@ -234,11 +282,12 @@ export async function processFeedItems(limit = 200): Promise<ProcessStats> {
           parsed.date,
           parsed.timeOfDay,
           item.link,
+          fromEdgar ? "edgar-fts" : "wire-rss",
         ]
       );
       await client.query(`update feed_items set parse_status = 'matched', parsed = $2 where id = $1`, [
         item.id,
-        JSON.stringify({ method, parsed, cik: company.cik, ticker: company.ticker, fiscalYear: target.fiscal_year, quarter: target.fiscal_quarter }),
+        JSON.stringify({ method, parsed, cik: company.cik, ticker: company.ticker, fiscalYear: target.fiscal_year, quarter: target.fiscal_quarter, description }),
       ]);
     });
     stats.confirmed += 1;

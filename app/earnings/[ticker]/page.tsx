@@ -371,23 +371,23 @@ export default async function EarningsTickerPage({ params }: Params) {
               the pattern behind the estimate above.
             </p>
             <div className="overflow-x-auto rounded-xl border border-slate-800">
-              <table className="w-full text-xs sm:text-sm">
+              <table className="w-full table-fixed text-xs sm:text-sm">
                 <thead className="bg-slate-900/60 text-[10px] sm:text-xs uppercase tracking-wide text-slate-400">
                   <tr>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium">Quarter</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium">Reported</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium">Time</th>
-                    <th className="px-2 sm:px-3 py-2 text-right font-medium whitespace-nowrap">Days after</th>
+                    <th className="px-1 sm:px-3 py-2 text-center font-medium">Quarter</th>
+                    <th className="px-1 sm:px-3 py-2 text-center font-medium">Reported</th>
+                    <th className="px-1 sm:px-3 py-2 text-center font-medium">Time</th>
+                    <th className="px-1 sm:px-3 py-2 text-center font-medium leading-tight">Days after</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((h) => (
                     <tr key={h.id} className="border-t border-slate-800">
-                      <td className="px-2 sm:px-3 py-2 text-slate-300 whitespace-nowrap">
+                      <td className="px-1 sm:px-3 py-2 text-center text-slate-300 whitespace-nowrap">
                         Q{h.fiscalQuarter} {h.fiscalYear}
                         <span className="block text-[11px] text-slate-500">ended {formatShortDate(h.periodEnd)}</span>
                       </td>
-                      <td className="px-2 sm:px-3 py-2 text-slate-100 whitespace-nowrap">
+                      <td className="px-1 sm:px-3 py-2 text-center text-slate-100 whitespace-nowrap">
                         {h.sourceUrl ? (
                           <a href={h.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline decoration-slate-600 underline-offset-2">
                             {formatMediumDate(h.eventDate)}
@@ -397,8 +397,8 @@ export default async function EarningsTickerPage({ params }: Params) {
                         )}
                         <span className="block text-[11px] text-slate-500">{weekdayOf(h.eventDate)}</span>
                       </td>
-                      <td className="px-2 sm:px-3 py-2 text-slate-400 whitespace-nowrap">{timeOfDayShort(h.timeOfDay)}</td>
-                      <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-slate-300">
+                      <td className="px-1 sm:px-3 py-2 text-center text-slate-400 whitespace-nowrap">{timeOfDayShort(h.timeOfDay)}</td>
+                      <td className="px-1 sm:px-3 py-2 text-center tabular-nums text-slate-300">
                         {daysBetweenISO(h.periodEnd, h.eventDate)}
                       </td>
                     </tr>

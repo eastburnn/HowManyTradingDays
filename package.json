@@ -10,7 +10,10 @@
     "earnings:backtest": "tsx --env-file=.env.local scripts/earnings/backtest.ts",
     "earnings:backfill": "tsx --env-file=.env.local scripts/earnings/backfill.ts",
     "earnings:fixtures": "tsx scripts/earnings/parse-fixtures.ts",
-    "earnings:wires": "tsx --env-file=.env.local scripts/earnings/wires-dryrun.ts"
+    "earnings:wires": "tsx --env-file=.env.local scripts/earnings/wires-dryrun.ts",
+    "earnings:sweep": "tsx --env-file=.env.local scripts/earnings/sweep-advisories.ts",
+    "earnings:retract": "tsx --env-file=.env.local scripts/earnings/retract-confirmation.ts",
+    "earnings:backfill-wires": "tsx --env-file=.env.local scripts/earnings/backfill-wires.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

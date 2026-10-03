@@ -22,6 +22,7 @@ import { refreshCompany, todayET } from "./ingest";
 import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
 import { type FeedStats, type ProcessStats, pollFeeds, processFeedItems, recentlyConfirmedTickers } from "./confirmJob";
+import { searchEdgarAdvisories, stageEdgarAdvisories } from "./edgarAdvisories";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const STALE_AFTER_DAYS = 7; // every active company refreshes at least this often
@@ -37,6 +38,7 @@ export type TickStats = {
   revalidated: number;
   feeds: FeedStats | null;
   advisories: ProcessStats | null;
+  edgarAdvisories: { candidates: number; staged: number } | null;
   budgetMs: number;
   elapsedMs: number;
 };
@@ -151,6 +153,22 @@ async function flagOverdueEstimates(today: string, stats: TickStats): Promise<vo
 }
 
 /* ---------------------------------------------
+   2b. EDGAR FULL-TEXT ADVISORY SWEEP (once a day)
+----------------------------------------------*/
+
+const EDGAR_SWEEP_LOOKBACK_DAYS = 4; // overlap covers EDGAR's indexing lag and a missed day
+
+async function sweepEdgarAdvisoriesDaily(today: string, stats: TickStats): Promise<void> {
+  const last = await getState<string>("edgar_fts_last_day");
+  if (last === today) return;
+  const start = toISODate(addDays(parseISO(today), -EDGAR_SWEEP_LOOKBACK_DAYS));
+  const candidates = await searchEdgarAdvisories(start, today);
+  const staged = await stageEdgarAdvisories(candidates);
+  stats.edgarAdvisories = { candidates: candidates.length, staged };
+  await setState("edgar_fts_last_day", today);
+}
+
+/* ---------------------------------------------
    3. REFRESH BATCH (requested first, then stalest)
 ----------------------------------------------*/
 
@@ -208,6 +226,7 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     revalidated: 0,
     feeds: null,
     advisories: null,
+    edgarAdvisories: null,
     budgetMs,
     elapsedMs: 0,
   };
@@ -219,7 +238,12 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     await ingestDailyIndexes(today, stats);
     await flagOverdueEstimates(today, stats);
     const feedsStarted = new Date().toISOString();
-    stats.feeds = await pollFeeds();
+    try {
+      await sweepEdgarAdvisoriesDaily(today, stats);
+    } catch (err) {
+      console.error("[tick] EDGAR advisory sweep failed:", (err as Error).message);
+    }
+    stats.feeds = await pollFeeds({ includeLists: true });
     stats.advisories = await processFeedItems();
     for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
     await refreshBatch(deadline, today, stats, touched);

@@ -71,7 +71,7 @@ export async function parseAdvisoryWithModel(
       messages: [
         {
           role: "user",
-          content: `Publication date: ${published}\n\nHeadline: ${title}\n\nOpening text: ${description.slice(0, 1500) || "(none)"}`,
+          content: `Publication date: ${published}\n\nHeadline: ${title}\n\nOpening text: ${description.slice(0, 3000) || "(none)"}`,
         },
       ],
       output_config: { format: zodOutputFormat(AdvisorySchema) },

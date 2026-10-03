@@ -9,7 +9,12 @@
  */
 
 import type { TimeOfDay } from "./fiscal";
-import { toISODate } from "@/lib/tradingDays";
+import { addDays, toISODate } from "@/lib/tradingDays";
+
+function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return toISODate(addDays(new Date(y, m - 1, d), days));
+}
 
 export type ParsedAdvisory = {
   date: string; // YYYY-MM-DD
@@ -63,8 +68,8 @@ const DATE_PATTERNS = [
   /\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?,?(?:\s+(\d{4}))?\b/gi,
 ];
 
-const POSTMARKET = /\b(?:after\s+(?:the\s+)?(?:market\s+)?clos(?:e|es|ing)|after\s+(?:the\s+)?(?:close\s+of\s+)?(?:trading|market)|following\s+(?:the\s+)?(?:market\s+)?close|post[\s-]market|after[\s-]hours|after\s+the\s+bell)\b/i;
-const PREMARKET = /\b(?:before\s+(?:the\s+)?(?:market\s+)?open(?:s|ing)?|before\s+(?:the\s+)?(?:opening\s+of\s+)?(?:trading|market)|prior\s+to\s+(?:the\s+)?(?:market\s+)?open(?:ing)?|pre[\s-]market|ahead\s+of\s+(?:the\s+)?(?:market\s+)?open(?:ing)?|before\s+the\s+bell)\b/i;
+const POSTMARKET = /\b(?:after\s+(?:the\s+)?(?:[\w.]+\s+){0,3}(?:market|markets|close|trading)\s*(?:clos(?:e|es|ing)|closes)?|following\s+(?:the\s+)?(?:[\w.]+\s+){0,3}close|post[\s-]market|after[\s-]hours|after\s+the\s+bell)\b/i;
+const PREMARKET = /\b(?:before\s+(?:the\s+)?(?:[\w.]+\s+){0,3}(?:market|markets)\s+open(?:s|ing)?|before\s+(?:the\s+)?(?:opening\s+of\s+)?(?:trading|market)|prior\s+to\s+(?:the\s+)?(?:[\w.]+\s+){0,3}(?:market\s+)?open(?:ing)?|pre[\s-]market|ahead\s+of\s+(?:the\s+)?(?:market\s+)?open(?:ing)?|before\s+the\s+bell)\b/i;
 const CLOCK_TIME = /\b(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?\s*(?:\(?\s*(?:e[sd]?t|eastern|et)\b)?/i;
 
 const TICKER_MENTION =
@@ -95,8 +100,30 @@ export function parseQuarter(text: string): { quarter: 1 | 2 | 3 | 4 | null; fis
   return { quarter, fiscalYear };
 }
 
-/** First plausible calendar date in `text`, resolved to ISO. Year defaults to the next occurrence on/after `publishedISO`. */
+const RESULTS_SENTENCE = /\b(results|earnings)\b/i;
+// An explicit scheduling construction — "will release", "to report", "plans
+// to announce" — or a call/webcast mention. "will be reported in" (a passive
+// aside about where a transaction shows up) must not qualify.
+const SCHEDULE_SENTENCE =
+  /\b(?:will|to|plans?\s+to|expects?\s+to|intends?\s+to|scheduled\s+to)\s+(?:release|report|announce|issue|publish|host|hold|discuss)\b|\b(?:conference\s+call|webcast|earnings\s+call)\b/i;
+
+/**
+ * The scheduled date: first, a date inside a sentence that talks about
+ * releasing/reporting results (so deal dates, datelines and other future
+ * dates elsewhere in a release don't win); otherwise the first future date
+ * in the text beyond the dateline.
+ */
 export function parseDate(text: string, publishedISO: string): string | null {
+  const sentences = text.split(/(?<=[.!?])\s+|\n+/);
+  for (const s of sentences) {
+    if (!RESULTS_SENTENCE.test(s) || !SCHEDULE_SENTENCE.test(s)) continue;
+    const d = firstFutureDate(s, publishedISO);
+    if (d) return d;
+  }
+  return firstFutureDate(text, publishedISO);
+}
+
+function firstFutureDate(text: string, publishedISO: string): string | null {
   const published = publishedISO.slice(0, 10);
   const candidates: string[] = [];
   for (const re of DATE_PATTERNS) {
@@ -106,6 +133,9 @@ export function parseDate(text: string, publishedISO: string): string | null {
       const yearRaw = m[3];
       const month = MONTHS[monthName] ?? MONTHS[monthName.slice(0, 3)];
       if (!month || day < 1 || day > 31) continue;
+      // "for the quarter ended September 30, 2026" is a period end, not the event.
+      const before = text.slice(Math.max(0, (m.index ?? 0) - 30), m.index ?? 0);
+      if (/\b(?:ended|ending|ends|as of|through|since|beginning)\s*(?:on\s+)?$/i.test(before)) continue;
       let year = yearRaw ? Number(yearRaw) : Number(published.slice(0, 4));
       let iso = toISODate(new Date(year, month - 1, day));
       if (!yearRaw && iso < published) {
@@ -118,7 +148,27 @@ export function parseDate(text: string, publishedISO: string): string | null {
   // The scheduling date is the first FUTURE date mentioned (datelines like
   // "Oct. 2, 2026" in the description are the publication date, not the event).
   const future = candidates.filter((d) => d > published);
-  return future[0] ?? null;
+  // A release dated the day after the feed/filing timestamp is still a
+  // dateline, not the event; prefer a later date when one exists.
+  const beyondDateline = future.filter((d) => d > addDaysISO(published, 1));
+  return beyondDateline[0] ?? future[0] ?? null;
+}
+
+const MONTH_NAMES = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+
+/**
+ * True when "Month D" (or "D Month") for the given ISO date appears literally
+ * in the text. Guards model-extracted dates against invention: "early
+ * November" must never become November 1.
+ */
+export function dateMentioned(text: string, iso: string): boolean {
+  const [, m, d] = iso.split("-").map(Number);
+  const full = MONTH_NAMES[m - 1];
+  const abbr = full.slice(0, 3);
+  const month = `(?:${full}|${abbr}\\.?|sept\\.?)`;
+  const day = `0?${d}(?:st|nd|rd|th)?`;
+  const re = new RegExp(`\\b${month}\\s+${day}\\b|\\b${day}\\s+${month}\\b`, "i");
+  return re.test(text);
 }
 
 export function parseTimeOfDay(text: string): TimeOfDay {
