@@ -22,6 +22,8 @@ export type EarningsObservation = {
   reportFiledDate: string; // when that 10-Q/10-K was filed
   releaseAccession: string;
   acceptanceDateTime: string | null;
+  /** No earnings 8-K: the results came out with the periodic report itself */
+  viaPeriodicReport?: boolean;
 };
 
 /* ---------------------------------------------
@@ -104,6 +106,8 @@ type PeriodReport = {
   form: ReportForm;
   periodEnd: string;
   filedDate: string;
+  accession: string;
+  acceptanceDateTime: string | null;
 };
 
 type Release = {
@@ -150,10 +154,7 @@ function quarterFor(periodEnd: string, fiscalYearEnd: string): 1 | 2 | 3 | 4 | n
   return q >= 1 && q <= 4 ? (q as 1 | 2 | 3 | 4) : null;
 }
 
-export type FiscalPeriod = {
-  form: ReportForm;
-  periodEnd: string;
-  filedDate: string;
+export type FiscalPeriod = PeriodReport & {
   fiscalYear: number;
   quarter: 1 | 2 | 3 | 4;
 };
@@ -173,7 +174,13 @@ export function listFiscalPeriods(filings: EdgarFiling[], fiscalYearEndMMDD?: st
     if (!form || !f.reportDate) continue;
     const existing = periodsByEnd.get(f.reportDate);
     if (!existing || f.filingDate < existing.filedDate) {
-      periodsByEnd.set(f.reportDate, { form, periodEnd: f.reportDate, filedDate: f.filingDate });
+      periodsByEnd.set(f.reportDate, {
+        form,
+        periodEnd: f.reportDate,
+        filedDate: f.filingDate,
+        accession: f.accession,
+        acceptanceDateTime: f.acceptanceDateTime,
+      });
     }
   }
   const periods = [...periodsByEnd.values()].sort((a, b) => (a.periodEnd < b.periodEnd ? -1 : 1));
@@ -203,7 +210,21 @@ export function listFiscalPeriods(filings: EdgarFiling[], fiscalYearEndMMDD?: st
   return out;
 }
 
-export function buildObservations(filings: EdgarFiling[], fiscalYearEndMMDD?: string | null): EarningsObservation[] {
+export type ObservationOptions = {
+  /**
+   * When a period has no earnings 8-K at all, take the periodic report's own
+   * filing date as the release date. Some companies (Highwoods, Federal
+   * Signal) publish results with the 10-Q/10-K itself, which exempts them
+   * from Item 2.02; without this they would have no history to estimate from.
+   */
+  periodicFallback?: boolean;
+};
+
+export function buildObservations(
+  filings: EdgarFiling[],
+  fiscalYearEndMMDD?: string | null,
+  opts: ObservationOptions = {}
+): EarningsObservation[] {
   const periods = listFiscalPeriods(filings, fiscalYearEndMMDD);
   if (periods.length === 0) return [];
 
@@ -236,7 +257,22 @@ export function buildObservations(filings: EdgarFiling[], fiscalYearEndMMDD?: st
         bestDistance = distance;
       }
     }
-    if (!best) continue;
+    if (!best) {
+      if (!opts.periodicFallback) continue;
+      observations.push({
+        fiscalYear: period.fiscalYear,
+        quarter: period.quarter,
+        periodEnd: period.periodEnd,
+        releaseDate: period.filedDate,
+        timeOfDay: timeOfDayFromAcceptance(period.acceptanceDateTime, period.filedDate),
+        reportForm: period.form,
+        reportFiledDate: period.filedDate,
+        releaseAccession: period.accession,
+        acceptanceDateTime: period.acceptanceDateTime,
+        viaPeriodicReport: true,
+      });
+      continue;
+    }
 
     observations.push({
       fiscalYear: period.fiscalYear,

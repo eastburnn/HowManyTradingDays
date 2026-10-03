@@ -30,9 +30,9 @@ function arg(name: string, fallback: string): string {
   const staged = await stageEdgarAdvisories(candidates);
   console.error(`  ${staged} new documents staged (in universe) and fetched`);
 
-  let total = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0 };
+  const total = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
   for (let pass = 0; pass < 20; pass++) {
-    const s = await processFeedItems(200, 400);
+    const s = await processFeedItems(200, 400, 200);
     if (s.processed === 0) break;
     for (const k of Object.keys(total) as (keyof typeof total)[]) total[k] += s[k];
     console.error(`  pass ${pass + 1}: ${JSON.stringify(s)}`);

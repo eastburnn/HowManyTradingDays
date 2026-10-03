@@ -3,23 +3,18 @@ import Link from "next/link";
 import { domine } from "../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import TickerSearch from "@/components/earnings/TickerSearch";
-import { getUpcomingEvents, type UpcomingRow } from "@/lib/earnings/queries";
+import MonthCalendar from "@/components/earnings/MonthCalendar";
+import CalendarRange from "@/components/earnings/CalendarRange";
+import { getEventDateBounds, getEventsInRange } from "@/lib/earnings/queries";
+import { type RangeRow, computeDistances, monthKey, shiftMonth, toCalendarEvent } from "@/lib/earnings/calendar";
 import { todayET } from "@/lib/earnings/ingest";
-import {
-  addDaysISO,
-  displayName,
-  formatLongDate,
-  formatMediumDate,
-  parseISODate,
-  timeOfDayLabel,
-} from "@/lib/earnings/format";
-import { countTradingDaysBetween, getDayInfo } from "@/lib/tradingDays";
+import { addDaysISO, displayName, formatMediumDate } from "@/lib/earnings/format";
 
 export const revalidate = 3600;
 
 const title = "Earnings Calendar with Trading-Day Countdowns";
 const description =
-  "Upcoming U.S. earnings dates for NYSE and Nasdaq companies over the next 30 days, estimated from SEC filings, with a countdown in trading days to each report.";
+  "Upcoming U.S. earnings dates for NYSE and Nasdaq companies, by day and by month, estimated from SEC filings and confirmed from company announcements, with a countdown in trading days to each report.";
 
 export const metadata: Metadata = {
   title,
@@ -37,69 +32,17 @@ export const metadata: Metadata = {
 const DAYS_AHEAD = 30;
 const EXPANDED_DAYS = 7; // days beyond this are collapsed but still rendered
 
-/** Monday-start week key for a date */
-function weekStart(iso: string): string {
-  const d = parseISODate(iso);
-  const offset = (d.getDay() + 6) % 7;
-  return addDaysISO(iso, -offset);
-}
-
-function groupByWeekAndDay(rows: UpcomingRow[]): Map<string, Map<string, UpcomingRow[]>> {
-  const weeks = new Map<string, Map<string, UpcomingRow[]>>();
-  for (const r of rows) {
-    const wk = weekStart(r.eventDate);
-    if (!weeks.has(wk)) weeks.set(wk, new Map());
-    const days = weeks.get(wk)!;
-    if (!days.has(r.eventDate)) days.set(r.eventDate, []);
-    days.get(r.eventDate)!.push(r);
-  }
-  return weeks;
-}
-
-function Badge({ r }: { r: UpcomingRow }) {
-  const cls =
-    r.status === "confirmed"
-      ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-      : r.confidence === "low"
-      ? "border-slate-600 bg-slate-700/30 text-slate-400"
-      : "border-amber-400/40 bg-amber-400/10 text-amber-200";
-  return (
-    <span className={`rounded-full border px-2 py-0.5 font-semibold ${cls}`}>
-      {r.status === "confirmed" ? "Confirmed" : r.confidence === "low" ? "Window" : "Est."}
-    </span>
-  );
-}
-
-function CompanyRow({ r }: { r: UpcomingRow }) {
-  return (
-    <li>
-      <Link
-        href={`/earnings/${r.ticker.toLowerCase()}`}
-        className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-slate-900/70 transition-colors"
-      >
-        <span className="min-w-0 flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-slate-100 whitespace-nowrap">{r.ticker}</span>
-          <span className="text-xs text-slate-400 truncate">{displayName(r.name)}</span>
-        </span>
-        <span className="flex items-center gap-2 shrink-0 text-[10px] uppercase tracking-wide">
-          <span className="text-slate-500 hidden sm:inline">{timeOfDayLabel(r.timeOfDay)}</span>
-          <Badge r={r} />
-        </span>
-      </Link>
-    </li>
-  );
-}
-
 export default async function EarningsCalendarPage() {
   const today = todayET();
   const end = addDaysISO(today, DAYS_AHEAD);
 
   // Degrade to an empty calendar rather than failing the build or the page
   // if the database is unreachable; ISR retries within the hour.
-  let rows: UpcomingRow[] = [];
+  let rows: RangeRow[] = [];
+  let bounds: { min: string; max: string } | null = null;
   let unavailable = false;
   try {
-    rows = await getUpcomingEvents(today, end, 3000);
+    [rows, bounds] = await Promise.all([getEventsInRange(today, end), getEventDateBounds()]);
   } catch (err) {
     console.error("[earnings calendar] database unavailable:", (err as Error).message);
     unavailable = true;
@@ -108,9 +51,12 @@ export default async function EarningsCalendarPage() {
   // Overdue estimates (usual date passed, nothing filed) are listed apart —
   // they are not predictions that the company reports today.
   const overdue = rows.filter((r) => r.overdue);
-  const scheduled = rows.filter((r) => !r.overdue);
-  const weeks = groupByWeekAndDay(scheduled);
+  const scheduled = rows.filter((r) => !r.overdue && r.status !== "reported").map(toCalendarEvent);
+  const distances = computeDistances(scheduled, today);
   const expandUntil = addDaysISO(today, EXPANDED_DAYS);
+  const thisMonth = monthKey(today);
+  const minMonth = bounds ? monthKey(bounds.min) : shiftMonth(thisMonth, -1);
+  const maxMonth = bounds ? monthKey(bounds.max) : shiftMonth(thisMonth, 6);
 
   return (
     <main className="flex-1 flex items-start justify-center px-4">
@@ -122,74 +68,26 @@ export default async function EarningsCalendarPage() {
             Earnings Calendar
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            When U.S. companies report earnings over the next 30 days, with a countdown in trading days to each
-            date. Dates are estimated from each company&apos;s SEC filing history and upgraded to confirmed when
-            the company announces. Look up any NYSE or Nasdaq ticker.
+            When U.S. companies report earnings, with a countdown in trading days to each date. Dates are
+            estimated from each company&apos;s SEC filing history and upgraded to confirmed when the company
+            announces. Browse by month, scan the next 30 days (or a full quarter), or look up any NYSE or Nasdaq
+            ticker.
           </p>
         </header>
 
         <TickerSearch />
 
-        <section className="space-y-5">
-          <div className="flex items-baseline justify-between">
-            <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>Next 30 days</h2>
-            <span className="text-xs text-slate-500">{scheduled.length} companies</span>
-          </div>
+        <MonthCalendar today={today} minMonth={minMonth} maxMonth={maxMonth} />
 
-          {weeks.size === 0 ? (
-            <p className="text-sm text-slate-500">
-              {unavailable
-                ? "The earnings calendar is temporarily unavailable. Please check back shortly."
-                : "No earnings dates in the next 30 days yet."}
-            </p>
-          ) : (
-            [...weeks.entries()].map(([wk, days]) => {
-              const weekTotal = [...days.values()].reduce((n, items) => n + items.length, 0);
-              return (
-                <div key={wk} className="space-y-2">
-                  <div className="flex items-baseline justify-between border-b border-slate-800 pb-1">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                      Week of {formatMediumDate(wk)}
-                    </h3>
-                    <span className="text-[11px] text-slate-600">{weekTotal}</span>
-                  </div>
-
-                  {[...days.entries()].map(([date, items]) => {
-                    const info = getDayInfo(parseISODate(date));
-                    const { tradingDays } = countTradingDaysBetween(parseISODate(today), parseISODate(date));
-                    const distance =
-                      date === today
-                        ? "Today"
-                        : `${tradingDays % 1 === 0 ? tradingDays : tradingDays.toFixed(1)} trading days away`;
-                    const open = date <= expandUntil;
-                    return (
-                      <details key={date} open={open} className="group rounded-xl border border-slate-800 bg-slate-900/40">
-                        <summary className="cursor-pointer list-none flex items-baseline justify-between px-4 py-2.5 group-open:border-b group-open:border-slate-800">
-                          <div>
-                            <p className="text-sm font-medium text-slate-100">{formatLongDate(date)}</p>
-                            <p className="text-[11px] text-slate-500">
-                              {distance}
-                              {info.isEarlyClose ? " · early close" : ""}
-                            </p>
-                          </div>
-                          <span className="text-xs text-slate-500">
-                            {items.length}
-                            <span className="ml-1.5 inline-block text-slate-600 transition-transform group-open:rotate-90">›</span>
-                          </span>
-                        </summary>
-                        <ul className="divide-y divide-slate-800">
-                          {items.map((r) => (
-                            <CompanyRow key={r.id} r={r} />
-                          ))}
-                        </ul>
-                      </details>
-                    );
-                  })}
-                </div>
-              );
-            })
-          )}
-        </section>
+        <CalendarRange
+          today={today}
+          initialRows={scheduled}
+          initialDays={DAYS_AHEAD}
+          initialDistances={distances}
+          expandUntil={expandUntil}
+          maxDate={bounds?.max ?? null}
+          unavailable={unavailable}
+        />
 
         {overdue.length > 0 && (
           <section className="space-y-3">

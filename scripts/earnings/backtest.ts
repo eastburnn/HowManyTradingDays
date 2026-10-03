@@ -20,7 +20,7 @@ import {
   fetchExchangeListings,
   isQuarterlyReporter,
 } from "@/lib/earnings/edgar";
-import { type EarningsObservation, buildObservations, daysBetween, predictPeriodEnd } from "@/lib/earnings/fiscal";
+import { buildObservations, daysBetween, predictPeriodEnd } from "@/lib/earnings/fiscal";
 import { type EstimateMethod, estimateReleaseDate } from "@/lib/earnings/estimator";
 
 /* ---------------------------------------------

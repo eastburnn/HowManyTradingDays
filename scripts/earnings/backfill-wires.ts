@@ -2,8 +2,8 @@
  * One-time backfill of past earnings-date announcements from the wires'
  * public listing pages (PR Newswire's Conference Call Announcements category
  * and GlobeNewswire keyword search), back to --since. Items go through the
- * same parse → guard → attach pipeline as live feed items; for matches whose
- * summary lacks the ticker, the release page is read once to recover it.
+ * same parse → guard → attach pipeline as live feed items, which reads the
+ * release page once when a summary lacks the date, quarter or ticker.
  *
  *   npx tsx --env-file=.env.local scripts/earnings/backfill-wires.ts --since 2026-08-21
  *
@@ -11,9 +11,8 @@
  * User-Agent, headlines/links/summaries only.
  */
 
-import { fetchGnwSearch, fetchPrnConferenceCalls, fetchReleaseOpening } from "@/lib/earnings/wireArchives";
+import { fetchGnwSearch, fetchPrnConferenceCalls } from "@/lib/earnings/wireArchives";
 import { processFeedItems, stageItems } from "@/lib/earnings/confirmJob";
-import { parseTickers } from "@/lib/earnings/confirm";
 import { todayET } from "@/lib/earnings/ingest";
 import { addDaysISO } from "@/lib/earnings/format";
 import { closePool, query } from "@/lib/earnings/db";
@@ -55,45 +54,30 @@ async function collect(label: string, fetchPage: (page: number) => Promise<FeedI
   const stagedGnw = await stageItems("gnw-search", [...gnwSeen.values()]);
   process.stderr.write(`Staged ${stagedPrn} PR Newswire + ${stagedGnw} GlobeNewswire items (new)\n`);
 
-  const total = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0 };
-  const add = (s: typeof total) => { for (const k of Object.keys(total) as (keyof typeof total)[]) total[k] += s[k]; };
-  for (let pass = 0; pass < 40; pass++) {
-    const s = await processFeedItems(200, 1000);
-    if (s.processed === 0) break;
-    add(s);
-    process.stderr.write(`  pass ${pass + 1}: ${JSON.stringify(s)}\n`);
-  }
-
-  // Second chance for matches whose summary lacked a ticker: read the
-  // release opening once, pull the "(NYSE: XYZ)" mention, retry attachment.
-  const unresolved = await query<{ id: number; link: string; parsed: { description?: string } }>(
-    `select id, link, parsed from feed_items
-      where feed in ('prn-calls','gnw-search') and parse_status = 'failed'
-        and parsed->>'reason' = 'company not resolved' and link is not null`
+  // Earlier failures the release page can fix — date, quarter or ticker
+  // missing from the summary — get another pass now that processing reads
+  // the page itself. Only wire items with a readable link qualify.
+  const reset = await query<{ id: number }>(
+    `update feed_items set parse_status = 'pending', parsed = coalesce(parsed, '{}'::jsonb) - 'reason'
+      where parse_status = 'failed' and link is not null
+        and feed in ('prn-calls','gnw-search','prn-global','gnw-earnings','gnw-us')
+        and (parsed->>'reason' = 'company not resolved'
+             or parsed->>'reason' like 'no future date found%'
+             or parsed->>'reason' like 'no quarter token%')
+      returning id`
   );
-  let recovered = 0;
-  for (const row of unresolved) {
-    try {
-      const opening = await fetchReleaseOpening(row.link);
-      if (parseTickers(opening).length === 0) continue;
-      await query(
-        `update feed_items set parse_status = 'pending', parsed = jsonb_build_object('description', $2::text) where id = $1`,
-        [row.id, `${row.parsed?.description ?? ""} ${opening}`.slice(0, 6000)]
-      );
-      recovered += 1;
-    } catch (err) {
-      process.stderr.write(`  ! ${row.link}: ${(err as Error).message}\n`);
-    }
-  }
-  process.stderr.write(`Recovered tickers for ${recovered} of ${unresolved.length} unresolved matches; re-processing\n`);
-  for (let pass = 0; pass < 10; pass++) {
-    const s = await processFeedItems(200, 1000);
+  process.stderr.write(`Re-queued ${reset.length} earlier failures for a read of the release page\n`);
+
+  const total = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
+  const add = (s: typeof total) => { for (const k of Object.keys(total) as (keyof typeof total)[]) total[k] += s[k]; };
+  for (let pass = 0; pass < 60; pass++) {
+    const s = await processFeedItems(200, 1000, 1000);
     if (s.processed === 0) break;
     add(s);
     process.stderr.write(`  pass ${pass + 1}: ${JSON.stringify(s)}\n`);
   }
 
-  const summary = { since: SINCE, prnItems: prn.length, gnwItems: gnwSeen.size, stagedPrn, stagedGnw, recovered, ...total };
+  const summary = { since: SINCE, prnItems: prn.length, gnwItems: gnwSeen.size, stagedPrn, stagedGnw, requeued: reset.length, ...total };
   await query(`update job_runs set finished_at = now(), status = 'ok', stats = $2 where id = $1`, [run.id, JSON.stringify(summary)]);
   console.log(JSON.stringify(summary, null, 2));
   await closePool();

@@ -314,7 +314,7 @@ export async function checkHealth(): Promise<Health> {
       (select count(*) from earnings_next) as with_upcoming,
       (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h,
       (select count(*) from feed_items where fetched_at > now() - interval '6 hours') as feed_items_6h,
-      (select count(*) from earnings_events where status = 'confirmed' and source_type = 'wire-rss' and created_at > now() - interval '7 days') as confirmed_7d
+      (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts') and created_at > now() - interval '7 days') as confirmed_7d
   `, [today]);
   const done = (await getState<string[]>("daily_index_done")) ?? [];
   const lastIndexDay = done.length ? done[done.length - 1] : null;

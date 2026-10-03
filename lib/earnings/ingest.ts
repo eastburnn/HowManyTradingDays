@@ -44,6 +44,16 @@ const REPORTED_HISTORY_YEARS = 4;
 /** How many unreported quarters ahead to estimate */
 const ESTIMATE_QUARTERS_AHEAD = 2;
 
+/** An 8-K 2.02 sooner than this after quarter end is not that quarter's release */
+const MIN_DAYS_AFTER_PERIOD_END = 5;
+
+/**
+ * Quarterly filers that have no earnings releases to fall back to the 10-Q
+ * date for: commodity and crypto trusts (SIC 6221) and blank-check companies
+ * (6770). Their periodic reports are filings, not results announcements.
+ */
+const NO_RELEASE_SICS = new Set(["6221", "6770"]);
+
 export type RefreshOptions = EdgarClientOptions & {
   /** Primary listing symbol/exchange from the SEC exchange list, if known */
   listing?: { ticker: string; exchange: string | null };
@@ -274,12 +284,16 @@ export function findUnmatchedRelease(
   const periodEnd = targetPeriodEnd(target, periods, last);
 
   // Latest 2.02 strictly after the last periodic report was filed, after the
-  // last matched release, and after the target quarter actually ended.
+  // last matched release, and a plausible interval after the target quarter
+  // ended. A 2.02 one to four days after quarter end is a preliminary (a
+  // delivery report, a revenue pre-announcement): no company closes its books
+  // that fast, and across 60,000 observed releases none was that early.
+  const earliest = addDaysISO(periodEnd, MIN_DAYS_AFTER_PERIOD_END);
   let best: EdgarFiling | null = null;
   for (const f of company.filings) {
     if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
     const date = f.reportDate ?? f.filingDate;
-    if (date <= last.filedDate || date <= lastRelease || date <= periodEnd) continue;
+    if (date <= last.filedDate || date <= lastRelease || date < earliest) continue;
     if (!best || date > (best.reportDate ?? best.filingDate)) best = f;
   }
   if (!best) return null;
@@ -380,7 +394,11 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
   const company = await fetchCompany(cik, { cacheDir: opts.cacheDir, refresh: opts.refresh, sinceDate: "2015-01-01" });
   const active = isQuarterlyReporter(company);
   const periods = active ? listFiscalPeriods(company.filings, company.fiscalYearEnd) : [];
-  const observations = active ? buildObservations(company.filings, company.fiscalYearEnd) : [];
+  const observations = active
+    ? buildObservations(company.filings, company.fiscalYearEnd, {
+        periodicFallback: !NO_RELEASE_SICS.has(company.sic ?? ""),
+      })
+    : [];
   const unmatched = active ? findUnmatchedRelease(company, periods, observations) : null;
   const upcoming = active ? estimateUpcoming(company, periods, observations, today, unmatched) : [];
 
@@ -406,7 +424,7 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
         eventDate: o.releaseDate,
         timeOfDay: o.timeOfDay,
         status: "reported",
-        sourceType: "edgar-8k",
+        sourceType: o.viaPeriodicReport ? "edgar-periodic" : "edgar-8k",
         sourceUrl: filingUrl(company.cik, o.releaseAccession),
         sourceAccession: o.releaseAccession,
       });

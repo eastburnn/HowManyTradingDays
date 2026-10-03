@@ -5,7 +5,7 @@ import Script from "next/script";
 import { domine } from "../../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import EarningsCountdown from "@/components/earnings/EarningsCountdown";
-import { getCompanyEarnings, type CompanyEarnings, type EarningsEvent } from "@/lib/earnings/queries";
+import { getCompanyEarnings, type EarningsEvent } from "@/lib/earnings/queries";
 import {
   daysBetweenISO,
   displayName,
@@ -236,7 +236,7 @@ export default async function EarningsTickerPage({ params }: Params) {
               <>
                 {" "}
                 <a href={lastReported.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">
-                  View the 8-K filing
+                  View the {lastReported.sourceType === "edgar-periodic" ? lastReported.reportForm ?? "filing" : "8-K filing"}
                 </a>
                 .
               </>
@@ -334,7 +334,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">After that</p>
                 <p className="mt-1 text-sm font-medium text-slate-100">{fiscalLabel(following)}</p>
                 <p className="text-xs text-slate-400">
-                  {following.status === "confirmed" ? "Confirmed" : "Est."} {formatMediumDate(following.eventDate)} ·{" "}
+                  {following.status === "confirmed" ? "Confirmed" : "Estimated"} {formatMediumDate(following.eventDate)} ·{" "}
                   {timeOfDayLabel(following.timeOfDay).toLowerCase()}
                 </p>
               </div>
@@ -349,7 +349,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                     <>
                       {" · "}
                       <a href={lastReported.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 transition-colors">
-                        8-K
+                        {lastReported.sourceType === "edgar-periodic" ? lastReported.reportForm ?? "filing" : "8-K"}
                       </a>
                     </>
                   )}
@@ -366,9 +366,10 @@ export default async function EarningsTickerPage({ params }: Params) {
               {sym} earnings date history
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              The last {history.length} earnings releases, from {name}&apos;s Form 8-K filings with the SEC. The
-              &ldquo;days after&rdquo; column is how long after the fiscal quarter ended the company reported —
-              the pattern behind the estimate above.
+              The last {history.length} earnings releases, from {name}&apos;s SEC filings — its earnings 8-Ks, or
+              the quarterly report itself when results are published that way. The &ldquo;days after&rdquo;
+              column is how long after the fiscal quarter ended the company reported — the pattern behind the
+              estimate above.
             </p>
             <div className="overflow-x-auto rounded-xl border border-slate-800">
               <table className="w-full table-fixed text-xs sm:text-sm">

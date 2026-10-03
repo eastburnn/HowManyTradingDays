@@ -21,7 +21,7 @@ function hitLabel(h: Hit): string {
   const date = formatShortDate(h.nextDate);
   if (h.status === "confirmed") return `${date} · Confirmed`;
   if (h.confidence === "low") return `~${date}`;
-  return `${date} · Est.`;
+  return `${date} · Estimated`;
 }
 
 export default function TickerSearch() {

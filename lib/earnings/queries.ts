@@ -3,6 +3,7 @@
  */
 
 import { query } from "./db";
+import type { RangeRow } from "./calendar";
 import type { ConfidenceTier } from "./estimator";
 import type { TimeOfDay } from "./fiscal";
 
@@ -116,19 +117,31 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
   return { company, upcoming, lastReported: history[0] ?? null, history };
 }
 
-export type UpcomingRow = EarningsEvent & { name: string };
-
-/** Upcoming events across the universe within a date range, soonest first */
-export async function getUpcomingEvents(fromISO: string, toISO: string, limit = 500): Promise<UpcomingRow[]> {
-  return query<UpcomingRow>(
-    `select ${eventColumns("e")}, c.name
-       from earnings_next e
+/**
+ * Every current event — estimated, confirmed or reported — dated within a
+ * range, soonest first then by company name. Feeds the calendar page, its
+ * "show more" extension and the month view.
+ */
+export async function getEventsInRange(fromISO: string, toISO: string, limit = 10000): Promise<RangeRow[]> {
+  return query<RangeRow>(
+    `select e.id, e.ticker, c.name, e.event_date::text as "eventDate", e.time_of_day as "timeOfDay",
+            e.status, e.confidence, e.overdue, e.original_estimate::text as "originalEstimate",
+            c.filer_category as "filerCategory"
+       from earnings_current e
        join companies c on c.cik = e.cik
       where e.event_date between $1::date and $2::date and c.active
       order by e.event_date asc, c.name asc
       limit $3`,
     [fromISO, toISO, limit]
   );
+}
+
+/** Earliest and latest event dates we hold, for the month view's bounds */
+export async function getEventDateBounds(): Promise<{ min: string; max: string } | null> {
+  const [row] = await query<{ min: string | null; max: string | null }>(
+    `select min(event_date)::text as min, max(event_date)::text as max from earnings_current`
+  );
+  return row?.min && row.max ? { min: row.min, max: row.max } : null;
 }
 
 /** Tickers eligible for the sitemap / static generation */

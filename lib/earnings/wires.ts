@@ -3,10 +3,12 @@
  * dates. Read logged-out, one request per feed per poll, filtered locally;
  * only facts are stored (ticker, date, time, link), never release text.
  *
- * Business Wire is deliberately absent: its robots.txt disallows /rss/ for
- * all but two named licensees. PR Newswire has no subject feeds (unknown
- * slugs silently serve the global feed), so its global feed is polled
- * frequently instead.
+ * Business Wire is deliberately absent: feed.businesswire.com's robots.txt
+ * disallows /rss/ for all but two named licensees, and the one path it does
+ * open (/mrss/, listed as a sitemap) carries only releases with multimedia —
+ * no scheduling advisories. PR Newswire has no subject feeds (unknown slugs
+ * silently serve the global feed), so its global feed is polled frequently
+ * instead.
  */
 
 import { SEC_USER_AGENT } from "./edgar";

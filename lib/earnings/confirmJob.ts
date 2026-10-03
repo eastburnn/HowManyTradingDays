@@ -11,7 +11,7 @@
 
 import { query, withTransaction } from "./db";
 import { FEEDS, type FeedItem, fetchFeed } from "./wires";
-import { fetchPrnConferenceCalls } from "./wireArchives";
+import { fetchPrnConferenceCalls, fetchReleaseOpening } from "./wireArchives";
 
 // Feeds that are advisory streams by construction (EDGAR's pre-filtered 8-K
 // search, PR Newswire's Conference Call Announcements category): a title-level
@@ -19,14 +19,15 @@ import { fetchPrnConferenceCalls } from "./wireArchives";
 // GlobeNewswire's "earnings conference call" results are mostly results
 // releases, and the regex already rejects those correctly.
 export const ARCHIVE_FEEDS = new Set(["edgar-fts", "prn-calls"]);
-import { type ParsedAdvisory, dateMentioned, parseAdvisory } from "./confirm";
+import { type ParsedAdvisory, dateMentioned, parseAdvisory, parseTickers } from "./confirm";
 import { getDayInfo } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
 import { llmAvailable, parseAdvisoryWithModel } from "./llmParse";
 import { displayName } from "./format";
+import { todayET } from "./ingest";
 
 export type FeedStats = { feeds: number; feedErrors: number; newItems: number };
-export type ProcessStats = { processed: number; matched: number; confirmed: number; ignored: number; failed: number; llmCalls: number; llmMatched: number };
+export type ProcessStats = { processed: number; matched: number; confirmed: number; ignored: number; failed: number; llmCalls: number; llmMatched: number; pageReads: number };
 
 // Regex outcomes worth a model call: the title had scheduling language but a
 // piece was missing. "results already reported" and the non-earnings reasons
@@ -34,6 +35,22 @@ export type ProcessStats = { processed: number; matched: number; confirmed: numb
 const LLM_WORTHY = new Set(["no quarter token", "no future date found"]);
 const LLM_MAX_PER_RUN = 40;
 const LLM_MAX_ATTEMPTS = 2;
+
+// Parse failures where the wire's summary was simply too short: the release
+// page itself (PR Newswire and GlobeNewswire permit reading it) usually holds
+// the missing date, quarter or ticker. One read per item, bounded per run.
+const PAGE_WORTHY = new Set(["no future date found", "no quarter token"]);
+const PAGE_MAX_PER_RUN = 10;
+const PAGE_HOSTS = new Set(["www.prnewswire.com", "www.globenewswire.com"]);
+
+function pageReadable(link: string | null): link is string {
+  if (!link) return false;
+  try {
+    return PAGE_HOSTS.has(new URL(link).hostname);
+  } catch {
+    return false;
+  }
+}
 
 /* ---------------------------------------------
    POLL
@@ -109,6 +126,7 @@ export async function pollFeeds(opts: { includeLists?: boolean } = {}): Promise<
 ----------------------------------------------*/
 
 type Candidate = {
+  id: number;
   cik: number;
   ticker: string;
   fiscal_year: number;
@@ -117,6 +135,8 @@ type Candidate = {
   report_form: string | null;
   event_date: string;
   status: string;
+  /** The period's 10-Q/10-K is on file (a "reported" row is then settled) */
+  has_report: boolean;
 };
 
 async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number; ticker: string } | null> {
@@ -132,7 +152,10 @@ async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number; ticker
     if (rows.length > 1) return null; // ambiguous
   }
   if (parsed.companyName) {
-    // Conservative name match: normalized exact match, must be unique.
+    // Conservative name match on normalized names, and it must be unique:
+    // exact first ("Bank of Marin Bancorp"), then the announced name as the
+    // whole-word prefix of exactly one SEC registrant name ("Verizon" for
+    // VERIZON COMMUNICATIONS INC, "Digital Realty" for DIGITAL REALTY TRUST).
     const norm = (s: string) =>
       displayName(s)
         .toLowerCase()
@@ -141,26 +164,43 @@ async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number; ticker
         .replace(/[^a-z0-9]+/g, " ")
         .trim();
     const target = norm(parsed.companyName);
-    if (target.length < 3) return null;
+    const firstWord = target.split(" ")[0] ?? "";
+    if (target.length < 3 || firstWord.length < 2) return null;
     const rows = await query<{ cik: number; ticker: string; name: string }>(
       `select cik, ticker, name from companies where active and name ilike $1`,
-      [`%${parsed.companyName.split(" ")[0]}%`]
+      [`%${firstWord}%`]
     );
-    const hits = rows.filter((r) => norm(r.name) === target);
-    if (hits.length === 1) return { cik: hits[0].cik, ticker: hits[0].ticker };
+    const keyed = rows.map((r) => ({ cik: r.cik, ticker: r.ticker, key: norm(r.name) }));
+    const exact = keyed.filter((r) => r.key === target);
+    if (exact.length === 1) return { cik: exact[0].cik, ticker: exact[0].ticker };
+    if (exact.length > 1) return null; // two registrants share the name
+    const prefix = keyed.filter((r) => r.key.startsWith(`${target} `));
+    if (prefix.length === 1) return { cik: prefix[0].cik, ticker: prefix[0].ticker };
   }
   return null;
 }
 
 async function chooseQuarter(cik: number, parsed: ParsedAdvisory): Promise<Candidate | null> {
-  const candidates = await query<Candidate>(
-    `select cik, ticker, fiscal_year, fiscal_quarter, period_end::text, report_form, event_date::text, status
-       from earnings_current
-      where cik = $1 and status in ('estimated','confirmed')
-        and event_date >= (now() at time zone 'America/New_York')::date - 14
-      order by event_date asc`,
+  const rows = await query<Candidate>(
+    `select e.id, e.cik, e.ticker, e.fiscal_year, e.fiscal_quarter, e.period_end::text, e.report_form,
+            e.event_date::text, e.status,
+            exists (select 1 from filings f
+                     where f.cik = e.cik and f.form in ('10-Q','10-K','10-QT','10-KT')
+                       and f.report_date = e.period_end) as has_report
+       from earnings_current e
+      where e.cik = $1
+        and ((e.status in ('estimated','confirmed')
+              and e.event_date >= (now() at time zone 'America/New_York')::date - 14)
+             or (e.status = 'reported'
+                 and e.event_date >= (now() at time zone 'America/New_York')::date - 45))
+      order by e.event_date asc`,
     [cik]
   );
+  // A quarter marked "reported" from an 8-K, with no 10-Q/10-K on file yet,
+  // while the company announces a LATER date for it: the 8-K was a
+  // preliminary (a delivery report, a revenue pre-announcement), and the
+  // announcement wins. Settled quarters are never candidates.
+  const candidates = rows.filter((c) => c.status !== "reported" || (!c.has_report && parsed.date > c.event_date));
   if (candidates.length === 0) return null;
 
   // The announced date must fall in the quarter's reporting window.
@@ -188,8 +228,12 @@ async function chooseQuarter(cik: number, parsed: ParsedAdvisory): Promise<Candi
    PROCESS
 ----------------------------------------------*/
 
-export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_RUN): Promise<ProcessStats> {
-  const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0 };
+export async function processFeedItems(
+  limit = 200,
+  llmMaxPerRun = LLM_MAX_PER_RUN,
+  pageMaxPerRun = PAGE_MAX_PER_RUN
+): Promise<ProcessStats> {
+  const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
   const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; cik?: number } | null }>(
     `select id, feed, title, link, published_at::text, parsed from feed_items
       where parse_status = 'pending' order by id asc limit $1`,
@@ -199,9 +243,32 @@ export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_R
   for (const item of pending) {
     stats.processed += 1;
     const published = item.published_at ? new Date(item.published_at).toISOString() : new Date().toISOString();
-    const description = item.parsed?.description ?? "";
+    let description = item.parsed?.description ?? "";
     let outcome = parseAdvisory(item.title, description, published);
     let method: "regex" | "llm" = "regex";
+
+    // The release page, read at most once per item and only when the wire's
+    // summary left a piece missing.
+    let page: string | null = null;
+    const readPage = async (): Promise<string> => {
+      if (page !== null) return page;
+      page = "";
+      if (!pageReadable(item.link) || stats.pageReads >= pageMaxPerRun) return page;
+      stats.pageReads += 1;
+      try {
+        page = await fetchReleaseOpening(item.link);
+      } catch (err) {
+        console.error(`[advisories] could not read ${item.link}:`, (err as Error).message);
+      }
+      return page;
+    };
+    if (!outcome.ok && PAGE_WORTHY.has(outcome.reason)) {
+      const opening = await readPage();
+      if (opening) {
+        description = `${description} ${opening}`.slice(0, 6000);
+        outcome = parseAdvisory(item.title, description, published);
+      }
+    }
 
     // Fallback: a scheduling-shaped headline the regex couldn't finish.
     const fromEdgar = item.feed === "edgar-fts";
@@ -227,15 +294,20 @@ export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_R
       }
     }
 
-    // Sanity guards on any parsed date: companies report on trading days, and a
+    // Sanity guards on any parsed date: companies report on trading days, a
     // model-supplied date must be stated literally in the text (no "early
-    // November" → November 1).
+    // November" → November 1), and a date that has already passed by the time
+    // the item is processed (backfills of old listings) is stale — if the
+    // company kept it, the 8-K has superseded everything; if it didn't, the
+    // announcement must not pin an overdue company to a date it missed.
     if (outcome.ok) {
       const d = outcome.parsed.date;
       if (!getDayInfo(parseISO(d)).isTradingDay) {
         outcome = { ok: false, reason: `date ${d} is not a trading day (${method})` };
       } else if (method === "llm" && !dateMentioned(`${item.title} ${description}`, d)) {
         outcome = { ok: false, reason: `llm date ${d} not stated in text` };
+      } else if (d < todayET()) {
+        outcome = { ok: false, reason: `date ${d} had passed when processed` };
       }
     }
 
@@ -254,9 +326,16 @@ export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_R
 
     stats.matched += 1;
     const parsed = outcome.parsed;
-    const company = item.parsed?.cik
+    let company = item.parsed?.cik
       ? (await query<{ cik: number; ticker: string }>(`select cik, ticker from companies where cik = $1 and active`, [item.parsed.cik]))[0] ?? null
       : await resolveCik(parsed);
+    if (!company && !item.parsed?.cik) {
+      // The "(NYSE: XYZ)" mention is usually in the first paragraph, which
+      // the feed summary may have cut off.
+      const opening = await readPage();
+      const extra = opening ? parseTickers(opening).filter((t) => !parsed.tickers.includes(t)) : [];
+      if (extra.length) company = await resolveCik({ ...parsed, tickers: [...parsed.tickers, ...extra] });
+    }
     const target = company ? await chooseQuarter(company.cik, parsed) : null;
 
     if (!company || !target) {
@@ -269,22 +348,40 @@ export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_R
     }
 
     await withTransaction(async (client) => {
-      await client.query(
-        `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed',$10,
-                                      null,null,null,false,$9,null,'high',0::smallint,false,null)`,
-        [
-          company.cik,
-          company.ticker,
-          target.fiscal_year,
-          target.fiscal_quarter,
-          target.period_end,
-          target.report_form,
-          parsed.date,
-          parsed.timeOfDay,
-          item.link,
-          fromEdgar ? "edgar-fts" : "wire-rss",
-        ]
-      );
+      const sourceType = fromEdgar ? "edgar-fts" : "wire-rss";
+      if (target.status === "reported") {
+        // Overriding a preliminary-8-K "reported" row: the write function
+        // never lets a confirmation replace a report, so supersede it here,
+        // leaving the row in place for the audit trail.
+        const { rows: inserted } = await client.query<{ id: number }>(
+          `insert into earnings_events (cik, ticker, fiscal_year, fiscal_quarter, period_end, report_form, event_date,
+                                        time_of_day, status, source_type, source_url, confidence, window_days)
+           values ($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed',$9,$10,'high',0::smallint)
+           returning id`,
+          [company.cik, company.ticker, target.fiscal_year, target.fiscal_quarter, target.period_end, target.report_form, parsed.date, parsed.timeOfDay, sourceType, item.link]
+        );
+        await client.query(
+          `update earnings_events set superseded_by = $2, superseded_at = now() where id = $1 and superseded_by is null`,
+          [target.id, inserted[0].id]
+        );
+      } else {
+        await client.query(
+          `select record_earnings_event($1,$2,$3::smallint,$4::smallint,$5::date,$6,$7::date,$8,'confirmed',$10,
+                                        null,null,null,false,$9,null,'high',0::smallint,false,null)`,
+          [
+            company.cik,
+            company.ticker,
+            target.fiscal_year,
+            target.fiscal_quarter,
+            target.period_end,
+            target.report_form,
+            parsed.date,
+            parsed.timeOfDay,
+            item.link,
+            sourceType,
+          ]
+        );
+      }
       await client.query(`update feed_items set parse_status = 'matched', parsed = $2 where id = $1`, [
         item.id,
         JSON.stringify({ method, parsed, cik: company.cik, ticker: company.ticker, fiscalYear: target.fiscal_year, quarter: target.fiscal_quarter, description }),
@@ -299,7 +396,7 @@ export async function processFeedItems(limit = 200, llmMaxPerRun = LLM_MAX_PER_R
 export async function recentlyConfirmedTickers(sinceISO: string): Promise<string[]> {
   const rows = await query<{ ticker: string }>(
     `select distinct ticker from earnings_events
-      where status = 'confirmed' and source_type = 'wire-rss' and created_at >= $1::timestamptz`,
+      where status = 'confirmed' and source_type in ('wire-rss','edgar-fts') and created_at >= $1::timestamptz`,
     [sinceISO]
   );
   return rows.map((r) => r.ticker);

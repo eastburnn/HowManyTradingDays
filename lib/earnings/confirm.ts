@@ -50,7 +50,7 @@ const QUARTER_TOKEN =
 
 // Future-tense scheduling language. Must be present in the TITLE.
 const SCHEDULING =
-  /\b(?:to\s+(?:report|announce|release|host|hold|discuss|present|webcast|issue|publish)|will\s+(?:report|announce|release|host|hold|discuss|present|issue|publish)|schedules?|sets?\s+(?:the\s+)?(?:date|time)|announces?\s+(?:the\s+)?(?:date|timing|schedule|details)|(?:earnings|results|financial results)\s+(?:release\s+)?(?:date|call|conference call|webcast|and conference call)|conference\s+call\s+(?:and|&)\s+webcast|date\s+(?:of|for)\s+(?:its\s+)?(?:\w+\s+){0,4}(?:earnings|results)|earnings\s+call)\b/i;
+  /\b(?:to\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|will\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|schedules?|sets?\s+(?:the\s+)?(?:date|time)|announces?\s+(?:the\s+)?(?:date|timing|schedule|details)|(?:earnings|results|financial results)\s+(?:release\s+)?(?:date|call|conference call|webcast|and conference call)|conference\s+call\s+(?:and|&)\s+webcast|date\s+(?:of|for)\s+(?:its\s+)?(?:\w+\s+){0,4}(?:earnings|results)|earnings\s+call)\b/i;
 
 // Results already out — never a schedule even if a quarter token is present.
 const ALREADY_REPORTED =
