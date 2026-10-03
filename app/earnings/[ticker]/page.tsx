@@ -367,12 +367,22 @@ export default async function EarningsTickerPage({ params }: Params) {
             {fiscal && (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Fiscal year</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{fiscal.range}</p>
+                {/* Phones get full month names on single lines. From sm up this card is a narrow column, so the months
+                    are three capital letters and the year-end date drops to its own line. */}
+                <p className="mt-1 text-sm font-medium text-slate-100">
+                  <span className="sm:hidden">{fiscal.range.full}</span>
+                  <span className="hidden sm:inline">{fiscal.range.abbr}</span>
+                </p>
                 {fiscal.current && (
                   <p className="text-xs text-slate-400">
-                    {fiscal.current.label}
-                    <br />
-                    {fiscal.current.date}
+                    <span className="sm:hidden">
+                      {fiscal.current.label} {fiscal.current.date.full}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {fiscal.current.label}
+                      <br />
+                      {fiscal.current.date.abbr}
+                    </span>
                   </p>
                 )}
               </div>
