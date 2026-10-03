@@ -180,7 +180,11 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
         <div className="flex min-w-0 flex-1 flex-col items-center text-center">
           <h2 className={`${domine.className} max-w-full text-lg font-semibold text-slate-100 truncate`}>{monthLabel(month)}</h2>
           <div className="flex h-4 items-center gap-2 text-xs text-slate-500">
-            {events && <span className="whitespace-nowrap">{events.length} companies</span>}
+            {events && (
+              <span className="whitespace-nowrap">
+                {events.length.toLocaleString("en-US")} {events.length === 1 ? "company" : "companies"} reporting
+              </span>
+            )}
             {month !== monthKey(today) && (
               <button
                 type="button"
