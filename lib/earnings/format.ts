@@ -64,6 +64,20 @@ export function timeOfDayLabel(tod: EarningsEvent["timeOfDay"]): string {
   }
 }
 
+/** Compact form for tight table cells */
+export function timeOfDayShort(tod: EarningsEvent["timeOfDay"]): string {
+  switch (tod) {
+    case "premarket":
+      return "Before open";
+    case "postmarket":
+      return "After close";
+    case "during-market":
+      return "Mid-day";
+    default:
+      return "—";
+  }
+}
+
 export function timeOfDaySentence(tod: EarningsEvent["timeOfDay"]): string {
   switch (tod) {
     case "premarket":
