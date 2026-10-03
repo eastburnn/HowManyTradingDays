@@ -20,8 +20,7 @@ export const metadata: Metadata = {
   },
 };
 
-const CONTACT_HREF =
-  "mailto:itschrisray@gmail.com?subject=Advertising%20Inquiry%20-%20HowManyTradingDays.com";
+const CONTACT_HREF = "/contact?topic=advertising";
 
 // Static fallback shown only if the live GA4 fetch is unavailable.
 const FALLBACK_STATS = [
@@ -119,7 +118,7 @@ export default async function AdvertisePage() {
             Interested, or want more detailed traffic data? Send a note and I&apos;ll get back
             to you quickly.
           </p>
-          <a
+          <Link
             href={CONTACT_HREF}
             className="group inline-flex items-center gap-2.5 rounded-lg border border-slate-700 bg-slate-800/60 px-5 py-3 text-sm font-medium text-slate-100 hover:border-slate-600 hover:bg-slate-800 transition-all duration-150 active:scale-[0.99]"
           >
@@ -130,7 +129,7 @@ export default async function AdvertisePage() {
             <svg className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </a>
+          </Link>
         </section>
 
         <div className="border-t border-slate-800 pt-6">

@@ -13,6 +13,7 @@ const SITE_LINKS = [
   { label: "Calculator", href: "/calculator" },
   { label: "Free API", href: "/api-docs" },
   { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
   { label: "Privacy", href: "/privacy" },
 ];
 

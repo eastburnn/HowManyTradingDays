@@ -40,25 +40,33 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Effective September 26, 2026. The short version: this site has no accounts, collects no
-            names or emails, and sells no data. We use standard analytics to understand how the
-            site is used, and some links are affiliate links.
+            Effective October 3, 2026. The short version: this site has no accounts and sells no
+            data. The only personal details we hold are the ones you choose to send through the
+            contact form. We use standard analytics to understand how the site is used, and some
+            links are affiliate links.
           </p>
         </header>
 
         <Section heading="What we collect">
           <p>
             HowManyTradingDays.com is an informational site. You cannot create an account, and we
-            never ask for your name, email address, or payment details. The information collected
-            is limited to standard, largely anonymous usage data gathered by the analytics
+            never ask for payment details. Apart from what you send us through the contact form,
+            the information collected is limited to standard, largely anonymous usage data gathered by the analytics
             services below: pages visited, approximate location (country/city derived from IP),
             device and browser type, how you arrived at the site, and how you interact with pages
             (clicks, scrolling, time on page).
           </p>
           <p>
-            If you choose to email us — for example, about advertising — we use your contact
-            details only to respond to you. We never add them to a marketing list or share them
-            with anyone.
+            If you write to us through the{" "}
+            <Link href="/contact" className="text-blue-300 hover:text-blue-200 transition-colors">
+              contact form
+            </Link>
+            , we keep the name, email address and message you submit, and use them only to respond
+            to you. Messages are stored in our database (hosted by Supabase) and delivered to our
+            inbox by Resend, an email service, which processes them on our behalf. We never add your
+            details to a marketing list or share them with anyone else. To prevent abuse we also keep
+            a salted hash of the submitting IP address for a short time; the address itself is not
+            stored.
           </p>
         </Section>
 
@@ -81,8 +89,8 @@ export default function PrivacyPage() {
           <p>
             We use <span className="text-slate-200">Microsoft Clarity</span> to understand how
             visitors use the site through heatmaps and anonymized session replays (mouse movement,
-            clicks, and scrolling). This site has no text inputs for personal information, so
-            replays do not contain personal data. See{" "}
+            clicks, and scrolling). Text typed into the contact form is masked in replays by
+            Clarity&apos;s default settings. See{" "}
             <a
               href="https://privacy.microsoft.com/privacystatement"
               target="_blank"
@@ -143,7 +151,11 @@ export default function PrivacyPage() {
         <Section heading="Changes and contact">
           <p>
             If our practices change (for example, adding an advertising network), we will update
-            this page and its effective date. Questions? Reach out on{" "}
+            this page and its effective date. Questions? Use the{" "}
+            <Link href="/contact" className="text-blue-300 hover:text-blue-200 transition-colors">
+              contact form
+            </Link>{" "}
+            or reach out on{" "}
             <a
               href="https://x.com/itschrisray"
               target="_blank"
