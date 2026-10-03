@@ -173,7 +173,7 @@ export function fiscalCalendar(
   const start = new Date(2001, month - 1, day + 1);
   const range = is5253Week ? `52/53-week year ending near ${monthDay(end)}` : `${monthDay(start)} – ${monthDay(end)}`;
   const note = currentYearEnd
-    ? `FY ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`
+    ? `Fiscal year ${currentYearEnd.slice(0, 4)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`
     : "";
   return { range, note };
 }
