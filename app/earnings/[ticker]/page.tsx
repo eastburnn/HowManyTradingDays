@@ -117,41 +117,33 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const canonical = `/earnings/${sym.toLowerCase()}`;
   const today = todayET();
 
-  // Titles lead with the name and ticker people search for, then the date and
-  // whether it is confirmed; longer names drop the quarter, then the ticker.
+  // Titles lead with the name and ticker people search for and name the
+  // quarter, but leave the date itself and its status to the page so the
+  // result earns the click; longer names drop the quarter, then the ticker.
+  const quarterTitle = (q: EarningsEvent) =>
+    fitTitle([
+      `${name} (${sym}) Earnings Date: Q${q.fiscalQuarter} ${q.fiscalYear} Countdown & History`,
+      `${name} (${sym}) Earnings Date & Countdown`,
+      `${name} Earnings Date & Countdown`,
+      `${sym} Earnings Date & Countdown`,
+    ]);
   let title: string;
   let description: string;
   if (next && next.overdue && next.status === "estimated") {
-    title = fitTitle([
-      `${name} (${sym}) Earnings Date: Expected Any Day`,
-      `${name} Earnings Date: Expected Any Day`,
-      `${sym} Earnings Date: Expected Any Day`,
-    ]);
+    title = quarterTitle(next);
     description = fitDescription(
       `${name} (${sym}) usually reports ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatMediumDate(next.originalEstimate) : "now"} and has not filed yet, so the report is expected any day.`,
       ["Past report dates and times from SEC filings.", "Past report dates from SEC filings."]
     );
   } else if (next && next.confidence === "low" && next.status === "estimated") {
     const [start, end] = estimateWindow(next, today);
-    const range = `${formatShortDate(start)}–${formatShortDate(end)}`;
-    title = fitTitle([
-      `${name} (${sym}) Earnings Date: Expected ${range}`,
-      `${name} Earnings Date: Expected ${range}`,
-      `${sym} Earnings Date: Expected ${range}`,
-    ]);
+    title = quarterTitle(next);
     description = fitDescription(
       `${name} (${sym}) is expected to report ${fiscalLabel(next)} earnings between ${formatMediumDate(start)} and ${formatMediumDate(end)}.`,
       SOURCES
     );
   } else if (next) {
-    const label = next.status === "confirmed" ? "Confirmed" : "Estimated";
-    const date = formatMediumDate(next.eventDate);
-    title = fitTitle([
-      `${name} (${sym}) Q${next.fiscalQuarter} ${next.fiscalYear} Earnings Date: ${date} (${label})`,
-      `${name} (${sym}) Earnings Date: ${date} (${label})`,
-      `${name} Earnings Date: ${date} (${label})`,
-      `${sym} Earnings Date: ${date} (${label})`,
-    ]);
+    title = quarterTitle(next);
     description = fitDescription(
       `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatWeekdayDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`,
       SOURCES
