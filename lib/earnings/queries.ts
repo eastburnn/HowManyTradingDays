@@ -150,8 +150,8 @@ export async function getEventDateBounds(): Promise<{ min: string; max: string }
 }
 
 export type EstimateAccuracy = {
-  /** Single-date estimates (high and medium confidence): right when within ±3 days */
-  estimated: { checked: number; within3: number };
+  /** Single-date estimates (high and medium confidence): how many landed within ±3 and ±7 days */
+  estimated: { checked: number; within3: number; within7: number };
   /** Window estimates (low confidence): right when the actual date fell inside the window */
   window: { checked: number; inside: number };
 };
@@ -162,7 +162,7 @@ export type EstimateAccuracy = {
  * that was on display is compared with the actual date.
  */
 export async function getEstimateAccuracy(): Promise<EstimateAccuracy> {
-  const rows = await query<{ tier: "estimated" | "window"; checked: number; within3: number; inside: number }>(
+  const rows = await query<{ tier: "estimated" | "window"; checked: number; within3: number; within7: number; inside: number }>(
     `with truth as (
        select cik, fiscal_year, fiscal_quarter, event_date, created_at
          from earnings_events
@@ -179,15 +179,16 @@ export async function getEstimateAccuracy(): Promise<EstimateAccuracy> {
      select case when l.confidence = 'low' then 'window' else 'estimated' end as tier,
             count(*)::int as checked,
             sum((abs(t.event_date - l.event_date) <= 3)::int)::int as within3,
+            sum((abs(t.event_date - l.event_date) <= 7)::int)::int as within7,
             sum((abs(t.event_date - l.event_date) <= coalesce(l.window_days, 3))::int)::int as inside
        from last_estimate l
        join truth t on t.cik = l.cik and t.fiscal_year = l.fiscal_year and t.fiscal_quarter = l.fiscal_quarter
       group by 1`
   );
-  const out: EstimateAccuracy = { estimated: { checked: 0, within3: 0 }, window: { checked: 0, inside: 0 } };
+  const out: EstimateAccuracy = { estimated: { checked: 0, within3: 0, within7: 0 }, window: { checked: 0, inside: 0 } };
   for (const r of rows) {
     if (r.tier === "window") out.window = { checked: r.checked, inside: r.inside };
-    else out.estimated = { checked: r.checked, within3: r.within3 };
+    else out.estimated = { checked: r.checked, within3: r.within3, within7: r.within7 };
   }
   return out;
 }
