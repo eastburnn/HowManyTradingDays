@@ -178,9 +178,14 @@ function declaredQuarterEnd(target: { fiscalYear: number; quarter: number }, mmd
    LISTED SYMBOLS
 ----------------------------------------------*/
 
-/** Preferred shares ("CMS-PB"), warrants ("LUCYW"), units ("ACACU"), rights */
+/**
+ * Preferred shares ("CMS-PB", "ETI-P"), warrants ("EONR-WT", "LUCYW"), units
+ * ("-U"), rights ("-R"). Share classes ("BRK-B", "MOG-A") are common stock.
+ */
+const DERIVATIVE_SUFFIX = /-(P[A-Z]?|W[ST]?|UN?|RT?)$/;
+
 function isDerivativeSymbol(symbol: string, all: string[]): boolean {
-  return symbol.includes("-") || (/[WUR]$/.test(symbol) && all.some((o) => o !== symbol && symbol.startsWith(o)));
+  return DERIVATIVE_SUFFIX.test(symbol) || (/[WUR]$/.test(symbol) && all.some((o) => o !== symbol && symbol.startsWith(o)));
 }
 
 /**
