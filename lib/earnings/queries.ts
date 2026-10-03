@@ -130,6 +130,8 @@ export async function getEventsInRange(fromISO: string, toISO: string, limit = 1
        from earnings_current e
        join companies c on c.cik = e.cik
       where e.event_date between $1::date and $2::date and c.active
+        -- an estimate in the past is a quarter that went unreported, not a date
+        and not (e.status = 'estimated' and e.event_date < (now() at time zone 'America/New_York')::date)
       order by e.event_date asc, c.name asc
       limit $3`,
     [fromISO, toISO, limit]

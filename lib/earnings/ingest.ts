@@ -48,6 +48,19 @@ const ESTIMATE_QUARTERS_AHEAD = 2;
 const MIN_DAYS_AFTER_PERIOD_END = 5;
 
 /**
+ * An estimate whose quarter ended this long ago without a filing is stale:
+ * a month past the longest SEC deadline (45 days for a 10-Q, 90 for a 10-K).
+ * The company is delinquent, not "expected any day"; the quarter stays
+ * unestimated until its filing arrives and the calendar looks ahead instead.
+ * Mirrors estimate_is_stale() in the database.
+ */
+const STALE_AFTER_DAYS: Record<ReportForm, number> = { "10-Q": 75, "10-K": 120 };
+
+export function isStaleEstimate(periodEnd: string, reportForm: ReportForm, today: string): boolean {
+  return today > addDaysISO(periodEnd, STALE_AFTER_DAYS[reportForm]);
+}
+
+/**
  * Quarterly filers that have no earnings releases to fall back to the 10-Q
  * date for: commodity and crypto trusts (SIC 6221) and blank-check companies
  * (6770). Their periodic reports are filings, not results announcements.
@@ -115,9 +128,13 @@ function targetPeriodEnd(
   periods: FiscalPeriod[],
   lastKnown: FiscalPeriod
 ): string {
-  const priorYear = periods.find(
-    (p) => p.quarter === target.quarter && p.fiscalYear === target.fiscalYear - 1
-  );
+  // The LATEST matching period: after a fiscal-year-end change the old and new
+  // calendars reuse fiscal labels (IGC's Dec 2024 and Sep 2025 periods are
+  // both "FY2025 Q3"), and only the newest one is on the calendar the company
+  // now follows.
+  const priorYear = [...periods]
+    .reverse()
+    .find((p) => p.quarter === target.quarter && p.fiscalYear === target.fiscalYear - 1);
   if (priorYear) return predictPeriodEnd(priorYear.periodEnd);
 
   // Fallback: ~one quarter after the most recent period, keeping month-end alignment
@@ -325,9 +342,15 @@ export function estimateUpcoming(
   let target = unmatched
     ? nextQuarter(unmatched.fiscalYear, unmatched.quarter)
     : nextQuarter(last.fiscalYear, last.quarter);
-  for (let i = 0; i < ESTIMATE_QUARTERS_AHEAD; i++) {
+  // Two estimates, skipping stale quarters (a delinquent filer's unreported
+  // Q2 must not crowd out its Q3), with a bound on how far to look.
+  for (let i = 0; out.length < ESTIMATE_QUARTERS_AHEAD && i < ESTIMATE_QUARTERS_AHEAD + 3; i++) {
     const reportForm: ReportForm = target.quarter === 4 ? "10-K" : "10-Q";
     const periodEnd = targetPeriodEnd(target, periods, last);
+    if (isStaleEstimate(periodEnd, reportForm, today)) {
+      target = nextQuarter(target.fiscalYear, target.quarter);
+      continue;
+    }
 
     // Same-quarter history first; for Q1–Q3 with none, pool the other
     // interim quarters at low confidence rather than show nothing.

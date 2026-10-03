@@ -285,16 +285,22 @@ const FOREIGN_FORMS = new Set(["20-F", "6-K", "40-F", "20-F/A", "40-F/A"]);
  * four 10-Qs in the trailing three years and no foreign-private-issuer forms.
  * Filters out ETFs, trusts, shells, funds, and 20-F/6-K filers.
  */
+/** A quarterly reporter whose last 10-Q/10-K is older than this has stopped (deregistered, converted, acquired) */
+const PERIODIC_SILENCE_DAYS = 400;
+
 export function isQuarterlyReporter(company: EdgarCompany, asOf = new Date()): boolean {
   const cutoff = new Date(asOf);
   cutoff.setFullYear(cutoff.getFullYear() - 3);
   const cutoffISO = cutoff.toISOString().slice(0, 10);
+  const silence = new Date(asOf.getTime() - PERIODIC_SILENCE_DAYS * 86_400_000).toISOString().slice(0, 10);
 
   let tenQs = 0;
+  let latestPeriodic = "";
   for (const f of company.filings) {
     if (f.filingDate < cutoffISO) break; // newest first
     if (FOREIGN_FORMS.has(f.form)) return false;
     if (f.form === "10-Q") tenQs += 1;
+    if (!latestPeriodic && /^10-[QK]T?$/.test(f.form)) latestPeriodic = f.filingDate;
   }
-  return tenQs >= 4;
+  return tenQs >= 4 && latestPeriodic >= silence;
 }

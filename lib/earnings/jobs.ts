@@ -17,7 +17,7 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "./db";
-import { SEC_USER_AGENT } from "./edgar";
+import { SEC_USER_AGENT, fetchExchangeListings } from "./edgar";
 import { refreshCompany, todayET } from "./ingest";
 import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
@@ -39,6 +39,7 @@ export type TickStats = {
   feeds: FeedStats | null;
   advisories: ProcessStats | null;
   edgarAdvisories: { candidates: number; staged: number } | null;
+  listings: { missing: number; deactivated: string[]; reactivated: string[] } | null;
   budgetMs: number;
   elapsedMs: number;
 };
@@ -117,9 +118,11 @@ async function ingestDailyIndexes(today: string, stats: TickStats): Promise<void
     }
     const ciks = [...new Set(rows.map((r) => r.cik))];
     if (ciks.length) {
+      // Inactive companies are flagged too: a filing from one that stopped
+      // reporting (or was deactivated by the listing sweep) is how it comes back.
       const flagged = await query<{ cik: number }>(
         `update companies set refresh_requested_at = coalesce(refresh_requested_at, now())
-          where active and cik = any($1::int[])
+          where cik = any($1::int[])
           returning cik`,
         [ciks]
       );
@@ -145,11 +148,47 @@ async function flagOverdueEstimates(today: string, stats: TickStats): Promise<vo
           select 1 from earnings_events e
            where e.cik = c.cik and e.superseded_by is null
              and e.status = 'estimated' and e.event_date < $1::date
+             and not estimate_is_stale(e.period_end, e.report_form)
         )
       returning c.cik`,
     [today]
   );
   stats.overdueFlagged = rows.length;
+}
+
+/* ---------------------------------------------
+   2c. LISTING SWEEP (once a day)
+----------------------------------------------*/
+
+/**
+ * Companies whose CIK has vanished from the SEC's exchange list — acquired,
+ * delisted, gone dark — leave the calendar after missing two daily sweeps
+ * (one glitchy file must not deactivate anyone). A company that reappears is
+ * reactivated and refreshed.
+ */
+async function sweepListingsDaily(today: string, stats: TickStats): Promise<void> {
+  const last = await getState<string>("listing_sweep_last_day");
+  if (last === today) return;
+  const ciks = [...new Set((await fetchExchangeListings()).map((l) => l.cik))];
+  if (ciks.length < 1000) throw new Error(`exchange list looks truncated (${ciks.length} CIKs)`);
+
+  const missing = await query<{ cik: number }>(
+    `update companies set listing_missing_since = coalesce(listing_missing_since, now())
+      where active and not (cik = any($1::int[])) returning cik`,
+    [ciks]
+  );
+  const reactivated = await query<{ ticker: string }>(
+    `update companies set active = true, listing_missing_since = null, refresh_requested_at = coalesce(refresh_requested_at, now())
+      where not active and listing_missing_since is not null and cik = any($1::int[]) returning ticker`,
+    [ciks]
+  );
+  await query(`update companies set listing_missing_since = null where active and listing_missing_since is not null and cik = any($1::int[])`, [ciks]);
+  const deactivated = await query<{ ticker: string }>(
+    `update companies set active = false
+      where active and listing_missing_since < now() - interval '36 hours' returning ticker`
+  );
+  stats.listings = { missing: missing.length, deactivated: deactivated.map((r) => r.ticker), reactivated: reactivated.map((r) => r.ticker) };
+  await setState("listing_sweep_last_day", today);
 }
 
 /* ---------------------------------------------
@@ -173,12 +212,13 @@ async function sweepEdgarAdvisoriesDaily(today: string, stats: TickStats): Promi
 ----------------------------------------------*/
 
 async function nextBatch(limit: number): Promise<{ cik: number; ticker: string }[]> {
+  // Explicit requests are honored for inactive companies too (a new filing
+  // or a relisting is how one returns); the rolling refresh is active-only.
   return query(
     `select cik, ticker from companies
-      where active
-        and (refresh_requested_at is not null
-             or last_refreshed_at is null
-             or last_refreshed_at < now() - ($2 || ' days')::interval)
+      where refresh_requested_at is not null
+         or (active and (last_refreshed_at is null
+                         or last_refreshed_at < now() - ($2 || ' days')::interval))
       order by refresh_requested_at asc nulls last, last_refreshed_at asc nulls first
       limit $1`,
     [limit, STALE_AFTER_DAYS]
@@ -227,6 +267,7 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     feeds: null,
     advisories: null,
     edgarAdvisories: null,
+    listings: null,
     budgetMs,
     elapsedMs: 0,
   };
@@ -237,6 +278,11 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
   try {
     await ingestDailyIndexes(today, stats);
     await flagOverdueEstimates(today, stats);
+    try {
+      await sweepListingsDaily(today, stats);
+    } catch (err) {
+      console.error("[tick] listing sweep failed:", (err as Error).message);
+    }
     const feedsStarted = new Date().toISOString();
     try {
       await sweepEdgarAdvisoriesDaily(today, stats);
@@ -309,7 +355,8 @@ export async function checkHealth(): Promise<Health> {
   }>(`
     select
       (select max(finished_at)::text from job_runs where job = 'tick' and status = 'ok') as last_ok_tick,
-      (select count(*) from earnings_current where status = 'estimated' and event_date < $1::date) as overdue,
+      (select count(*) from earnings_current where status = 'estimated' and event_date < $1::date
+         and not estimate_is_stale(period_end, report_form)) as overdue,
       (select count(*) from companies where active) as active,
       (select count(*) from earnings_next) as with_upcoming,
       (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h,
