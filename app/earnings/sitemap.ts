@@ -28,9 +28,11 @@ export async function generateSitemaps() {
   return Array.from({ length: chunks }, (_, id) => ({ id }));
 }
 
-export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+// Next.js 15+ hands `id` to chunked sitemaps as a Promise.
+export default async function sitemap({ id }: { id: Promise<string> | string | number }): Promise<MetadataRoute.Sitemap> {
+  const chunk = Number(await id);
   const tickers = await safeIndexedTickers();
-  return tickers.slice(id * CHUNK_SIZE, (id + 1) * CHUNK_SIZE).map((t) => ({
+  return tickers.slice(chunk * CHUNK_SIZE, (chunk + 1) * CHUNK_SIZE).map((t) => ({
     url: `https://howmanytradingdays.com/earnings/${t.ticker.toLowerCase()}`,
     lastModified: t.lastRefreshedAt ? new Date(t.lastRefreshedAt) : new Date(),
     changeFrequency: "weekly",
