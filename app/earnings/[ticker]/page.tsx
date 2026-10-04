@@ -5,6 +5,7 @@ import Script from "next/script";
 import { domine } from "../../fonts";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import EarningsCountdown from "@/components/earnings/EarningsCountdown";
+import ShareableCard from "@/components/ShareableCard";
 import { getCompanyEarnings, type EarningsEvent } from "@/lib/earnings/queries";
 import {
   daysBetweenISO,
@@ -14,6 +15,7 @@ import {
   fiscalLabel,
   formatLongDate,
   formatMediumDate,
+  formatLongDateShortMonth,
   formatQuarterEnd,
   formatShortDate,
   formatWeekdayDate,
@@ -60,18 +62,32 @@ function shortName(raw: string): string {
   return name.replace(/\s+$/, "");
 }
 
+/** Phone-width version of accuracySentence: short enough to sit beside the status chip on one line */
+function accuracyShort(e: EarningsEvent): string {
+  if (e.status === "confirmed") return "Confirmed by the company";
+  if (e.overdue) return "No earnings 8-K filed yet";
+  switch (e.confidence) {
+    case "high":
+      return "Typically accurate to within 3 days";
+    case "medium":
+      return "Typically accurate to within a week";
+    default:
+      return "Dates vary · expected window";
+  }
+}
+
 function accuracySentence(e: EarningsEvent): string {
-  if (e.status === "confirmed") return "Date confirmed by the company.";
-  if (e.overdue) return "No earnings 8-K has reached the SEC yet. Companies occasionally shift a quarter's timing; the estimate will reset once results are filed.";
+  if (e.status === "confirmed") return "Confirmed by the company";
+  if (e.overdue) return "No earnings 8-K filed yet · resets when results arrive";
   const n = e.historyCount ?? 0;
   const q = `Q${e.fiscalQuarter}`;
   switch (e.confidence) {
     case "high":
-      return `Estimated from ${n} prior fiscal ${q} reports. Companies in this tier have reported within 3 days of our estimate about 3 times out of 4.`;
+      return `From ${n} past ${q} reports · typically accurate to within 3 days`;
     case "medium":
-      return `Estimated from ${n} prior fiscal ${q} report${n === 1 ? "" : "s"} with a less regular pattern. Expect the actual date within about a week of this one.`;
+      return `From ${n} past ${q} report${n === 1 ? "" : "s"} · typically accurate to within a week`;
     default:
-      return `This company's reporting dates vary too much for a precise estimate, so we show an expected window instead of a single date.`;
+      return "Dates vary too much for a single estimate";
   }
 }
 
@@ -302,43 +318,39 @@ export default async function EarningsTickerPage({ params }: Params) {
 
         {/* HERO: NEXT EARNINGS */}
         {next && countdown ? (
-          <section className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 flex flex-col gap-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                  next.status === "confirmed"
-                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-                    : next.confidence === "low"
-                    ? "border-slate-500/40 bg-slate-500/10 text-slate-300"
-                    : "border-amber-400/40 bg-amber-400/10 text-amber-200"
-                }`}
-              >
-                {isOverdue ? "Past usual date" : statusLabel(next)}
-              </span>
-              <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-800/60 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
-                {timeOfDayLabel(next.timeOfDay)}
+          <ShareableCard
+            className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 flex flex-col gap-5"
+            fileName={`${sym.toLowerCase()}-earnings-countdown.png`}
+          >
+            <div className="pr-16">
+              <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-sm font-semibold text-blue-100">
+                <span>{displayName(company.name)}</span>
+                <span className="font-normal text-blue-300/80">{sym}</span>
               </span>
             </div>
 
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Next earnings date</p>
-              {isOverdue ? (
-                <p className={`${domine.className} text-2xl sm:text-3xl font-semibold text-slate-100 text-balance`}>
-                  Expected any day
+              <div className={`${domine.className} flex items-center gap-x-2 sm:gap-x-3 text-base sm:text-2xl font-semibold text-slate-100 whitespace-nowrap`}>
+                <p>
+                  {isOverdue ? (
+                    "Expected any day"
+                  ) : isWindow ? (
+                    `${formatMediumDate(winStart)} – ${formatMediumDate(winEnd)}`
+                  ) : (
+                    <>
+                      {/* "Wed, Oct 28, 2026" on phones so the time slot fits beside it; the full weekday from the sm breakpoint */}
+                      <span className="sm:hidden">{formatWeekdayDate(next.eventDate)}</span>
+                      <span className="hidden sm:inline">{formatLongDateShortMonth(next.eventDate)}</span>
+                    </>
+                  )}
                 </p>
-              ) : isWindow ? (
-                <p className={`${domine.className} text-2xl sm:text-3xl font-semibold text-slate-100 text-balance`}>
-                  {formatMediumDate(winStart)} – {formatMediumDate(winEnd)}
-                </p>
-              ) : (
-                <p className={`${domine.className} text-2xl sm:text-3xl font-semibold text-slate-100 text-balance`}>
-                  {formatLongDate(next.eventDate)}
-                </p>
-              )}
+                <span aria-hidden="true" className="h-5 w-px shrink-0 bg-slate-600/70 sm:h-6" />
+                <span>{timeOfDayLabel(next.timeOfDay)}</span>
+              </div>
               <p className="text-sm text-slate-400">
-                {fiscalLabel(next)} results · quarter ended {formatQuarterEnd(next.periodEnd)}
+                {fiscalLabel(next)} · quarter ended {formatQuarterEnd(next.periodEnd)}
                 {isOverdue && next.originalEstimate ? ` · usually reported by ${formatMediumDate(next.originalEstimate)}` : ""}
-                {next.status === "estimated" && !isWindow && !isOverdue && next.windowDays ? ` · ±${next.windowDays} days` : ""}
               </p>
             </div>
 
@@ -359,19 +371,32 @@ export default async function EarningsTickerPage({ params }: Params) {
             />
             )}
 
-            <p className="text-xs text-slate-500 leading-relaxed">
-              {accuracySentence(next)}
-              {next.status === "confirmed" && next.sourceUrl && (
-                <>
-                  {" "}
-                  <a href={next.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-300 transition-colors">
-                    Source
-                  </a>
-                  .
-                </>
-              )}
-            </p>
-          </section>
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  next.status === "confirmed"
+                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                    : next.confidence === "low"
+                    ? "border-slate-500/40 bg-slate-500/10 text-slate-300"
+                    : "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                }`}
+              >
+                {isOverdue ? "Past usual date" : statusLabel(next)}
+              </span>
+              <p className="min-w-0 text-xs text-slate-500">
+                <span className="sm:hidden">{accuracyShort(next)}</span>
+                <span className="hidden sm:inline">{accuracySentence(next)}</span>
+                {next.status === "confirmed" && next.sourceUrl && (
+                  <>
+                    {" · "}
+                    <a href={next.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-300 transition-colors">
+                      Source
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
+          </ShareableCard>
         ) : (
           <section className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 space-y-2">
             <p className={`${domine.className} text-xl font-semibold text-slate-100`}>No upcoming date yet</p>

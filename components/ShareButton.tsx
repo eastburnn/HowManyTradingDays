@@ -14,11 +14,13 @@ import { domine } from "../app/fonts"; // ensures Domine is bundled
 
 type ShareButtonProps = {
   cardRef: RefObject<HTMLDivElement | null>;
+  /** File name for the exported PNG */
+  fileName?: string;
 };
 
 const EXPORT_IGNORE = "exportIgnore"; // data-export-ignore
 
-export default function ShareButton({ cardRef }: ShareButtonProps) {
+export default function ShareButton({ cardRef, fileName = "trading-days.png" }: ShareButtonProps) {
   const [mode, setMode] = useState<null | "share" | "save">(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,7 +137,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       const finalDataUrl = canvas.toDataURL("image/png");
 
       const blob = await (await fetch(finalDataUrl)).blob();
-      const file = new File([blob], "trading-days.png", { type: "image/png" });
+      const file = new File([blob], fileName, { type: "image/png" });
 
       return { finalDataUrl, file };
     } finally {
@@ -157,7 +159,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
       } else {
         const link = document.createElement("a");
         link.href = finalDataUrl;
-        link.download = "trading-days.png";
+        link.download = fileName;
         link.click();
       }
     } catch (err: unknown) {
@@ -189,7 +191,7 @@ export default function ShareButton({ cardRef }: ShareButtonProps) {
 
       const link = document.createElement("a");
       link.href = finalDataUrl;
-      link.download = "trading-days.png";
+      link.download = fileName;
       link.click();
     } catch (err) {
       console.error(err);
