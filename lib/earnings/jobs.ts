@@ -222,7 +222,7 @@ const IR_POLL_PER_RUN = 15;
 const IR_POLL_INTERVAL_HOURS = 20;
 
 /** Text of a company's latest earnings release exhibit on EDGAR, for IR-host discovery */
-async function latestReleaseText(cik: number): Promise<string> {
+export async function latestReleaseText(cik: number): Promise<string> {
   const [row] = await query<{ accession: string | null }>(
     `select source_accession as accession from earnings_current
       where cik = $1 and status = 'reported' and source_type = 'edgar-8k' and source_accession is not null
