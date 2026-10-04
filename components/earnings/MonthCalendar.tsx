@@ -301,7 +301,7 @@ export default function MonthCalendar({ today, minMonth, maxMonth }: Props) {
                 ›
               </button>
             </header>
-            <ul key={selected} className="flex-1 overflow-y-auto overscroll-contain divide-y divide-slate-800">
+            <ul key={selected} className="scrollbar-dark flex-1 overflow-y-auto overscroll-contain divide-y divide-slate-800">
               {selectedEvents === undefined ? (
                 <li className="px-4 py-6 text-center text-sm text-slate-500">{summary}</li>
               ) : selectedEvents.length === 0 ? (

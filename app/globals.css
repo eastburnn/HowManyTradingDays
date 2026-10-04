@@ -61,3 +61,23 @@ body {
 body {
   transform: translateZ(0);
 }
+
+/* Scrollable lists inside dark panels (the calendar's day popup): a thin
+   dark-blue thumb on an invisible track instead of the browser's light bar. */
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.45) transparent; /* blue-500, as on the countdown boxes */
+}
+.scrollbar-dark::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.45);
+  border-radius: 9999px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
