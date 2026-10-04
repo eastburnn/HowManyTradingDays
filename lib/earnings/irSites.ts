@@ -175,6 +175,17 @@ export function feedMentionsCompany(xml: string, hints: { name?: string; ticker?
 const isRss = (r: { status: number; text: string }) => r.status === 200 && /<rss[\s>]|<feed[\s>]/i.test(r.text.slice(0, 2000));
 
 /** Probe one host for a usable feed. Null when the host does not answer. */
+/** Feed addresses investor-site platforms use without advertising them in the page */
+const PREDICTABLE_FEED_PATHS = [
+  "/news-events/press-releases/rss",
+  "/news/rss",
+  "/news-releases/rss",
+  "/press-releases/rss",
+  "/investor-news/rss",
+  "/rss/news-releases.xml",
+  "/rss/pressrelease.aspx",
+];
+
 export async function probeIrHost(host: string): Promise<Omit<IrSource, "cik"> | null> {
   try {
     if (!(await robotsAllows(host, "/rss/event.aspx")) || !(await robotsAllows(host, "/rss"))) {
@@ -192,6 +203,13 @@ export async function probeIrHost(host: string): Promise<Omit<IrSource, "cik"> |
     if (home.status !== 200) return null;
     const link = home.text.match(/<link[^>]+type="application\/(?:rss|atom)\+xml"[^>]*href="([^"]+)"/i)?.[1] ?? home.text.match(/href="([^"]+)"[^>]*type="application\/(?:rss|atom)\+xml"/i)?.[1];
     if (link) return { host, platform: "rss", events_url: null, releases_url: new URL(link, `https://${host}/`).toString() };
+    // Sites that advertise no feed in their markup often still serve one at a
+    // predictable address (the Nasdaq-hosted investor sites: Intel, Cummins).
+    for (const path of PREDICTABLE_FEED_PATHS) {
+      if (!(await robotsAllows(host, path))) continue;
+      const feed = await fetchText(`https://${host}${path}`).catch(() => null);
+      if (feed && isRss(feed)) return { host, platform: "rss", events_url: null, releases_url: `https://${host}${path}` };
+    }
     return { host, platform: "none", events_url: null, releases_url: null };
   } catch {
     return null; // no such host, timeout, TLS error
