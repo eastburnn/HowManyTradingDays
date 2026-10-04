@@ -431,6 +431,7 @@ export type Health = {
   feedItemsLast6h: number;
   advisoriesConfirmedLast7d: number;
   contactFailedLast24h: number;
+  irEmailsLast7d: number;
 };
 
 export async function checkHealth(): Promise<Health> {
@@ -444,6 +445,7 @@ export async function checkHealth(): Promise<Health> {
     feed_items_6h: string;
     confirmed_7d: string;
     contact_failed_24h: string;
+    ir_emails_7d: string;
   }>(`
     select
       (select max(finished_at)::text from job_runs where job = 'tick' and status = 'ok') as last_ok_tick,
@@ -453,8 +455,9 @@ export async function checkHealth(): Promise<Health> {
       (select count(*) from earnings_next) as with_upcoming,
       (select count(*) from filings where created_at > now() - interval '24 hours') as filings_24h,
       (select count(*) from feed_items where fetched_at > now() - interval '6 hours') as feed_items_6h,
-      (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site') and created_at > now() - interval '7 days') as confirmed_7d,
-      (select count(*) from contact_messages where status = 'failed' and created_at > now() - interval '24 hours') as contact_failed_24h
+      (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site','ir-email') and created_at > now() - interval '7 days') as confirmed_7d,
+      (select count(*) from contact_messages where status = 'failed' and created_at > now() - interval '24 hours') as contact_failed_24h,
+      (select count(*) from feed_items where feed = 'ir-email' and fetched_at > now() - interval '7 days') as ir_emails_7d
   `, [today]);
   const done = (await getState<string[]>("daily_index_done")) ?? [];
   const lastIndexDay = done.length ? done[done.length - 1] : null;
@@ -502,6 +505,7 @@ export async function checkHealth(): Promise<Health> {
     feedItemsLast6h: Number(row.feed_items_6h),
     advisoriesConfirmedLast7d: Number(row.confirmed_7d),
     contactFailedLast24h: Number(row.contact_failed_24h),
+    irEmailsLast7d: Number(row.ir_emails_7d),
   };
 }
 

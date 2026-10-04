@@ -132,6 +132,46 @@ export function renderBrandedEmail(e: BrandedEmail): string {
 </html>`;
 }
 
+export type SubscriptionPrompt = { from: string; subject: string; links: string[]; excerpt: string };
+
+/**
+ * An investor-relations list wants its sign-up confirmed. The confirmation
+ * links go to the inbox so a person can click them; the alert address itself
+ * has no mailbox.
+ */
+export async function sendSubscriptionPrompt(p: SubscriptionPrompt): Promise<{ id: string }> {
+  const subject = `[HowManyTradingDays] Confirm IR alerts: ${p.from}`.slice(0, 200);
+  const text = [
+    `HOW MANY TRADING DAYS / IR EMAIL ALERTS`,
+    ``,
+    `A subscription confirmation arrived at the alerts address.`,
+    `From:    ${p.from}`,
+    `Subject: ${p.subject}`,
+    ``,
+    p.links.length ? `Links:\n${p.links.map((l) => `  ${l}`).join("\n")}` : `No links were found in the message; the excerpt is below.`,
+    ``,
+    p.excerpt,
+  ].join("\n");
+  const linkRows = p.links.length
+    ? `<ol style="margin:0;padding-left:20px;">${p.links.map((l) => `<li style="margin:0 0 8px;"><a href="${escapeHtml(l)}" style="color:${C.accent};">${escapeHtml(l)}</a></li>`).join("")}</ol>`
+    : `<p style="margin:0;">No links were found in the message.</p>`;
+  const html = renderBrandedEmail({
+    eyebrow: "IR email alerts",
+    heading: "A list wants its sign-up confirmed",
+    preheader: p.subject.slice(0, 110),
+    meta: [
+      { label: "From", value: p.from },
+      { label: "Subject", value: p.subject },
+    ],
+    bodyHtml: `${linkRows}<div style="margin-top:16px;white-space:pre-wrap;color:${C.muted};">${escapeHtml(p.excerpt)}</div>`,
+    cta: p.links[0] ? { label: "Open the first link", href: p.links[0] } : undefined,
+    footerNote: "Forwarded from alerts@howmanytradingdays.com, which has no mailbox of its own.",
+  });
+  const { data, error } = await getClient().emails.send({ from: CONTACT_FROM, to: [CONTACT_TO], subject, text, html });
+  if (error || !data) throw new Error(error?.message ?? "Resend returned no message id");
+  return { id: data.id };
+}
+
 export type ContactMessage = { name: string; email: string; topic: string; message: string };
 
 /** Deliver a contact-form message to the inbox; the sender becomes Reply-To */

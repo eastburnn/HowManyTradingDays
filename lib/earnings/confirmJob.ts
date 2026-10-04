@@ -251,7 +251,7 @@ export async function processFeedItems(
     let description = item.parsed?.description ?? "";
     // An IR events feed is a structured list of upcoming calls, dated from
     // today and reaching into the following quarter.
-    const parseOpts = item.feed === "ir-events" ? { maxDaysAhead: 120 } : {};
+    const parseOpts = item.feed === "ir-events" || item.feed === "ir-email" ? { maxDaysAhead: 120 } : {};
     let outcome = parseAdvisory(item.title, description, published, parseOpts);
     let method: "regex" | "llm" = "regex";
 
@@ -385,7 +385,7 @@ export async function processFeedItems(
     }
 
     await withTransaction(async (client) => {
-      const sourceType = fromEdgar ? "edgar-fts" : item.feed.startsWith("ir-") ? "ir-site" : "wire-rss";
+      const sourceType = fromEdgar ? "edgar-fts" : item.feed === "ir-email" ? "ir-email" : item.feed.startsWith("ir-") ? "ir-site" : "wire-rss";
       if (target.status === "reported") {
         // Overriding a preliminary-8-K "reported" row: the write function
         // never lets a confirmation replace a report, so supersede it here,
@@ -433,7 +433,7 @@ export async function processFeedItems(
 export async function recentlyConfirmedTickers(sinceISO: string): Promise<string[]> {
   const rows = await query<{ ticker: string }>(
     `select distinct ticker from earnings_events
-      where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site') and created_at >= $1::timestamptz`,
+      where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site','ir-email') and created_at >= $1::timestamptz`,
     [sinceISO]
   );
   return rows.map((r) => r.ticker);
