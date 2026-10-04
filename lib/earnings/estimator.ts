@@ -80,7 +80,7 @@ export type EstimateInput = {
 };
 
 const DEFAULT_RECENCY_DECAY = 0.7;
-const SD_HISTORY_YEARS = 6; // the error bar always uses the long history
+const SD_HISTORY_YEARS = 10; // the error bar always uses the long history (raised from 6 on Oct 4, 2026)
 
 /** Backtest-chosen window per filer category (see header comment) */
 function defaultWindow(category: FilerCategory): { maxYears: number; decay: number } {

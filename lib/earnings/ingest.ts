@@ -39,7 +39,7 @@ const KEEP_FORMS = new Set(["10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const KEEP_8K_ITEMS = ["2.02"];
 
 /** Reported events are stored for display; this many years back is plenty */
-const REPORTED_HISTORY_YEARS = 4;
+const REPORTED_HISTORY_YEARS = 10; // raised from 4 on Oct 4, 2026, to match the estimator window
 
 /** How many unreported quarters ahead to estimate */
 const ESTIMATE_QUARTERS_AHEAD = 2;
