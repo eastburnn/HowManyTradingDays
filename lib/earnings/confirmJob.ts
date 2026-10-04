@@ -374,9 +374,11 @@ export async function processFeedItems(
       continue;
     }
 
-    // An events feed names the date but not the hour; keep the time of day
-    // the company's pattern already gave the quarter.
-    if (parsed.timeOfDay === "unknown" && item.feed === "ir-events") {
+    // Many announcements name the date but not the hour. Companies almost
+    // always keep the same slot quarter after quarter, so keep the time of
+    // day the company's pattern already gave the quarter (the estimate's
+    // weighted vote over its past filings) rather than writing "unknown".
+    if (parsed.timeOfDay === "unknown") {
       const cur = await query<{ time_of_day: ParsedAdvisory["timeOfDay"] }>(
         `select time_of_day from earnings_events where id = $1`,
         [target.id]

@@ -102,6 +102,26 @@ const WINDOW_DAYS: Record<ConfidenceTier, number> = { high: 3, medium: 7, low: 1
    WEIGHTED STATISTICS
 ----------------------------------------------*/
 
+/**
+ * Which slot a company will report in, from its past filings: before the
+ * open or after the close, the only two slots companies really use. An 8-K
+ * accepted during market hours is a morning release filed late (companies
+ * that announced "before the open" had filed during market hours 150 times
+ * out of 156 in our data), so it votes for before the open. Filings whose
+ * slot can't be read don't vote; a company with no readable filings stays
+ * unknown.
+ */
+export function predictTimeOfDay(votes: Array<[EarningsObservation["timeOfDay"], number]>): EarningsObservation["timeOfDay"] {
+  let premarket = 0;
+  let postmarket = 0;
+  for (const [slot, weight] of votes) {
+    if (slot === "premarket" || slot === "during-market") premarket += weight;
+    else if (slot === "postmarket") postmarket += weight;
+  }
+  if (premarket === 0 && postmarket === 0) return "unknown";
+  return postmarket > premarket ? "postmarket" : "premarket";
+}
+
 function weightedMedian(values: number[], weights: number[]): number {
   const idx = values.map((_, i) => i).sort((a, b) => values[a] - values[b]);
   const total = weights.reduce((s, w) => s + w, 0);
@@ -242,11 +262,7 @@ export function estimateReleaseDate(input: EstimateInput): Estimate | null {
     }
   }
 
-  const timeOfDayVotes = new Map<EarningsObservation["timeOfDay"], number>();
-  history.forEach((o, i) =>
-    timeOfDayVotes.set(o.timeOfDay, (timeOfDayVotes.get(o.timeOfDay) ?? 0) + weights[i])
-  );
-  const timeOfDay = [...timeOfDayVotes.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const timeOfDay = predictTimeOfDay(history.map((o, i) => [o.timeOfDay, weights[i]]));
 
   return {
     date,

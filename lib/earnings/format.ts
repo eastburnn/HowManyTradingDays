@@ -63,7 +63,7 @@ export function timeOfDayLabel(tod: EarningsEvent["timeOfDay"]): string {
     case "postmarket":
       return "After the close";
     case "during-market":
-      return "During market hours";
+      return "Before the open"; // an 8-K accepted during market hours is a morning release filed late
     default:
       return "Time not yet known";
   }
@@ -77,7 +77,7 @@ export function timeOfDayShort(tod: EarningsEvent["timeOfDay"]): string {
     case "postmarket":
       return "After close";
     case "during-market":
-      return "Mid-day";
+      return "Before open";
     default:
       return "-";
   }
@@ -90,7 +90,7 @@ export function timeOfDaySentence(tod: EarningsEvent["timeOfDay"]): string {
     case "postmarket":
       return "after the market closes";
     case "during-market":
-      return "during market hours";
+      return "before the market opens";
     default:
       return "at a time not yet known";
   }
@@ -219,6 +219,11 @@ export function displayName(raw: string): string {
 
 export function formatQuarterEnd(iso: string): string {
   return parseISODate(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+/** "Tuesday, Nov 3, 2026": the full weekday with a three-letter month, for a headline that shares its line */
+export function formatLongDateShortMonth(iso: string): string {
+  return parseISODate(iso).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 
 /** Two spellings of the fiscal-year range: "JUN 1 – MAY 31" for the narrow desktop column, "June 1 – May 31" for phones. */
