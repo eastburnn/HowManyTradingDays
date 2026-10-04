@@ -204,21 +204,21 @@ export default function HomePage() {
             className="
               group flex items-center justify-between gap-2
               rounded-lg border border-slate-800 bg-slate-900/70
-              px-3 py-3 sm:px-4
+              px-2 py-3 sm:px-4
               hover:border-slate-700 hover:bg-slate-900
               transition-all duration-150 active:scale-[0.99]
             "
           >
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
                 <rect x="4" y="2" width="16" height="20" rx="2" />
                 <line x1="8" y1="7" x2="16" y2="7" />
                 <line x1="8" y1="11" x2="16" y2="11" />
                 <line x1="8" y1="15" x2="12" y2="15" />
               </svg>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-slate-100 leading-tight">Trading Days Calculator</span>
-                <span className="text-xs text-slate-500 leading-tight">Count days to any date</span>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-medium text-slate-100 leading-tight whitespace-nowrap truncate"><span className="sm:hidden">Calculator</span><span className="hidden sm:inline">Trading Days Calculator</span></span>
+                <span className="text-[11px] sm:text-xs text-slate-500 leading-tight whitespace-nowrap truncate"><span className="sm:hidden">Count days to any date</span><span className="hidden sm:inline">Count the days to any date</span></span>
               </div>
             </div>
             <svg className="hidden sm:block w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -231,21 +231,21 @@ export default function HomePage() {
             className="
               group flex items-center justify-between gap-2
               rounded-lg border border-slate-800 bg-slate-900/70
-              px-3 py-3 sm:px-4
+              px-2 py-3 sm:px-4
               hover:border-slate-700 hover:bg-slate-900
               transition-all duration-150 active:scale-[0.99]
             "
           >
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="18" rx="2" />
                 <line x1="16" y1="2" x2="16" y2="6" />
                 <line x1="8" y1="2" x2="8" y2="6" />
                 <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-slate-100 leading-tight">Earnings Dates</span>
-                <span className="text-xs text-slate-500 leading-tight">When companies report</span>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-medium text-slate-100 leading-tight whitespace-nowrap truncate">Earnings Dates</span>
+                <span className="text-[11px] sm:text-xs text-slate-500 leading-tight whitespace-nowrap truncate"><span className="sm:hidden">View reporting dates</span><span className="hidden sm:inline">When companies report</span></span>
               </div>
             </div>
             <svg className="hidden sm:block w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
