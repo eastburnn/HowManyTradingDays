@@ -50,13 +50,13 @@ export default function EarningsCountdown({ eventDate, windowEnd, initial }: Pro
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col items-center rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-4 gap-1">
-        <span className="text-4xl sm:text-5xl font-semibold tabular-nums text-blue-200">
+        <span className="text-4xl @lg:text-5xl font-semibold tabular-nums text-blue-200">
           {isRange ? `${fmt(counts.tradingDays)}–${fmt(counts.tradingDaysEnd!)}` : fmt(counts.tradingDays)}
         </span>
         <span className="text-xs text-slate-400 text-center">trading days</span>
       </div>
       <div className="flex flex-col items-center rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-4 gap-1">
-        <span className="text-4xl sm:text-5xl font-semibold tabular-nums text-slate-200">
+        <span className="text-4xl @lg:text-5xl font-semibold tabular-nums text-slate-200">
           {isRange ? `${counts.calendarDays}–${counts.calendarDaysEnd}` : counts.calendarDays}
         </span>
         <span className="text-xs text-slate-400 text-center">calendar days</span>

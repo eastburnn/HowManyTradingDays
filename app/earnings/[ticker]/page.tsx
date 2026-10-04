@@ -319,7 +319,7 @@ export default async function EarningsTickerPage({ params }: Params) {
         {/* HERO: NEXT EARNINGS */}
         {next && countdown ? (
           <ShareableCard
-            className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 flex flex-col gap-5"
+            className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 @lg:p-8 flex flex-col gap-5"
             fileName={`${sym.toLowerCase()}-earnings-countdown.png`}
           >
             <div className="pr-16">
@@ -331,7 +331,7 @@ export default async function EarningsTickerPage({ params }: Params) {
 
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Next earnings date</p>
-              <div className={`${domine.className} flex items-center gap-x-2 sm:gap-x-3 text-base sm:text-2xl font-semibold text-slate-100 whitespace-nowrap`}>
+              <div className={`${domine.className} flex items-center gap-x-2 @lg:gap-x-3 text-base @lg:text-2xl font-semibold text-slate-100 whitespace-nowrap`}>
                 <p>
                   {isOverdue ? (
                     "Expected any day"
@@ -340,12 +340,12 @@ export default async function EarningsTickerPage({ params }: Params) {
                   ) : (
                     <>
                       {/* "Wed, Oct 28, 2026" on phones so the time slot fits beside it; the full weekday from the sm breakpoint */}
-                      <span className="sm:hidden">{formatWeekdayDate(next.eventDate)}</span>
-                      <span className="hidden sm:inline">{formatLongDateShortMonth(next.eventDate)}</span>
+                      <span className="@lg:hidden">{formatWeekdayDate(next.eventDate)}</span>
+                      <span className="hidden @lg:inline">{formatLongDateShortMonth(next.eventDate)}</span>
                     </>
                   )}
                 </p>
-                <span aria-hidden="true" className="h-5 w-px shrink-0 bg-slate-600/70 sm:h-6" />
+                <span aria-hidden="true" className="h-5 w-px shrink-0 bg-slate-600/70 @lg:h-6" />
                 <span>{timeOfDayLabel(next.timeOfDay)}</span>
               </div>
               <p className="text-sm text-slate-400">
@@ -384,8 +384,8 @@ export default async function EarningsTickerPage({ params }: Params) {
                 {isOverdue ? "Past usual date" : statusLabel(next)}
               </span>
               <p className="min-w-0 text-xs text-slate-500">
-                <span className="sm:hidden">{accuracyShort(next)}</span>
-                <span className="hidden sm:inline">{accuracySentence(next)}</span>
+                <span className="@lg:hidden">{accuracyShort(next)}</span>
+                <span className="hidden @lg:inline">{accuracySentence(next)}</span>
                 {next.status === "confirmed" && next.sourceUrl && (
                   <>
                     {" · "}

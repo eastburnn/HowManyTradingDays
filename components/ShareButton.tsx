@@ -20,6 +20,14 @@ type ShareButtonProps = {
 
 const EXPORT_IGNORE = "exportIgnore"; // data-export-ignore
 
+/**
+ * The exported image is always the desktop layout: the card is rendered at
+ * the page's desktop column width for the capture, whatever the device. The
+ * cards' responsive classes are container queries (`@lg:`), so widening the
+ * card element is enough to switch them.
+ */
+const EXPORT_WIDTH_PX = 576; // max-w-xl, the page column on desktop
+
 export default function ShareButton({ cardRef, fileName = "trading-days.png" }: ShareButtonProps) {
   const [mode, setMode] = useState<null | "share" | "save">(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +69,11 @@ export default function ShareButton({ cardRef, fileName = "trading-days.png" }: 
 
     patchSubtree();
 
+    // Desktop layout for the capture (restored with the rest of the inline styles)
+    node.style.width = `${EXPORT_WIDTH_PX}px`;
+    node.style.maxWidth = "none";
+    node.style.flexShrink = "0";
+
     try {
       // Sharper exports: bump pixelRatio more aggressively on mobile
       const isMobile =
@@ -90,14 +103,19 @@ export default function ShareButton({ cardRef, fileName = "trading-days.png" }: 
         img.onerror = reject;
       });
 
-      const TARGET_ASPECT = 1.85; // width / height
-      const footerSpace = 72;
-      const topPadding = 28;
-      const preferredScale = 1.08;
+      // The frame is derived from the card: the same margin of dark space on
+      // all four sides, the card dead center, and the watermark centered in
+      // the bottom margin, so every export (homepage or ticker, phone or
+      // desktop) has the card the same distance from the edges and the
+      // watermark the same distance below the card. Everything scales with
+      // the capture, so a 3x phone export matches a 2x desktop export.
+      const unit = img.width / 1152; // 1 at the desktop export size
+      const CARD_SHARE = 0.82; // of the image width
+      const margin = Math.round((img.width * (1 - CARD_SHARE)) / 2 / CARD_SHARE);
 
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = Math.max(Math.round(canvas.width / TARGET_ASPECT), 200);
+      canvas.width = img.width + 2 * margin;
+      canvas.height = img.height + 2 * margin;
 
       const ctx = canvas.getContext("2d")!;
       if (!ctx) throw new Error("Canvas context not available");
@@ -109,30 +127,17 @@ export default function ShareButton({ cardRef, fileName = "trading-days.png" }: 
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const contentTop = topPadding;
-      const contentBottom = canvas.height - footerSpace;
-      const contentHeight = Math.max(0, contentBottom - contentTop);
+      ctx.drawImage(img, margin, margin, img.width, img.height);
 
-      const fitScale = contentHeight / img.height;
-      const scale = Math.min(preferredScale, fitScale);
-
-      const drawW = Math.round(img.width * scale);
-      const drawH = Math.round(img.height * scale);
-
-      const dx = Math.round((canvas.width - drawW) / 2);
-      const dy = Math.round(contentTop + (contentHeight - drawH) / 2) + 16;
-
-      ctx.drawImage(img, dx, dy, drawW, drawH);
-
-      // Watermark: smaller on mobile, keep desktop roughly the same
-      // (mobile canvas width tends to be smaller -> this will reduce font size)
-      const watermarkSize = Math.max(12, Math.min(18, Math.round(canvas.width / 55)));
+      // Watermark, centered in the bottom margin
+      const watermarkSize = Math.round(26 * unit);
 
       await document.fonts.load(`${watermarkSize}px Domine`);
       ctx.font = `${watermarkSize}px Domine`;
-      ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
       ctx.textAlign = "center";
-      ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - 36);
+      ctx.textBaseline = "middle";
+      ctx.fillText("HowManyTradingDays.com", canvas.width / 2, canvas.height - margin / 2);
 
       const finalDataUrl = canvas.toDataURL("image/png");
 

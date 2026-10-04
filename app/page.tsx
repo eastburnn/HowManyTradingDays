@@ -154,11 +154,11 @@ export default function HomePage() {
         </header>
 
         {/* MAIN CARD */}
+        {/* The card's responsive styles key off its own width (container queries), so the
+            image export can render it at desktop width on any device. */}
         <section className="w-full">
-          <div
-            ref={cardRef}
-            className="relative w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl px-8 pb-8 pt-12 sm:pt-8 flex flex-col items-center gap-3"
-          >
+          <div ref={cardRef} className="@container w-full">
+          <div className="relative w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl px-8 pb-8 pt-12 @lg:pt-8 flex flex-col items-center gap-3">
             {/* Share / save as image: in the corner, excluded from the export itself */}
             <ShareButton cardRef={cardRef} />
 
@@ -167,7 +167,7 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col items-center">
-              <span className="text-6xl sm:text-7xl font-semibold tabular-nums">
+              <span className="text-6xl @lg:text-7xl font-semibold tabular-nums">
                 {totalTradingDays.toFixed(1)}
               </span>
               <span className="text-xs text-slate-400"></span>
@@ -193,6 +193,7 @@ export default function HomePage() {
             <div className="w-full border-t border-slate-800 mt-3 pt-3">
               <MarketStatusCard variant="inline" />
             </div>
+          </div>
           </div>
         </section>
 
