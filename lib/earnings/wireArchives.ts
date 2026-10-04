@@ -102,6 +102,7 @@ export async function fetchGnwSearch(keyword: string, page = 1): Promise<FeedIte
     const title = clean(block.match(/<div class="mainLink">\s*<a[^>]*>([\s\S]*?)<\/a>/)?.[1] ?? "");
     const dateText = clean(block.match(/<div class="date-source">\s*<span>([^<]+)<\/span>/)?.[1] ?? "");
     const summary = block.match(/<div class="newsTxt">\s*<p>([\s\S]*?)<\/p>/)?.[1] ?? "";
+    const source = clean(block.match(/class="sourceLink"[^>]*>([^<]+)<\/a>/)?.[1] ?? "");
     if (!href || !title) continue;
     items.push({
       guid: `https://www.globenewswire.com${href}`,
@@ -109,6 +110,7 @@ export async function fetchGnwSearch(keyword: string, page = 1): Promise<FeedIte
       link: `https://www.globenewswire.com${href}`,
       description: clean(summary),
       publishedAt: parseWireTimestamp(dateText),
+      source: source || undefined,
     });
   }
   return items;

@@ -38,6 +38,8 @@ export type FeedItem = {
   publishedAt: string | null; // ISO
   /** Known company, when the feed belongs to one (its own IR site) */
   cik?: number;
+  /** The issuing organization, when the source names it (GlobeNewswire search results) */
+  source?: string;
 };
 
 /* ---------------------------------------------

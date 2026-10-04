@@ -25,15 +25,19 @@ function arg(name: string, fallback: string): string {
 
 const SINCE = arg("since", addDaysISO(todayET(), -120));
 const OUT = arg("out", "wire-survey.json");
-const MAX_PAGES = 200;
+const UNRESOLVED_OUT = arg("dump-unresolved", "");
+// GlobeNewswire search returns 10 items a page, so a full season needs several hundred pages per phrase.
+const MAX_PAGES = Number(arg("max-pages", "600"));
 const GNW_KEYWORDS = [
   "earnings conference call",
   "earnings release date",
   "to host conference call",
   "to report second quarter",
   "to announce second quarter",
+  "second quarter 2026 financial results",
   "to report third quarter",
   "to announce third quarter",
+  "third quarter 2026 financial results",
   "to report fiscal",
   "to announce fiscal",
   "financial results conference call",
@@ -85,11 +89,13 @@ async function companyOf(item: FeedItem): Promise<{ cik: number; ticker: string 
   type Tally = { ticker: string; prn: number; gnw: number; lastSeen: string };
   const byCik = new Map<number, Tally>();
   let unresolved = 0;
+  const unresolvedTitles: string[] = [];
   const note = async (wire: "prn" | "gnw", items: FeedItem[]) => {
     for (const it of items) {
       const hit = await companyOf(it);
       if (!hit) {
         unresolved += 1;
+        unresolvedTitles.push(`${wire}\t${(it.publishedAt ?? "").slice(0, 10)}\t${it.title}`);
         continue;
       }
       const t = byCik.get(hit.cik) ?? { ticker: hit.ticker, prn: 0, gnw: 0, lastSeen: "" };
@@ -133,6 +139,7 @@ async function companyOf(item: FeedItem): Promise<{ cik: number; ticker: string 
   }
   summary.neitherLarge.sort();
   writeFileSync(OUT, JSON.stringify({ summary, companies: Object.fromEntries([...byCik.entries()]) }, null, 1));
+  if (UNRESOLVED_OUT) writeFileSync(UNRESOLVED_OUT, unresolvedTitles.join("\n"));
   console.log(JSON.stringify({ ...summary, neitherLarge: `${summary.neitherLarge.length} tickers (in the file)` }, null, 1));
   await closePool();
 })().catch((e) => {
