@@ -142,7 +142,7 @@ type Candidate = {
   has_report: boolean;
 };
 
-async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number; ticker: string } | null> {
+export async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number; ticker: string } | null> {
   if (parsed.tickers.length) {
     const rows = await query<{ cik: number; ticker: string }>(
       `select cik, ticker from companies
