@@ -204,13 +204,13 @@ export default function HomePage() {
             className="
               group flex items-center justify-between gap-2
               rounded-lg border border-slate-800 bg-slate-900/70
-              px-2 py-3 sm:px-4
+              pl-2.5 pr-1.5 py-3 sm:px-4
               hover:border-slate-700 hover:bg-slate-900
               transition-all duration-150 active:scale-[0.99]
             "
           >
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+            <div className="flex items-center gap-3 min-w-0">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
                 <rect x="4" y="2" width="16" height="20" rx="2" />
                 <line x1="8" y1="7" x2="16" y2="7" />
                 <line x1="8" y1="11" x2="16" y2="11" />
@@ -231,13 +231,13 @@ export default function HomePage() {
             className="
               group flex items-center justify-between gap-2
               rounded-lg border border-slate-800 bg-slate-900/70
-              px-2 py-3 sm:px-4
+              pl-2.5 pr-1.5 py-3 sm:px-4
               hover:border-slate-700 hover:bg-slate-900
               transition-all duration-150 active:scale-[0.99]
             "
           >
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+            <div className="flex items-center gap-3 min-w-0">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="18" rx="2" />
                 <line x1="16" y1="2" x2="16" y2="6" />
                 <line x1="8" y1="2" x2="8" y2="6" />
