@@ -201,11 +201,16 @@ export default async function EarningsTickerPage({ params }: Params) {
   if (!data) notFound();
 
   const { company, upcoming, lastReported, history } = data;
-  const next = upcoming[0] ?? null;
-  const following = upcoming[1] ?? null;
+  const today = todayET();
+  // An overdue quarter is the headline for 14 days past its usual date. After
+  // that the page looks ahead to the next quarter, with the overdue one noted.
+  const first = upcoming[0] ?? null;
+  const firstOverdueDays = first?.status === "estimated" && first.overdue ? daysBetweenISO(first.originalEstimate ?? first.eventDate, today) : 0;
+  const longOverdue = firstOverdueDays > 14 && upcoming[1] ? first : null;
+  const next = longOverdue ? upcoming[1] : first;
+  const following = (longOverdue ? upcoming[2] : upcoming[1]) ?? null;
   const name = shortName(company.name);
   const sym = company.ticker;
-  const today = todayET();
   // The report stays the headline for two weeks; after that the countdown to the next one takes over.
   const recentlyReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 14 : false;
 
@@ -398,6 +403,13 @@ export default async function EarningsTickerPage({ params }: Params) {
               </p>
             </div>
 
+            {longOverdue && (
+              <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100/90 leading-relaxed">
+                <span className="font-semibold">{fiscalLabel(longOverdue)} results are overdue.</span> {name} usually would have reported by{" "}
+                {formatMediumDate(longOverdue.originalEstimate ?? longOverdue.eventDate)}, and no earnings 8-K has reached the SEC yet. The countdown below is for the following quarter.
+              </p>
+            )}
+
             {isOverdue ? (
               <p className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm text-slate-300 leading-relaxed">
                 {name} has passed the date its past pattern pointed to and has not filed an earnings release yet. The report could come any day; this page updates automatically when it does.
@@ -425,7 +437,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                     : "border-amber-400/40 bg-amber-400/10 text-amber-200"
                 }`}
               >
-                {isOverdue ? "Past usual date" : statusLabel(next)}
+                {isOverdue ? "Overdue" : statusLabel(next)}
               </span>
               <p className="min-w-0 text-xs text-slate-500">
                 <span className="@lg:hidden">{accuracyShort(next)}</span>
