@@ -1,0 +1,28 @@
+# Pipeline regression tests: every fix to how earnings dates are worked out
+# adds a case to scripts/earnings/parse-fixtures.ts, and this runs them all on
+# each push, so a later change cannot quietly undo an earlier fix. GitHub
+# emails the repository owner when a run fails.
+
+name: Pipeline tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit -p .
+      - name: Earnings fixtures
+        run: npm run -s earnings:fixtures

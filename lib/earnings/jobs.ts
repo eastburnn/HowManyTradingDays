@@ -13,6 +13,17 @@
  *
  * Everything is resumable: a tick that is cut off or doubled leaves the
  * database consistent and the next tick simply continues.
+ *
+ * Two rules keep this from needing a person:
+ *
+ *   - Every step is isolated. One step failing (the SEC answering 503 for a
+ *     daily index, a feed timing out) is recorded and the rest of the tick
+ *     still runs; the health check reports a step that keeps failing.
+ *   - A change to the pipeline's logic applies itself. Each tick compares the
+ *     deployed logic fingerprints with the ones that last ran (logicHash.ts);
+ *     when they differ it starts a flush: every company is refreshed again
+ *     and recently ignored feed items go back through the parser, behind the
+ *     live work, without anyone running a backfill.
  */
 
 import { revalidatePath } from "next/cache";
@@ -26,6 +37,7 @@ import { searchEdgarAdvisories, stageEdgarAdvisories } from "./edgarAdvisories";
 import { type IrSource, discoverIrSource, readIrSource } from "./irSites";
 import { checkExpectedReporters, refreshFlagged, settleResultsHeadlines, watchLiveFilings } from "./reportWatch";
 import { stageItems } from "./confirmJob";
+import { type LogicVersions, computeLogicVersions } from "./logicHash";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const STALE_AFTER_DAYS = 7; // every active company refreshes at least this often
@@ -46,9 +58,30 @@ export type TickStats = {
   edgarAdvisories: { candidates: number; staged: number } | null;
   listings: { missing: number; deactivated: string[]; reactivated: string[] } | null;
   irDiscovered: { checked: number; found: string[] } | null;
+  /** The logic flush in progress, if any (see syncLogicFlush) */
+  logicFlush: LogicFlushStatus | null;
+  /** Steps that failed this tick; the tick itself still completed */
+  stepErrors: string[];
   budgetMs: number;
   elapsedMs: number;
 };
+
+/** Record a failed step without ending the run */
+function stepError(stats: { stepErrors: string[] }, step: string, err: unknown): void {
+  const message = (err as Error)?.message ?? String(err);
+  console.error(`[jobs] step "${step}" failed:`, message);
+  stats.stepErrors.push(`${step}: ${message.slice(0, 160)}`);
+}
+
+/** Run one step of a job; a failure is recorded and the job carries on */
+async function runStep<T>(stats: { stepErrors: string[] }, step: string, fn: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await fn();
+  } catch (err) {
+    stepError(stats, step, err);
+    return undefined;
+  }
+}
 
 /* ---------------------------------------------
    PIPELINE STATE
@@ -65,6 +98,117 @@ async function setState(key: string, value: unknown): Promise<void> {
      on conflict (key) do update set value = excluded.value, updated_at = now()`,
     [key, JSON.stringify(value)]
   );
+}
+
+/* ---------------------------------------------
+   0. LOGIC FLUSH (a logic change applies itself)
+----------------------------------------------*/
+
+type LogicFlushState = {
+  company: { version: string; startedAt: string | null; finishedAt?: string | null };
+  feeds: { version: string; startedAt: string | null; requeued?: number };
+};
+
+export type LogicFlushStatus = LogicFlushState & {
+  /** Active companies not yet refreshed since the company flush began */
+  companiesPending: number;
+  /** Feed items waiting to go back through the parser */
+  feedItemsPending: number;
+};
+
+const LOGIC_FLUSH_KEY = "logic_flush";
+/** Ignored and failed feed items are kept this long (the feed-items-cleanup job), so this is all there is to redo */
+const FEED_REPROCESS_DAYS = 30;
+
+/** The logic fingerprints of the code that is running */
+export function deployedLogic(): LogicVersions | null {
+  const company = process.env.EARNINGS_LOGIC_COMPANY;
+  const feeds = process.env.EARNINGS_LOGIC_FEEDS;
+  if (company && feeds) return { company, feeds };
+  try {
+    return computeLogicVersions(); // scripts and local runs: straight from the source on disk
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Only the production deployment may start a flush. A local run or a preview
+ * build shares the database and would otherwise flip the recorded version
+ * back and forth with production. EARNINGS_FLUSH=1 opts a run in (tests).
+ */
+function mayStartFlush(): boolean {
+  return process.env.VERCEL_ENV === "production" || process.env.EARNINGS_FLUSH === "1";
+}
+
+/** Put recently ignored and failed feed items back in the parser's queue; returns how many */
+async function requeueFeedItems(version: string): Promise<number> {
+  // Results headlines have already done their work (queued a refresh, or
+  // recorded the report); matched items are confirmations and stay as they are.
+  const rows = await query<{ id: number }>(
+    `update feed_items
+        set parse_status = 'pending',
+            parsed = (coalesce(parsed, '{}'::jsonb) - 'retryAfter') || jsonb_build_object('reprocess', $1::text)
+      where parse_status in ('ignored', 'failed')
+        and fetched_at > now() - ($2 || ' days')::interval
+        and not (coalesce(parsed, '{}'::jsonb) ? 'resultsHeadline')
+      returning id`,
+    [version, FEED_REPROCESS_DAYS]
+  );
+  return rows.length;
+}
+
+async function logicFlushStatus(state: LogicFlushState): Promise<LogicFlushStatus> {
+  const [row] = await query<{ companies: string; items: string }>(
+    `select
+       (select count(*) from companies where active and $1::timestamptz is not null and last_refreshed_at < $1::timestamptz) as companies,
+       (select count(*) from feed_items where parse_status = 'pending' and parsed ? 'reprocess') as items`,
+    [state.company.startedAt]
+  );
+  return { ...state, companiesPending: Number(row.companies), feedItemsPending: Number(row.items) };
+}
+
+/**
+ * Compare the running code's logic fingerprints with the ones that last ran
+ * and start a flush for whichever changed. The refresh batch and the feed
+ * parser do the actual work over the following ticks.
+ */
+export async function syncLogicFlush(): Promise<LogicFlushStatus | null> {
+  const deployed = deployedLogic();
+  if (!deployed) return null;
+  let state = await getState<LogicFlushState>(LOGIC_FLUSH_KEY);
+  const now = new Date().toISOString();
+
+  if (!state) {
+    // First sight of the fingerprints: start tracking, nothing to redo.
+    state = { company: { version: deployed.company, startedAt: null }, feeds: { version: deployed.feeds, startedAt: null } };
+    if (mayStartFlush()) await setState(LOGIC_FLUSH_KEY, state);
+    return logicFlushStatus(state);
+  }
+
+  if (mayStartFlush()) {
+    let changed = false;
+    if (state.company.version !== deployed.company) {
+      state = { ...state, company: { version: deployed.company, startedAt: now, finishedAt: null } };
+      changed = true;
+      console.log(`[jobs] company logic changed to ${deployed.company}: refreshing every company`);
+    }
+    if (state.feeds.version !== deployed.feeds) {
+      const requeued = await requeueFeedItems(deployed.feeds);
+      state = { ...state, feeds: { version: deployed.feeds, startedAt: now, requeued } };
+      changed = true;
+      console.log(`[jobs] feed logic changed to ${deployed.feeds}: ${requeued} feed items back in the queue`);
+    }
+    if (changed) await setState(LOGIC_FLUSH_KEY, state);
+  }
+
+  const status = await logicFlushStatus(state);
+  if (mayStartFlush() && state.company.startedAt && !state.company.finishedAt && status.companiesPending === 0) {
+    state = { ...state, company: { ...state.company, finishedAt: now } };
+    await setState(LOGIC_FLUSH_KEY, state);
+    return { ...status, ...state };
+  }
+  return status;
 }
 
 /* ---------------------------------------------
@@ -115,7 +259,15 @@ async function ingestDailyIndexes(today: string, stats: TickStats): Promise<void
       processed.add(iso);
       continue;
     }
-    const rows = await fetchDailyFormIndex(iso);
+    let rows: Awaited<ReturnType<typeof fetchDailyFormIndex>>;
+    try {
+      rows = await fetchDailyFormIndex(iso);
+    } catch (err) {
+      // The SEC answers 503 now and then. Leave the day unprocessed (the next
+      // tick asks again) and carry on with the other days and the other steps.
+      stepError(stats, "daily index", err);
+      continue;
+    }
     if (rows === null) {
       // Not published (yet). Mark past market holidays done; keep waiting on
       // recent business days — the SEC posts the index with a lag.
@@ -256,7 +408,8 @@ async function discoverIrSourcesBatch(deadline: number, stats: TickStats): Promi
   for (const c of todo) {
     if (Date.now() > deadline) break;
     try {
-      const src = await discoverIrSource(c.cik, await latestReleaseText(c.cik), { name: c.name, ticker: c.ticker });
+      // The investor-link search stops opening pages 20 seconds before the tick's budget ends
+      const src = await discoverIrSource(c.cik, await latestReleaseText(c.cik), { name: c.name, ticker: c.ticker }, deadline - 20_000);
       if (src.platform === "q4" || src.platform === "investis" || src.platform === "rss") found.push(`${c.ticker}:${src.platform}`);
     } catch (err) {
       console.error(`[tick] IR discovery ${c.ticker}:`, (err as Error).message);
@@ -297,23 +450,27 @@ export async function pollIrSourcesBatch(limit = IR_POLL_PER_RUN): Promise<{ pol
    3. REFRESH BATCH (requested first, then stalest)
 ----------------------------------------------*/
 
-async function nextBatch(limit: number): Promise<{ cik: number; ticker: string }[]> {
+export async function nextBatch(limit: number, flushStartedAt: string | null): Promise<{ cik: number; ticker: string }[]> {
   // Explicit requests are honored for inactive companies too (a new filing
   // or a relisting is how one returns); the rolling refresh is active-only.
+  // During a logic flush every company not refreshed since it began is due,
+  // still behind the explicit requests so a company that has just reported
+  // never waits for the flush.
   return query(
     `select cik, ticker from companies
       where refresh_requested_at is not null
          or (active and (last_refreshed_at is null
-                         or last_refreshed_at < now() - ($2 || ' days')::interval))
+                         or last_refreshed_at < now() - ($2 || ' days')::interval
+                         or ($3::timestamptz is not null and last_refreshed_at < $3::timestamptz)))
       order by refresh_requested_at asc nulls last, last_refreshed_at asc nulls first
       limit $1`,
-    [limit, STALE_AFTER_DAYS]
+    [limit, STALE_AFTER_DAYS, flushStartedAt]
   );
 }
 
 async function refreshBatch(deadline: number, today: string, stats: TickStats, touched: Set<string>): Promise<void> {
   // Pull a generous batch; the time budget, not the batch size, ends the loop.
-  const batch = await nextBatch(400);
+  const batch = await nextBatch(400, stats.logicFlush?.company.startedAt ?? null);
   let cursor = 0;
 
   async function worker() {
@@ -355,6 +512,8 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     edgarAdvisories: null,
     listings: null,
     irDiscovered: null,
+    logicFlush: null,
+    stepErrors: [],
     budgetMs,
     elapsedMs: 0,
   };
@@ -363,40 +522,29 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
   const touched = new Set<string>();
 
   try {
-    await ingestDailyIndexes(today, stats);
-    await flagOverdueEstimates(today, stats);
-    try {
-      await sweepListingsDaily(today, stats);
-    } catch (err) {
-      console.error("[tick] listing sweep failed:", (err as Error).message);
-    }
+    // Each step stands alone: a failure is recorded in stats.stepErrors and
+    // the steps after it still run.
+    stats.logicFlush = (await runStep(stats, "logic flush", () => syncLogicFlush())) ?? null;
+    await runStep(stats, "daily index", () => ingestDailyIndexes(today, stats));
+    await runStep(stats, "overdue estimates", () => flagOverdueEstimates(today, stats));
+    await runStep(stats, "listing sweep", () => sweepListingsDaily(today, stats));
     const feedsStarted = new Date().toISOString();
-    try {
-      await sweepEdgarAdvisoriesDaily(today, stats);
-    } catch (err) {
-      console.error("[tick] EDGAR advisory sweep failed:", (err as Error).message);
-    }
-    stats.feeds = await pollFeeds({ includeLists: true });
-    stats.advisories = await processFeedItems();
-    for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
+    await runStep(stats, "EDGAR advisory sweep", () => sweepEdgarAdvisoriesDaily(today, stats));
+    stats.feeds = (await runStep(stats, "wire feeds", () => pollFeeds({ includeLists: true }))) ?? null;
+    stats.advisories = (await runStep(stats, "feed parsing", () => processFeedItems())) ?? null;
+    await runStep(stats, "confirmed tickers", async () => {
+      for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
+    });
     // Companies that have just reported go to the front of the refresh queue
-    try {
+    await runStep(stats, "report watch", async () => {
       stats.reportWatch = { expected: await checkExpectedReporters(today, { deadline: deadline - 120_000 }), live: await watchLiveFilings() };
-    } catch (err) {
-      console.error("[tick] report watch:", (err as Error).message);
-    }
-    await refreshBatch(deadline - 45_000, today, stats, touched);
-    try {
+    });
+    await runStep(stats, "refresh batch", () => refreshBatch(deadline - 45_000, today, stats, touched));
+    await runStep(stats, "results headlines", async () => {
       stats.resultsRecorded = await settleResultsHeadlines();
-    } catch (err) {
-      console.error("[tick] results headlines:", (err as Error).message);
-    }
+    });
     // IR-site discovery takes what is left of the budget (a few companies per tick)
-    try {
-      await discoverIrSourcesBatch(deadline, stats);
-    } catch (err) {
-      console.error("[tick] IR discovery failed:", (err as Error).message);
-    }
+    await runStep(stats, "IR discovery", () => discoverIrSourcesBatch(deadline, stats));
 
     for (const ticker of touched) {
       try {
@@ -446,7 +594,21 @@ export type Health = {
   advisoriesConfirmedLast7d: number;
   contactFailedLast24h: number;
   irEmailsLast7d: number;
+  /** Investor feeds only the Mac poller can read (bot-walled from the server), and how many it read in the last 48 hours */
+  walledFeeds: number;
+  walledFeedsFresh: number;
+  /** A logic flush in progress: what is still to redo */
+  logicFlush: { company: string; feeds: string; companiesPending: number; feedItemsPending: number; companyStartedAt: string | null; feedsStartedAt: string | null } | null;
 };
+
+/** A tick step counts as failing when it failed in most of the recent ticks */
+const STEP_FAIL_WINDOW = 8;
+const STEP_FAIL_THRESHOLD = 6;
+/** The Mac poller runs every two hours while the Mac is awake; two days of silence is a problem */
+const WALLED_FEED_SILENCE_HOURS = 48;
+/** A flush should finish in a few hours (companies) or half a day (feed items) */
+const COMPANY_FLUSH_MAX_HOURS = 12;
+const FEED_FLUSH_MAX_HOURS = 36;
 
 export async function checkHealth(): Promise<Health> {
   const today = todayET();
@@ -460,6 +622,9 @@ export async function checkHealth(): Promise<Health> {
     confirmed_7d: string;
     contact_failed_24h: string;
     ir_emails_7d: string;
+    walled: string;
+    walled_fresh: string;
+    ir_email_ever: string;
   }>(`
     select
       (select max(finished_at)::text from job_runs where job = 'tick' and status = 'ok') as last_ok_tick,
@@ -471,8 +636,12 @@ export async function checkHealth(): Promise<Health> {
       (select count(*) from feed_items where fetched_at > now() - interval '6 hours') as feed_items_6h,
       (select count(*) from earnings_events where status = 'confirmed' and source_type in ('wire-rss','edgar-fts','ir-site','ir-email') and created_at > now() - interval '7 days') as confirmed_7d,
       (select count(*) from contact_messages where status = 'failed' and created_at > now() - interval '24 hours') as contact_failed_24h,
-      (select count(*) from feed_items where feed = 'ir-email' and fetched_at > now() - interval '7 days') as ir_emails_7d
-  `, [today]);
+      (select count(*) from feed_items where feed = 'ir-email' and fetched_at > now() - interval '7 days') as ir_emails_7d,
+      (select count(*) from ir_sources where platform in ('q4','investis','rss') and (platform = 'q4' or last_status like '%(local)%' or consecutive_failures >= 1)) as walled,
+      (select count(*) from ir_sources where platform in ('q4','investis','rss') and (platform = 'q4' or last_status like '%(local)%' or consecutive_failures >= 1)
+          and last_status like 'ok%' and last_polled_at > now() - ($2 || ' hours')::interval) as walled_fresh,
+      (select count(*) from earnings_events where source_type = 'ir-email') as ir_email_ever
+  `, [today, WALLED_FEED_SILENCE_HOURS]);
   const done = (await getState<string[]>("daily_index_done")) ?? [];
   const lastIndexDay = done.length ? done[done.length - 1] : null;
 
@@ -507,6 +676,50 @@ export async function checkHealth(): Promise<Health> {
   // A contact message that could not be emailed is waiting in the database.
   if (Number(row.contact_failed_24h) > 0) problems.push(`${row.contact_failed_24h} contact message(s) failed to send`);
 
+  // A step that keeps failing: each tick finishes without it, so nothing else would say so.
+  const recent = await query<{ errs: string[] | null }>(
+    `select stats->'stepErrors' as errs from job_runs where job = 'tick' and status = 'ok' and stats ? 'stepErrors' order by id desc limit $1`,
+    [STEP_FAIL_WINDOW]
+  );
+  if (recent.length >= STEP_FAIL_WINDOW) {
+    const counts = new Map<string, number>();
+    for (const r of recent) for (const step of new Set((r.errs ?? []).map((e) => e.split(":")[0]))) counts.set(step, (counts.get(step) ?? 0) + 1);
+    for (const [step, n] of counts) if (n >= STEP_FAIL_THRESHOLD) problems.push(`tick step "${step}" failed in ${n} of the last ${STEP_FAIL_WINDOW} ticks`);
+  }
+
+  // Investor feeds the server cannot read are polled from the Mac. If most of
+  // them have gone unread for two days, the Mac poller has stopped.
+  const walled = Number(row.walled);
+  const walledFresh = Number(row.walled_fresh);
+  if (walled >= 50 && walledFresh < walled / 2) {
+    problems.push(`Mac feed poller silent: ${walled - walledFresh} of ${walled} bot-walled investor feeds not read in ${WALLED_FEED_SILENCE_HOURS} hours`);
+  }
+
+  // Alert emails: once any have ever confirmed a date, a week of silence means the inbound path broke.
+  if (Number(row.ir_email_ever) > 0 && Number(row.ir_emails_7d) === 0) problems.push("no investor alert emails received in 7 days");
+
+  // A logic flush that is not finishing.
+  let logicFlush: Health["logicFlush"] = null;
+  const flushState = await getState<LogicFlushState>(LOGIC_FLUSH_KEY);
+  if (flushState) {
+    const f = await logicFlushStatus(flushState);
+    logicFlush = {
+      company: f.company.version,
+      feeds: f.feeds.version,
+      companiesPending: f.companiesPending,
+      feedItemsPending: f.feedItemsPending,
+      companyStartedAt: f.company.startedAt,
+      feedsStartedAt: f.feeds.startedAt,
+    };
+    const hoursSince = (iso: string | null) => (iso ? (Date.now() - new Date(iso).getTime()) / 3600_000 : 0);
+    if (f.companiesPending > 0 && hoursSince(f.company.startedAt) > COMPANY_FLUSH_MAX_HOURS) {
+      problems.push(`logic flush stalled: ${f.companiesPending} companies not refreshed ${Math.round(hoursSince(f.company.startedAt))} hours after a logic change`);
+    }
+    if (f.feedItemsPending > 0 && hoursSince(f.feeds.startedAt) > FEED_FLUSH_MAX_HOURS) {
+      problems.push(`feed reprocessing stalled: ${f.feedItemsPending} items still queued ${Math.round(hoursSince(f.feeds.startedAt))} hours after a parser change`);
+    }
+  }
+
   return {
     ok: problems.length === 0,
     problems,
@@ -520,6 +733,9 @@ export async function checkHealth(): Promise<Health> {
     advisoriesConfirmedLast7d: Number(row.confirmed_7d),
     contactFailedLast24h: Number(row.contact_failed_24h),
     irEmailsLast7d: Number(row.ir_emails_7d),
+    walledFeeds: walled,
+    walledFeedsFresh: walledFresh,
+    logicFlush,
   };
 }
 
@@ -532,6 +748,8 @@ export type FeedRunStats = {
   irSites: { polled: number; staged: number; failed: number } | null;
   advisories: ProcessStats;
   reportWatch: { expected: { checked: number; queued: number }; live: { entries: number; results: number; queued: number }; refreshed: number; refreshFailed: number; resultsRecorded: number } | null;
+  /** Steps that failed this run; the run itself still completed */
+  stepErrors: string[];
   revalidated: number;
   elapsedMs: number;
 };
@@ -540,30 +758,27 @@ export async function runFeeds(): Promise<FeedRunStats> {
   const started = Date.now();
   const startedISO = new Date(started).toISOString();
   const [run] = await query<{ id: number }>(`insert into job_runs (job) values ('feeds') returning id`);
+  const errors = { stepErrors: [] as string[] };
+  const NO_FEEDS: FeedStats = { feeds: 0, feedErrors: 0, newItems: 0 };
+  const NO_ADVISORIES: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
   try {
-    const feeds = await pollFeeds();
-    let irSites: FeedRunStats["irSites"] = null;
-    try {
-      irSites = await pollIrSourcesBatch();
-    } catch (err) {
-      console.error("[feeds] IR sites:", (err as Error).message);
-    }
-    const advisories = await processFeedItems();
+    // Each step stands alone, as in the tick.
+    const feeds = (await runStep(errors, "wire feeds", () => pollFeeds())) ?? NO_FEEDS;
+    const irSites: FeedRunStats["irSites"] = (await runStep(errors, "IR sites", () => pollIrSourcesBatch())) ?? null;
+    const advisories = (await runStep(errors, "feed parsing", () => processFeedItems())) ?? NO_ADVISORIES;
     // Just-reported companies: re-read the SEC for expected reporters and the
     // live 8-K feed, refresh whoever is queued, then settle any results
     // headline whose 8-K is still missing. Bounded so the run stays short.
     let reportWatch: FeedRunStats["reportWatch"] = null;
     const touched = new Set<string>();
-    try {
-      const expected = await checkExpectedReporters(todayET(), { deadline: started + 45_000 });
-      const live = await watchLiveFilings();
+    await runStep(errors, "report watch", async () => {
+      const expected = (await runStep(errors, "expected reporters", () => checkExpectedReporters(todayET(), { deadline: started + 45_000 }))) ?? { checked: 0, queued: 0 };
+      const live = (await runStep(errors, "live 8-K feed", () => watchLiveFilings())) ?? { entries: 0, results: 0, queued: 0 };
       const refreshed = await refreshFlagged(25, started + 90_000);
       for (const t of refreshed.tickers) touched.add(t);
-      const recorded = await settleResultsHeadlines();
+      const recorded = (await runStep(errors, "results headlines", () => settleResultsHeadlines())) ?? 0;
       reportWatch = { expected, live, refreshed: refreshed.refreshed, refreshFailed: refreshed.failed, resultsRecorded: recorded };
-    } catch (err) {
-      console.error("[feeds] report watch:", (err as Error).message);
-    }
+    });
     let revalidated = 0;
     for (const ticker of touched) {
       try {
@@ -571,7 +786,7 @@ export async function runFeeds(): Promise<FeedRunStats> {
         revalidated += 1;
       } catch {}
     }
-    for (const ticker of await recentlyConfirmedTickers(startedISO)) {
+    for (const ticker of (await runStep(errors, "confirmed tickers", () => recentlyConfirmedTickers(startedISO))) ?? []) {
       try {
         revalidatePath(`/earnings/${ticker.toLowerCase()}`);
         revalidated += 1;
@@ -582,7 +797,7 @@ export async function runFeeds(): Promise<FeedRunStats> {
         revalidatePath("/earnings");
       } catch {}
     }
-    const stats: FeedRunStats = { feeds, irSites, advisories, reportWatch, revalidated, elapsedMs: Date.now() - started };
+    const stats: FeedRunStats = { feeds, irSites, advisories, reportWatch, stepErrors: errors.stepErrors, revalidated, elapsedMs: Date.now() - started };
     await query(`update job_runs set finished_at = now(), status = 'ok', stats = $2 where id = $1`, [run.id, JSON.stringify(stats)]);
     return stats;
   } catch (err) {

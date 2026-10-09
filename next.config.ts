@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
+import { computeLogicVersions } from "./lib/earnings/logicHash";
+
+// Fingerprints of the earnings pipeline's logic, fixed at build time. When a
+// deploy changes them, the next scheduled tick reprocesses the whole site by
+// itself (see syncLogicFlush in lib/earnings/jobs.ts).
+const logic = computeLogicVersions();
 
 const nextConfig: NextConfig = {
+  env: {
+    EARNINGS_LOGIC_COMPANY: logic.company,
+    EARNINGS_LOGIC_FEEDS: logic.feeds,
+  },
   async redirects() {
     return [
       {

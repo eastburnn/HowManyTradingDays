@@ -13,8 +13,13 @@
  * Discovery: a company's IR host is found in its own earnings-release
  * exhibit on EDGAR ("investors.example.com", or the corporate domain with
  * the usual investor subdomains tried), then probed for the known feed
- * paths. Results persist in ir_sources; companies with nothing usable are
- * remembered too, and re-checked after a month.
+ * paths. When guessing finds no feed, the corporate home page's "Investors"
+ * link is followed instead, the way a person would (findViaInvestorLink),
+ * which reaches sites such as investorvalero.com or ralphlauren.com/investors.
+ * Results persist in ir_sources; companies with nothing usable are remembered
+ * too, and re-checked after a month. A re-check never downgrades: a feed that
+ * is on file stays on file when a later probe comes back empty or blocked,
+ * because the server is refused by sites the Mac poller reads without trouble.
  */
 
 import { SEC_USER_AGENT } from "./edgar";
@@ -36,7 +41,7 @@ const FETCH_TIMEOUT_MS = 15_000;
 const PAUSE_MS = 1200;
 const lastRequestAt = new Map<string, number>();
 
-async function fetchText(url: string): Promise<{ status: number; type: string; text: string }> {
+async function fetchText(url: string): Promise<{ status: number; type: string; text: string; url: string }> {
   const host = new URL(url).hostname;
   const wait = (lastRequestAt.get(host) ?? 0) + PAUSE_MS - Date.now();
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -46,7 +51,7 @@ async function fetchText(url: string): Promise<{ status: number; type: string; t
     redirect: "follow",
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  return { status: res.status, type: (res.headers.get("content-type") ?? "").split(";")[0], text: res.ok ? await res.text() : "" };
+  return { status: res.status, type: (res.headers.get("content-type") ?? "").split(";")[0], text: res.ok ? await res.text() : "", url: res.url || url };
 }
 
 /* ---------------------------------------------
@@ -216,6 +221,147 @@ export async function probeIrHost(host: string): Promise<Omit<IrSource, "cik"> |
   }
 }
 
+/* ---------------------------------------------
+   THE "INVESTORS" LINK (when guessing the host finds no feed)
+----------------------------------------------*/
+
+const SKIP_DOMAINS = /(^|\.)(sec|businesswire|prnewswire|globenewswire|accesswire|newsfilecorp|nasdaq|nyse|linkedin|facebook|twitter|x|youtube|instagram|q4inc|google|apple|microsoft|adobe|gmail|yahoo|bloomberg|reuters|wsj|cnbc|marketwatch|zacks|seekingalpha|morningstar|edgar-online|workiva|donnelley|broadridge|computershare|equiniti|astfinancial|continentalstock|issuerdirect|irdirect|notified|intrado|webcasts|icrinc|kcsa|lhai|gilmartinir|alphaIR|edelman|sardverb|joelefrank)\.(com|net|org|co|io|us)$/i;
+const ANY_DOMAIN_RE = /\b(?:https?:\/\/)?(?:www\.)?([a-z0-9-]{3,}\.(?:com|net|org|co|io|us|ai|bank))\b/gi;
+
+/** Corporate domains named in a release, most mentioned first */
+export function corporateDomains(text: string): string[] {
+  const counts = new Map<string, number>();
+  for (const m of text.matchAll(ANY_DOMAIN_RE)) {
+    const d = m[1].toLowerCase();
+    if (SKIP_DOMAINS.test(d) || /\.(png|jpg|gif|pdf)$/.test(d)) continue;
+    counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d]) => d);
+}
+
+/** Links on a page whose text or address says "investor" */
+export function investorLinks(html: string, base: string): string[] {
+  const out = new Set<string>();
+  for (const m of html.matchAll(/<a\b[^>]*href="([^"#]+)"[^>]*>([\s\S]{0,200}?)<\/a>/gi)) {
+    const href = m[1];
+    const label = m[2].replace(/<[^>]+>/g, " ").trim();
+    if (!/investor|shareholder/i.test(href) && !/investor|shareholder/i.test(label)) continue;
+    if (/\.(pdf|png|jpg)$/i.test(href) || /mailto:|javascript:/i.test(href)) continue;
+    try {
+      const u = new URL(href, base);
+      if (u.protocol.startsWith("http")) out.add(u.origin + u.pathname.replace(/\/+$/, ""));
+    } catch {
+      /* bad href */
+    }
+  }
+  return [...out].slice(0, 5);
+}
+
+/** A feed advertised on the page, or reachable at a predictable address beside it */
+async function feedOnPage(pageUrl: string, html: string, hints: { name?: string; ticker?: string }, deadline?: number): Promise<string | null> {
+  const candidates = new Set<string>();
+  const link = html.match(/<link[^>]+type="application\/(?:rss|atom)\+xml"[^>]*href="([^"]+)"/i)?.[1] ?? html.match(/href="([^"]+)"[^>]*type="application\/(?:rss|atom)\+xml"/i)?.[1];
+  if (link) candidates.add(link);
+  for (const m of html.matchAll(/<a\b[^>]*href="([^"#]+)"[^>]*>([\s\S]{0,120}?)<\/a>/gi)) {
+    if (/rss|\/feed\b|\.xml\b/i.test(m[1]) || /\brss\b/i.test(m[2].replace(/<[^>]+>/g, " "))) candidates.add(m[1]);
+  }
+  const page = new URL(pageUrl);
+  for (const path of [...PREDICTABLE_FEED_PATHS, "/feed"]) candidates.add(new URL(path, page.origin).toString());
+  for (const c of [...candidates].slice(0, 12)) {
+    if (deadline && Date.now() > deadline) return null;
+    let u: URL;
+    try {
+      u = new URL(c, pageUrl);
+    } catch {
+      continue;
+    }
+    if (!u.protocol.startsWith("http")) continue;
+    if (/unsubscribe|login|cdn-cgi|\.css|\.js/i.test(u.pathname)) continue;
+    if (!(await robotsAllows(u.hostname, u.pathname))) continue;
+    const r = await fetchText(u.toString()).catch(() => null);
+    if (r && isRss(r) && feedMentionsCompany(r.text, hints)) return u.toString();
+  }
+  return null;
+}
+
+export type InvestorLinkResult = Omit<IrSource, "cik"> & { how: string };
+
+/**
+ * Find a company's investor site by opening its corporate home page and
+ * following the "Investors" link. Returns a feed when one is there, otherwise
+ * at least the investor host (which lets alert emails be matched to the
+ * company by sender domain), with a note on how it got there.
+ *
+ * `deadline` (epoch ms) bounds the search for callers on a time budget: it
+ * stops opening new pages once passed and returns what it has.
+ */
+export async function findViaInvestorLink(releaseText: string, hints: { name?: string; ticker?: string }, deadline?: number): Promise<InvestorLinkResult> {
+  const nothing = (how: string): InvestorLinkResult => ({ host: null, platform: "none", events_url: null, releases_url: null, how });
+  const domains = corporateDomains(releaseText);
+  if (!domains.length) return nothing("no domain in release");
+
+  let irHost: string | null = null;
+  const outOfTime = () => Boolean(deadline && Date.now() > deadline);
+  for (const domain of domains) {
+    if (outOfTime()) break;
+    const home = await fetchText(`https://www.${domain}/`).catch(() => fetchText(`https://${domain}/`).catch(() => null));
+    if (!home || home.status !== 200) continue;
+    const pages = investorLinks(home.text, home.url);
+    if (!pages.length) pages.push(`${new URL(home.url).origin}/investors`, `${new URL(home.url).origin}/investor-relations`);
+    for (const pageUrl of pages.slice(0, 4)) {
+      if (outOfTime()) break;
+      const u = new URL(pageUrl);
+      // A separate IR host: the platform probe knows Q4 and Investis layouts
+      if (u.hostname !== new URL(home.url).hostname) {
+        const probe = await probeIrHost(u.hostname);
+        if (probe && (probe.platform === "q4" || probe.platform === "investis" || probe.platform === "rss")) {
+          const sample = await fetchText(probe.releases_url ?? probe.events_url!).catch(() => null);
+          if (sample && feedMentionsCompany(sample.text, hints)) return { ...probe, how: `investor link to ${u.hostname} (${probe.platform})` };
+        }
+        if (probe?.platform === "blocked") return { host: u.hostname, platform: "blocked", events_url: null, releases_url: null, how: "investor host blocks readers" };
+      }
+      const page = await fetchText(pageUrl).catch(() => null);
+      if (!page) continue;
+      if (page.status === 403) return { host: u.hostname, platform: "blocked", events_url: null, releases_url: null, how: "investor page blocks readers" };
+      if (page.status !== 200) continue;
+      irHost ??= new URL(page.url).hostname;
+      const feed = await feedOnPage(page.url, page.text, hints, deadline);
+      if (feed) return { host: new URL(page.url).hostname, platform: "rss", events_url: null, releases_url: feed, how: `feed linked from ${page.url}` };
+    }
+  }
+  return { host: irHost, platform: "none", events_url: null, releases_url: null, how: irHost ? "investor page found, no feed" : "no investor page found" };
+}
+
+const HAS_FEED = new Set<IrPlatform>(["q4", "investis", "rss"]);
+
+/**
+ * Record what discovery found. A feed already on file is never replaced by
+ * "nothing" or "blocked": the server is turned away by sites the Mac poller
+ * reads, so an empty re-check says nothing about a feed found another way.
+ */
+export async function recordIrSource(src: IrSource): Promise<void> {
+  await query(
+    `insert into ir_sources (cik, host, platform, events_url, releases_url)
+     values ($1, $2, $3, $4, $5)
+     on conflict (cik) do update set
+       host = coalesce(excluded.host, ir_sources.host),
+       platform = case when excluded.platform in ('q4','investis','rss') or ir_sources.platform not in ('q4','investis','rss')
+                       then excluded.platform else ir_sources.platform end,
+       events_url = case when excluded.platform in ('q4','investis','rss') or ir_sources.platform not in ('q4','investis','rss')
+                         then excluded.events_url else ir_sources.events_url end,
+       releases_url = case when excluded.platform in ('q4','investis','rss') or ir_sources.platform not in ('q4','investis','rss')
+                           then excluded.releases_url else ir_sources.releases_url end,
+       consecutive_failures = case when excluded.platform in ('q4','investis','rss')
+                                    and (excluded.events_url is distinct from ir_sources.events_url or excluded.releases_url is distinct from ir_sources.releases_url)
+                                   then 0 else ir_sources.consecutive_failures end,
+       last_polled_at = case when excluded.platform in ('q4','investis','rss')
+                              and (excluded.events_url is distinct from ir_sources.events_url or excluded.releases_url is distinct from ir_sources.releases_url)
+                             then null else ir_sources.last_polled_at end,
+       discovered_at = now()`,
+    [src.cik, src.host, src.platform, src.events_url, src.releases_url]
+  );
+}
+
 /**
  * Discover a company's IR source from its own release text and record it. A
  * feed found on a guessed host is accepted only if it mentions the company.
@@ -223,14 +369,15 @@ export async function probeIrHost(host: string): Promise<Omit<IrSource, "cik"> |
 export async function discoverIrSource(
   cik: number,
   releaseText: string,
-  hints: { name?: string; ticker?: string } = {}
+  hints: { name?: string; ticker?: string } = {},
+  deadline?: number
 ): Promise<IrSource> {
   let found: Omit<IrSource, "cik"> | null = null;
   for (const host of irHostCandidates(releaseText, hints)) {
     const probe = await probeIrHost(host);
     if (!probe) continue;
     if (probe.platform === "q4" || probe.platform === "investis" || probe.platform === "rss") {
-      const sample = await fetchText(probe.releases_url ?? probe.events_url!).catch(() => ({ status: 0, type: "", text: "" }));
+      const sample = await fetchText(probe.releases_url ?? probe.events_url!).catch(() => ({ status: 0, type: "", text: "", url: "" }));
       if (!hints.name && !hints.ticker) {
         found = probe;
         break;
@@ -243,14 +390,15 @@ export async function discoverIrSource(
     }
     if (!found) found = probe; // remember a reachable host even without feeds
   }
+  // Guessing found no feed: follow the corporate site's "Investors" link.
+  if (!found || !HAS_FEED.has(found.platform)) {
+    const viaLink = deadline && Date.now() > deadline ? null : await findViaInvestorLink(releaseText, hints, deadline).catch(() => null);
+    if (viaLink && (HAS_FEED.has(viaLink.platform) || (viaLink.host && !found?.host))) {
+      found = { host: viaLink.host ?? found?.host ?? null, platform: viaLink.platform, events_url: viaLink.events_url, releases_url: viaLink.releases_url };
+    }
+  }
   const src: IrSource = { cik, ...(found ?? { host: null, platform: "none", events_url: null, releases_url: null }) };
-  await query(
-    `insert into ir_sources (cik, host, platform, events_url, releases_url)
-     values ($1, $2, $3, $4, $5)
-     on conflict (cik) do update set host = excluded.host, platform = excluded.platform,
-       events_url = excluded.events_url, releases_url = excluded.releases_url, discovered_at = now(), consecutive_failures = 0`,
-    [src.cik, src.host, src.platform, src.events_url, src.releases_url]
-  );
+  await recordIrSource(src);
   return src;
 }
 

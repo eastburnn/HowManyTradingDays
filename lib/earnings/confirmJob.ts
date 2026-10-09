@@ -250,11 +250,14 @@ export async function processFeedItems(
   pageMaxPerRun = PAGE_MAX_PER_RUN
 ): Promise<ProcessStats> {
   const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
-  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; quarterRetries?: number; cik?: number } | null }>(
+  // New items first: after a parser change, older items are queued again
+  // (parsed.reprocess, see requeueFeedItems in jobs.ts) and must not delay
+  // a confirmation that has just arrived.
+  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; quarterRetries?: number; cik?: number; reprocess?: string; reason?: string; llmSaid?: string } | null }>(
     `select id, feed, title, link, published_at::text, parsed from feed_items
       where parse_status = 'pending'
         and (parsed->>'retryAfter' is null or (parsed->>'retryAfter')::timestamptz <= now())
-      order by id asc limit $1`,
+      order by (coalesce(parsed, '{}'::jsonb) ? 'reprocess') asc, id asc limit $1`,
     [limit]
   );
 
@@ -295,7 +298,12 @@ export async function processFeedItems(
     const fromEdgar = item.feed === "edgar-fts";
     const fromArchive = ARCHIVE_FEEDS.has(item.feed);
     const worthModel = !outcome.ok && (LLM_WORTHY.has(outcome.reason) || (fromArchive && outcome.reason === "no scheduling language in title"));
-    if (!outcome.ok && worthModel && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
+    // An item being reprocessed after a parser change keeps the model's
+    // earlier verdict: the text has not changed, so asking again buys nothing.
+    const priorModelVerdict = item.parsed?.reprocess ? item.parsed.llmSaid ?? item.parsed.reason?.match(/; llm: (.+)$/)?.[1] ?? null : null;
+    if (!outcome.ok && worthModel && priorModelVerdict) {
+      outcome = { ok: false, reason: `${outcome.reason}; llm: ${priorModelVerdict}` };
+    } else if (!outcome.ok && worthModel && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
       const attempts = (item.parsed?.llmAttempts ?? 0) + 1;
       stats.llmCalls += 1;
       const llm = await parseAdvisoryWithModel(item.title, description, published);

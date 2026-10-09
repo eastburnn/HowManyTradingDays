@@ -7,12 +7,22 @@
  *   npx tsx --env-file=.env.local scripts/earnings/poll-ir-local.ts [--blocked-set|--failing-only] [--concurrency 6]
  *
  * --blocked-set: the Q4-hosted feeds plus any feed the server last failed on
- * (what the launch agent on Chris's Mac runs every two hours while awake).
+ * or this machine last read (what the launch agent on Chris's Mac runs every
+ * two hours while awake). In this mode the run also re-checks a few companies
+ * that still have no feed, looking for their investor site the way a person
+ * would: the server is refused by the same bot walls, so this is the only
+ * place new feeds on those sites get found. Each company without a feed comes
+ * round about every three weeks.
  */
 import { closePool, query } from "@/lib/earnings/db";
-import { type IrSource, readIrSource } from "@/lib/earnings/irSites";
+import { type IrSource, findViaInvestorLink, readIrSource, recordIrSource } from "@/lib/earnings/irSites";
 import { stageItems } from "@/lib/earnings/confirmJob";
 import { todayET } from "@/lib/earnings/ingest";
+import { latestReleaseText } from "@/lib/earnings/jobs";
+
+/** Companies without a feed to re-check per run, and how long before one is due again */
+const DISCOVER_PER_RUN = 15;
+const DISCOVER_AFTER_DAYS = 21;
 
 const FAILING_ONLY = process.argv.includes("--failing-only");
 const BLOCKED_SET = process.argv.includes("--blocked-set");
@@ -24,7 +34,7 @@ const CONCURRENCY = i >= 0 ? Number(process.argv[i + 1]) : 6;
   const due = await query<IrSource & { consecutive_failures: number }>(
     `select cik, host, platform, events_url, releases_url, consecutive_failures from ir_sources
       where platform in ('q4','investis','rss')
-        ${FAILING_ONLY ? "and consecutive_failures >= 1" : BLOCKED_SET ? "and (platform = 'q4' or consecutive_failures >= 1)" : ""}
+        ${FAILING_ONLY ? "and consecutive_failures >= 1" : BLOCKED_SET ? "and (platform = 'q4' or consecutive_failures >= 1 or last_status like '%(local)%')" : ""}
       order by consecutive_failures desc, last_polled_at asc nulls first`
   );
   console.log(`${due.length} feeds, concurrency ${CONCURRENCY}`);
@@ -48,5 +58,29 @@ const CONCURRENCY = i >= 0 ? Number(process.argv[i + 1]) : 6;
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   console.log("done", JSON.stringify(tally));
+
+  if (BLOCKED_SET) {
+    // Companies that report earnings but still have no feed on file, least recently checked first.
+    const todo = await query<{ cik: number; ticker: string; name: string }>(
+      `select c.cik, c.ticker, c.name from companies c left join ir_sources s on s.cik = c.cik
+        where c.active and (s.cik is null or s.platform in ('none', 'blocked'))
+          and (s.discovered_at is null or s.discovered_at < now() - ($2 || ' days')::interval)
+          and exists (select 1 from earnings_current e where e.cik = c.cik and e.status = 'reported' and e.source_type = 'edgar-8k')
+        order by s.discovered_at asc nulls first, (c.filer_category = 'large-accelerated') desc, c.ticker
+        limit $1`,
+      [DISCOVER_PER_RUN, DISCOVER_AFTER_DAYS]
+    );
+    const found: string[] = [];
+    for (const c of todo) {
+      try {
+        const out = await findViaInvestorLink(await latestReleaseText(c.cik).catch(() => ""), { name: c.name, ticker: c.ticker }, Date.now() + 60_000);
+        await recordIrSource({ cik: c.cik, host: out.host, platform: out.platform, events_url: out.events_url, releases_url: out.releases_url });
+        if (out.platform === "q4" || out.platform === "investis" || out.platform === "rss") found.push(`${c.ticker}:${out.platform}`);
+      } catch (err) {
+        console.error(`discovery ${c.ticker}:`, (err as Error).message);
+      }
+    }
+    console.log("discovery", JSON.stringify({ checked: todo.length, found }));
+  }
   await closePool();
 })();
