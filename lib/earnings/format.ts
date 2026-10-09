@@ -226,42 +226,27 @@ export function formatLongDateShortMonth(iso: string): string {
   return parseISODate(iso).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Two spellings of the fiscal-year range: "JUN 1 – MAY 31" for the narrow desktop column, "June 1 – May 31" for phones. */
-export type FiscalRange = { abbr: string; full: string };
+/** The fiscal-year range, "Jun 1 – May 31" (or "52/53-week year ending near Dec 26") */
+export type FiscalRange = string;
 
-/**
- * A company's fiscal calendar for the company page card: the year's start and
- * end days from EDGAR's declared year end ("MMDD"), plus when the current
- * fiscal year ends ("Fiscal year 2027 ends" + "May 31, 2027"). 52/53-week
- * filers get the actual (drifting) year-end date instead of a fixed range.
- */
 export function fiscalCalendar(
   fiscalYearEndMMDD: string | null,
   is5253Week: boolean,
   currentYearEnd: string | null,
   today: string
-): { range: FiscalRange; current: { label: string; date: string } | null } | null {
+): { range: FiscalRange; current: string | null } | null {
   if (!fiscalYearEndMMDD || !/^\d{4}$/.test(fiscalYearEndMMDD)) return null;
   const month = Number(fiscalYearEndMMDD.slice(0, 2));
   const day = Number(fiscalYearEndMMDD.slice(2));
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const monthName = (d: Date, style: "short" | "long") => {
-    const name = d.toLocaleDateString("en-US", { month: style });
-    return style === "short" ? name.toUpperCase() : name; // JUN on the narrow desktop card, June on phones
-  };
-  const monthDay = (d: Date, style: "short" | "long") => `${monthName(d, style)} ${d.getDate()}`;
+  const monthDay = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const end = new Date(2001, month - 1, day);
   const start = new Date(2001, month - 1, day + 1);
-  const rangeIn = (style: "short" | "long") =>
-    is5253Week ? `52/53-week year ending near ${monthDay(end, style)}` : `${monthDay(start, style)} – ${monthDay(end, style)}`;
-  const range = { abbr: rangeIn("short"), full: rangeIn("long") };
+  const range = is5253Week ? `52/53-week year ending near ${monthDay(end)}` : `${monthDay(start)} – ${monthDay(end)}`;
   if (!currentYearEnd) return { range, current: null };
   const yearEnd = parseISODate(currentYearEnd);
   return {
     range,
-    current: {
-      label: `Fiscal year ${yearEnd.getFullYear()} ${currentYearEnd < today ? "ended" : "ends"}`,
-      date: `${monthDay(yearEnd, "long")}, ${yearEnd.getFullYear()}`, // the full month name at every width
-    },
+    current: `Fiscal year ${yearEnd.getFullYear()} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`,
   };
 }

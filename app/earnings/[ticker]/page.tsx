@@ -206,7 +206,8 @@ export default async function EarningsTickerPage({ params }: Params) {
   const name = shortName(company.name);
   const sym = company.ticker;
   const today = todayET();
-  const justReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 7 : false;
+  // The report stays the headline for two weeks; after that the countdown to the next one takes over.
+  const recentlyReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 14 : false;
 
   // Fiscal calendar: the current year's end from the upcoming Q4 if we have
   // it, else the last 10-K's period end rolled forward a year.
@@ -299,25 +300,68 @@ export default async function EarningsTickerPage({ params }: Params) {
           </p>
         </header>
 
-        {/* JUST REPORTED BANNER */}
-        {justReported && lastReported && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            <span className="font-semibold">Just reported:</span> {name} released {fiscalLabel(lastReported)} results on{" "}
-            {formatLongDate(lastReported.eventDate)}, {timeOfDaySentence(lastReported.timeOfDay)}.
-            {lastReported.sourceUrl && (
-              <>
-                {" "}
-                <a href={lastReported.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">
-                  View the {lastReported.sourceType === "edgar-periodic" ? lastReported.reportForm ?? "filing" : "8-K filing"}
-                </a>
-                .
-              </>
-            )}
-          </div>
-        )}
+        {/* HERO: JUST REPORTED (for two weeks after the release), else NEXT EARNINGS */}
+        {recentlyReported && lastReported ? (
+          <ShareableCard
+            className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 @lg:p-8 flex flex-col gap-5"
+            fileName={`${sym.toLowerCase()}-earnings-reported.png`}
+          >
+            <div className="pr-16">
+              <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-sm font-semibold text-blue-100">
+                <span>{displayName(company.name)}</span>
+                <span className="font-normal text-blue-300/80">{sym}</span>
+              </span>
+            </div>
 
-        {/* HERO: NEXT EARNINGS */}
-        {next && countdown ? (
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Latest earnings report</p>
+              <div className={`${domine.className} flex items-center gap-x-2 sm:gap-x-3 text-base sm:text-2xl font-semibold text-slate-100 whitespace-nowrap`}>
+                <p>
+                  <span className="@lg:hidden">{formatWeekdayDate(lastReported.eventDate)}</span>
+                  <span className="hidden @lg:inline">{formatLongDateShortMonth(lastReported.eventDate)}</span>
+                </p>
+                <span aria-hidden="true" className="h-5 w-px shrink-0 bg-slate-600/70 @lg:h-6" />
+                <span>{timeOfDayLabel(lastReported.timeOfDay)}</span>
+              </div>
+              <p className="text-sm text-slate-400">
+                {fiscalLabel(lastReported)} · quarter ended {formatQuarterEnd(lastReported.periodEnd)}
+              </p>
+            </div>
+
+            {next && countdown ? (
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Next earnings date</p>
+                  <p className="mt-0.5 text-sm font-medium text-slate-100">
+                    {isWindow ? `${formatMediumDate(winStart)} – ${formatMediumDate(winEnd)}` : formatWeekdayDate(next.eventDate)}
+                    <span className="font-normal text-slate-400"> · {timeOfDayLabel(next.timeOfDay).toLowerCase()}</span>
+                  </p>
+                </div>
+                <p className="text-sm text-slate-300 tabular-nums">
+                  <span className="font-semibold text-blue-200">{countdown.tradingDays}</span> trading days
+                  <span className="text-slate-500"> · {statusLabel(next).toLowerCase()}</span>
+                </p>
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex shrink-0 items-center rounded-full border border-blue-400/40 bg-blue-400/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-200">
+                Reported
+              </span>
+              <p className="min-w-0 text-xs text-slate-500">
+                Results are out
+                {lastReported.sourceUrl && (
+                  <>
+                    {" · "}
+                    <a href={lastReported.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-300 transition-colors">
+                      {lastReported.sourceType === "edgar-periodic" ? `View the ${lastReported.reportForm ?? "filing"}` : lastReported.sourceType === "edgar-8k" ? "View the 8-K filing" : "View the release"}
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
+          </ShareableCard>
+        ) : next && countdown ? (
           <ShareableCard
             className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 @lg:p-8 flex flex-col gap-5"
             fileName={`${sym.toLowerCase()}-earnings-countdown.png`}
@@ -408,8 +452,8 @@ export default async function EarningsTickerPage({ params }: Params) {
         )}
 
         {/* FOLLOWING QUARTER + LAST REPORTED + FISCAL CALENDAR */}
-        {(following || (lastReported && !justReported) || fiscal) && (
-          <div className={`grid gap-3 ${[following, lastReported && !justReported, fiscal].filter(Boolean).length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {(following || (lastReported && !recentlyReported) || fiscal) && (
+          <div className={`grid gap-3 ${[following, lastReported && !recentlyReported, fiscal].filter(Boolean).length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             {following && (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">After that</p>
@@ -420,7 +464,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 </p>
               </div>
             )}
-            {lastReported && !justReported && (
+            {lastReported && !recentlyReported && (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Last reported</p>
                 <p className="mt-1 text-sm font-medium text-slate-100">{fiscalLabel(lastReported)}</p>
@@ -440,19 +484,8 @@ export default async function EarningsTickerPage({ params }: Params) {
             {fiscal && (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500">Fiscal year</p>
-                {/* Phones get the range with full month names and the year end on one line. From sm up this card is a
-                    narrow column, so the range months are three capital letters and the year-end date drops to its own line. */}
-                <p className="mt-1 text-sm font-medium text-slate-100">
-                  <span className="sm:hidden">{fiscal.range.full}</span>
-                  <span className="hidden sm:inline">{fiscal.range.abbr}</span>
-                </p>
-                {fiscal.current && (
-                  <p className="text-xs text-slate-400">
-                    {fiscal.current.label}{" "}
-                    <br className="hidden sm:inline" />
-                    {fiscal.current.date}
-                  </p>
-                )}
+                <p className="mt-1 text-sm font-medium text-slate-100">{fiscal.range}</p>
+                {fiscal.current && <p className="text-xs text-slate-400">{fiscal.current}</p>}
               </div>
             )}
           </div>
