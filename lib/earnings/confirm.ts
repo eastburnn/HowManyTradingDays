@@ -50,7 +50,7 @@ export const QUARTER_TOKEN =
 
 // Future-tense scheduling language. Must be present in the TITLE.
 const SCHEDULING =
-  /\b(?:to\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|will\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|schedules?|sets?\s+(?:the\s+)?(?:date|time)|announces?\s+(?:the\s+)?(?:date|timing|schedule|details)|announces?\s+(?:its\s+|a\s+)?(?:(?:earnings|results)\s+)?(?:conference\s+call|webcast)|conference\s+call\s+to\s+(?:review|discuss)|(?:earnings|results|financial results)\s+(?:release\s+)?(?:date|call|conference call|webcast|and conference call)|conference\s+call\s+(?:and|&)\s+webcast|date\s+(?:of|for)\s+(?:its\s+)?(?:\w+\s+){0,4}(?:earnings|results)|earnings\s+call)\b/i;
+  /\b(?:to\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|will\s+(?:report|announce|release|host|hold|discuss|present|webcast|broadcast|issue|publish)|schedules?|sets?\s+(?:the\s+)?(?:date|time)|announces?\s+(?:the\s+)?(?:date|timing|schedule|details)|announces?\s+(?:its\s+|a\s+)?(?:(?:earnings|results)\s+)?(?:conference\s+call|webcast)|conference\s+call\s+to\s+(?:review|discuss)|(?:earnings|results|financial results)\s+(?:release\s+)?(?:date|call|conference call|webcast|and conference call)|conference\s+call\s+(?:and|&)\s+webcast|date\s+(?:of|for)\s+(?:its\s+)?(?:\w+\s+){0,4}(?:earnings|results)|earnings\s+call|conference\s+call\s+details|(?:quarter|quarterly|year)\s+(?:\d{4}\s+)?(?:earnings\s+|results\s+)?(?:conference\s+call|webcast)|(?:earnings|results)\s+(?:release\s+)?(?:schedule|dates?))\b/i;
 
 // Results already out — never a schedule even if a quarter token is present.
 const ALREADY_REPORTED =
@@ -209,13 +209,16 @@ export function parseAdvisory(
   title: string,
   description: string,
   publishedISO: string,
-  opts: { maxDaysAhead?: number } = {}
+  opts: { maxDaysAhead?: number; scheduledByConstruction?: boolean } = {}
 ): ParseOutcome {
   const t = title.replace(/\s+/g, " ").trim();
   const text = `${t} ${description}`;
   const maxDaysAhead = opts.maxDaysAhead ?? 75;
 
-  if (!SCHEDULING.test(t)) return { ok: false, reason: "no scheduling language in title" };
+  // A structured events feed lists scheduled events by definition ("Baxter
+  // Third-Quarter 2026 Financial Results on October 29, 2026"), so the
+  // future-tense test does not apply to its titles.
+  if (!opts.scheduledByConstruction && !SCHEDULING.test(t)) return { ok: false, reason: "no scheduling language in title" };
   if (ALREADY_REPORTED.test(t) && !/\b(?:to|will)\s+(?:report|announce|release)\b/i.test(t)) {
     return { ok: false, reason: "results already reported" };
   }

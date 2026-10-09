@@ -307,13 +307,15 @@ export async function readIrSource(src: IrSource, todayISO: string): Promise<IrP
       result.fetched += 1;
       if (!isRss(r)) {
         result.failed += 1;
+        console.error(`[ir] ${src.host}${path}: HTTP ${r.status} ${r.type || ""} (not a feed)`);
         continue;
       }
       const items = parseRss(r.text).map((i) => ({ ...i, cik: src.cik }));
       if (kind === "events") result.events.push(...eventsToAdvisories(items, src.cik, todayISO));
       else result.releases.push(...items);
-    } catch {
+    } catch (err) {
       result.failed += 1;
+      console.error(`[ir] ${src.host}: ${(err as Error).message}`);
     }
   }
   return result;

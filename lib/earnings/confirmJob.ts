@@ -264,7 +264,7 @@ export async function processFeedItems(
     let description = item.parsed?.description ?? "";
     // An IR events feed is a structured list of upcoming calls, dated from
     // today and reaching into the following quarter.
-    const parseOpts = item.feed === "ir-events" || item.feed === "ir-email" ? { maxDaysAhead: 120 } : {};
+    const parseOpts = item.feed === "ir-events" ? { maxDaysAhead: 120, scheduledByConstruction: true } : item.feed === "ir-email" ? { maxDaysAhead: 120 } : {};
     let outcome = parseAdvisory(item.title, description, published, parseOpts);
     let method: "regex" | "llm" = "regex";
 
