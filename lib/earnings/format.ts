@@ -186,6 +186,13 @@ const BRAND_CASE: Record<string, string> = {
   PACCAR: "PACCAR",
   AAON: "AAON",
   IDEX: "IDEX",
+  SPDR: "SPDR",
+  ISHARES: "iShares",
+  PROSHARES: "ProShares",
+  GRANITESHARES: "GraniteShares",
+  COINSHARES: "CoinShares",
+  CURRENCYSHARES: "CurrencyShares",
+  INVESCO: "Invesco",
 };
 
 /**

@@ -28,6 +28,7 @@ import {
 } from "@/lib/earnings/format";
 import { todayET } from "@/lib/earnings/ingest";
 import { predictPeriodEnd } from "@/lib/earnings/fiscal";
+import { reportingProfile, type ReportingProfile } from "@/lib/earnings/profile";
 import { countTradingDaysBetween } from "@/lib/tradingDays";
 
 // Pages render on demand and are re-generated at most daily; the pipeline
@@ -63,9 +64,9 @@ function shortName(raw: string): string {
 }
 
 /** Phone-width version of accuracySentence: short enough to sit beside the status chip on one line */
-function accuracyShort(e: EarningsEvent): string {
+function accuracyShort(e: EarningsEvent, filingOnly = false): string {
   if (e.status === "confirmed") return "Confirmed by the company";
-  if (e.overdue) return "No earnings 8-K filed yet";
+  if (e.overdue) return filingOnly ? "No quarterly report filed yet" : "No earnings 8-K filed yet";
   switch (e.confidence) {
     case "high":
       return "Typically accurate to within 3 days";
@@ -76,9 +77,9 @@ function accuracyShort(e: EarningsEvent): string {
   }
 }
 
-function accuracySentence(e: EarningsEvent): string {
+function accuracySentence(e: EarningsEvent, filingOnly = false): string {
   if (e.status === "confirmed") return "Confirmed by the company";
-  if (e.overdue) return "No earnings 8-K filed yet · resets when results arrive";
+  if (e.overdue) return filingOnly ? "No quarterly report filed yet · resets when it arrives" : "No earnings 8-K filed yet · resets when results arrive";
   const n = e.historyCount ?? 0;
   const q = `Q${e.fiscalQuarter}`;
   switch (e.confidence) {
@@ -89,6 +90,29 @@ function accuracySentence(e: EarningsEvent): string {
     default:
       return "Dates vary too much for a single estimate";
   }
+}
+
+/**
+ * Companies that have nothing to announce: the headline and explanation shown
+ * in place of a date. Filing-only companies still have dates, so they get a
+ * note under the countdown instead (see the page).
+ */
+function noEarningsCopy(profile: ReportingProfile, name: string): { headline: string; body: string; meta: string } | null {
+  if (profile === "blank-check") {
+    return {
+      headline: "No earnings to report",
+      body: `${name} is a blank-check company, also known as a SPAC. It has no operating business yet, so it has no results to announce and does not issue earnings releases. It still files quarterly and annual reports with the SEC. If it completes a merger and begins reporting results, this page will start tracking its earnings dates.`,
+      meta: "is a blank-check company (SPAC) with no operating business, so it does not announce earnings.",
+    };
+  }
+  if (profile === "asset-trust") {
+    return {
+      headline: "No earnings to report",
+      body: `${name} is a fund or trust that holds assets such as commodities, currencies or digital assets instead of running a business. It has no earnings to announce and does not issue earnings releases. It still files quarterly and annual reports with the SEC, but those are routine filings, not results announcements.`,
+      meta: "is a fund or trust that holds assets instead of running a business, so it has no earnings to announce.",
+    };
+  }
+  return null;
 }
 
 /* ---------------------------------------------
@@ -132,6 +156,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const sym = company.ticker;
   const canonical = `/earnings/${sym.toLowerCase()}`;
   const today = todayET();
+  const noEarnings = noEarningsCopy(
+    reportingProfile({ sic: company.sic, history: data.history, recentEarnings8Ks: data.recentEarnings8Ks }),
+    name
+  );
 
   // Titles lead with the name and ticker people search for and name the
   // quarter, but leave the date itself and its status to the page so the
@@ -164,6 +192,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       `${name} (${sym}) is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatWeekdayDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`,
       SOURCES
     );
+  } else if (noEarnings) {
+    title = fitTitle([
+      `Does ${name} (${sym}) Report Earnings? What It Files Instead`,
+      `Does ${name} (${sym}) Report Earnings?`,
+      `Does ${sym} Report Earnings?`,
+    ]);
+    description = fitDescription(`${name} (${sym}) ${noEarnings.meta}`, [
+      "It files quarterly and annual reports with the SEC.",
+      "It files reports with the SEC.",
+    ]);
   } else {
     title = fitTitle([
       `When Does ${name} (${sym}) Report Earnings? Dates & History`,
@@ -202,6 +240,8 @@ export default async function EarningsTickerPage({ params }: Params) {
 
   const { company, upcoming, lastReported, history } = data;
   const today = todayET();
+  const profile = reportingProfile({ sic: company.sic, history, recentEarnings8Ks: data.recentEarnings8Ks });
+  const filingOnly = profile === "filing-only";
   // An overdue quarter is the headline for 14 days past its usual date. After
   // that the page looks ahead to the next quarter, with the overdue one noted.
   const first = upcoming[0] ?? null;
@@ -211,6 +251,9 @@ export default async function EarningsTickerPage({ params }: Params) {
   const following = (longOverdue ? upcoming[2] : upcoming[1]) ?? null;
   const name = shortName(company.name);
   const sym = company.ticker;
+  const noEarnings = noEarningsCopy(profile, name);
+  /** How this company's results reach the SEC, for sentences about overdue and timing */
+  const resultsFiling = filingOnly ? "quarterly reports" : "earnings 8-K filings";
   // The report stays the headline for two weeks; after that the countdown to the next one takes over.
   const recentlyReported = lastReported ? daysBetweenISO(lastReported.eventDate, today) <= 14 : false;
 
@@ -249,7 +292,7 @@ export default async function EarningsTickerPage({ params }: Params) {
               acceptedAnswer: {
                 "@type": "Answer",
                 text: isOverdue
-                  ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed a release yet; it is expected any day.`
+                  ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed ${filingOnly ? "its report" : "a release"} yet; it is expected any day.`
                   : isWindow
                   ? `${name} is expected to report ${fiscalLabel(next)} earnings between ${formatLongDate(winStart)} and ${formatLongDate(winEnd)}.`
                   : `${name} is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`,
@@ -275,7 +318,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 text:
                   next.timeOfDay === "unknown"
                     ? `The time of day for ${name}'s next report is not yet known.`
-                    : `${name} typically reports ${timeOfDaySentence(next.timeOfDay)}, based on when its past earnings 8-K filings reached the SEC.`,
+                    : `${name} typically reports ${timeOfDaySentence(next.timeOfDay)}, based on when its past ${resultsFiling} reached the SEC.`,
               },
             },
           ],
@@ -300,8 +343,10 @@ export default async function EarningsTickerPage({ params }: Params) {
           </h1>
           <p className="text-sm text-slate-400 leading-relaxed">
             {sym}
-            {company.exchange ? ` · ${company.exchange}` : ""} · Next earnings date for {displayName(company.name)}, estimated
-            from its SEC filing history, with a live countdown in trading days.
+            {company.exchange ? ` · ${company.exchange}` : ""} ·{" "}
+            {noEarnings && !next
+              ? `${displayName(company.name)} files reports with the SEC but does not announce earnings.`
+              : `Next earnings date for ${displayName(company.name)}, estimated from its SEC filing history, with a live countdown in trading days.`}
           </p>
         </header>
 
@@ -406,13 +451,13 @@ export default async function EarningsTickerPage({ params }: Params) {
             {longOverdue && (
               <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100/90 leading-relaxed">
                 <span className="font-semibold">{fiscalLabel(longOverdue)} results are overdue.</span> {name} usually would have reported by{" "}
-                {formatMediumDate(longOverdue.originalEstimate ?? longOverdue.eventDate)}, and no earnings 8-K has reached the SEC yet. The countdown below is for the following quarter.
+                {formatMediumDate(longOverdue.originalEstimate ?? longOverdue.eventDate)}, and no {filingOnly ? "quarterly report" : "earnings 8-K"} has reached the SEC yet. The countdown below is for the following quarter.
               </p>
             )}
 
             {isOverdue ? (
               <p className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm text-slate-300 leading-relaxed">
-                {name} has passed the date its past pattern pointed to and has not filed an earnings release yet. The report could come any day; this page updates automatically when it does.
+                {name} has passed the date its past pattern pointed to and has not filed {filingOnly ? "its quarterly report" : "an earnings release"} yet. The report could come any day; this page updates automatically when it does.
               </p>
             ) : (
             <EarningsCountdown
@@ -440,8 +485,8 @@ export default async function EarningsTickerPage({ params }: Params) {
                 {isOverdue ? "Overdue" : statusLabel(next)}
               </span>
               <p className="min-w-0 text-xs text-slate-500">
-                <span className="@lg:hidden">{accuracyShort(next)}</span>
-                <span className="hidden @lg:inline">{accuracySentence(next)}</span>
+                <span className="@lg:hidden">{accuracyShort(next, filingOnly)}</span>
+                <span className="hidden @lg:inline">{accuracySentence(next, filingOnly)}</span>
                 {next.status === "confirmed" && next.sourceUrl && (
                   <>
                     {" · "}
@@ -455,12 +500,36 @@ export default async function EarningsTickerPage({ params }: Params) {
           </ShareableCard>
         ) : (
           <section className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl p-6 sm:p-8 space-y-2">
-            <p className={`${domine.className} text-xl font-semibold text-slate-100`}>No upcoming date yet</p>
+            <p className={`${domine.className} text-xl font-semibold text-slate-100`}>{noEarnings ? noEarnings.headline : "No upcoming date yet"}</p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              We don&apos;t have enough reporting history for {name} to estimate its next earnings date. This
-              page updates automatically as new SEC filings arrive.
+              {noEarnings
+                ? noEarnings.body
+                : `We don't have enough reporting history for ${name} to estimate its next earnings date. This page updates automatically as new SEC filings arrive.`}
             </p>
           </section>
+        )}
+
+        {/* HOW THIS COMPANY REPORTS, when it differs from the usual 8-K earnings release.
+            Its own colour and an "unlike most companies" label, so a visitor who lands
+            here first does not take the note for a standard part of every ticker page. */}
+        {filingOnly && (
+          <aside className="rounded-xl border border-violet-400/30 bg-violet-400/10 px-4 py-3 space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-300">Unlike most companies</p>
+            <p className="text-sm text-violet-100/90 leading-relaxed">
+              <span className="font-semibold text-violet-50">Dates here are SEC filing dates.</span> Most companies mark their results with a
+              Form 8-K earnings release. {name} has not filed one for its recent quarters, so this page tracks the day its quarterly
+              report (10-Q) or annual report (10-K) reaches the SEC instead. A press release or call, if the company holds one, may fall
+              on a different day.
+            </p>
+          </aside>
+        )}
+        {noEarnings && (next || recentlyReported) && (
+          <aside className="rounded-xl border border-violet-400/30 bg-violet-400/10 px-4 py-3 space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-300">Unlike most companies</p>
+            <p className="text-sm text-violet-100/90 leading-relaxed">
+              <span className="font-semibold text-violet-50">{noEarnings.headline}.</span> {noEarnings.body}
+            </p>
+          </aside>
         )}
 
         {/* FOLLOWING QUARTER + LAST REPORTED + FISCAL CALENDAR */}
@@ -554,7 +623,8 @@ export default async function EarningsTickerPage({ params }: Params) {
           </section>
         )}
 
-        {/* METHODOLOGY */}
+        {/* METHODOLOGY (nothing to explain for a company with no earnings and no dates) */}
+        {!(noEarnings && !next && history.length === 0) && (
         <section className="border-t border-slate-800 pt-6 space-y-3">
           <h2 className={`${domine.className} text-lg font-semibold text-slate-100`}>How this estimate is made</h2>
           <p className="text-sm text-slate-400 leading-relaxed">
@@ -565,12 +635,13 @@ export default async function EarningsTickerPage({ params }: Params) {
             and capped at the SEC filing deadline for a {company.filerCategory.replace("-", " ")} filer.
           </p>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Whether a company reports before the open or after the close comes from the time its past earnings
-            8-Ks reached the SEC. When {name} announces an exact date, this page switches from estimated to
+            Whether a company reports before the open or after the close comes from the time its past{" "}
+            {filingOnly ? "quarterly reports" : "earnings 8-Ks"} reached the SEC. When {name} announces an exact date, this page switches from estimated to
             confirmed. Until then, verify the date with the company&apos;s investor relations site before trading
             around it.
           </p>
         </section>
+        )}
 
         {/* FAQ */}
         {next && countdown && (
@@ -584,7 +655,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 </summary>
                 <p className="mt-2 text-sm text-slate-400 leading-relaxed">
                   {isOverdue
-                    ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed a release yet; it is expected any day.`
+                    ? `${name} usually would have reported ${fiscalLabel(next)} earnings by ${next.originalEstimate ? formatLongDate(next.originalEstimate) : "now"} but has not filed ${filingOnly ? "its report" : "a release"} yet; it is expected any day.`
                     : isWindow
                     ? `${name} is expected to report ${fiscalLabel(next)} earnings between ${formatLongDate(winStart)} and ${formatLongDate(winEnd)}.`
                     : `${name} is ${next.status === "confirmed" ? "scheduled" : "expected"} to report ${fiscalLabel(next)} earnings on ${formatLongDate(next.eventDate)}, ${timeOfDaySentence(next.timeOfDay)}.`}
@@ -611,7 +682,7 @@ export default async function EarningsTickerPage({ params }: Params) {
                 <p className="mt-2 text-sm text-slate-400 leading-relaxed">
                   {next.timeOfDay === "unknown"
                     ? `The time of day for ${name}'s next report is not yet known.`
-                    : `${name} typically reports ${timeOfDaySentence(next.timeOfDay)}, based on when its past earnings 8-K filings reached the SEC.`}
+                    : `${name} typically reports ${timeOfDaySentence(next.timeOfDay)}, based on when its past ${resultsFiling} reached the SEC.`}
                 </p>
               </details>
             </div>
@@ -644,8 +715,10 @@ export default async function EarningsTickerPage({ params }: Params) {
         </div>
 
         <p className="text-[10px] text-slate-500 text-center leading-relaxed">
-          Estimated dates are projections from public SEC filings, not announcements by {displayName(company.name).replace(/\.$/, "")}. Confirm
-          with the company before making decisions. Not investment advice. See the{" "}
+          {noEarnings && !next
+            ? `Based on public SEC filings by ${displayName(company.name).replace(/\.$/, "")}.`
+            : `Estimated dates are projections from public SEC filings, not announcements by ${displayName(company.name).replace(/\.$/, "")}. Confirm with the company before making decisions.`}{" "}
+          Not investment advice. See the{" "}
           <Link href="/terms" className="underline hover:text-slate-300 transition-colors">
             Terms of Service
           </Link>

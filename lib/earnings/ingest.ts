@@ -32,6 +32,7 @@ import {
 } from "./fiscal";
 import { type ConfidenceTier, type Estimate, estimateReleaseDate } from "./estimator";
 import { withTransaction } from "./db";
+import { NO_RELEASE_SICS } from "./profile";
 import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 
 /** Filings worth keeping: results releases, periodic reports, and late notices */
@@ -60,12 +61,6 @@ export function isStaleEstimate(periodEnd: string, reportForm: ReportForm, today
   return today > addDaysISO(periodEnd, STALE_AFTER_DAYS[reportForm]);
 }
 
-/**
- * Quarterly filers that have no earnings releases to fall back to the 10-Q
- * date for: commodity and crypto trusts (SIC 6221) and blank-check companies
- * (6770). Their periodic reports are filings, not results announcements.
- */
-const NO_RELEASE_SICS = new Set(["6221", "6770"]);
 
 export type RefreshOptions = EdgarClientOptions & {
   /** Primary listing symbol/exchange from the SEC exchange list, if known */

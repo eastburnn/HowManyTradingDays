@@ -43,6 +43,7 @@ export type Company = {
   filerCategory: string;
   fiscalYearEnd: string | null;
   is5253Week: boolean;
+  sic: string | null;
   sicDescription: string | null;
   active: boolean;
   indexed: boolean;
@@ -57,6 +58,8 @@ export type CompanyEarnings = {
   lastReported: EarningsEvent | null;
   /** Reported releases, newest first (up to 8) */
   history: EarningsEvent[];
+  /** Earnings 8-Ks (Item 2.02) on file from the last 18 months */
+  recentEarnings8Ks: number;
 };
 
 /** Event column list; pass an alias when the query joins other tables. */
@@ -76,7 +79,7 @@ function eventColumns(alias = ""): string {
 const COMPANY_COLUMNS = `
   cik, ticker, tickers, name, exchange, filer_category as "filerCategory",
   fiscal_year_end as "fiscalYearEnd", is_52_53_week as "is5253Week",
-  sic_description as "sicDescription", active, indexed,
+  sic, sic_description as "sicDescription", active, indexed,
   last_refreshed_at::text as "lastRefreshedAt"
 `;
 
@@ -97,7 +100,7 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
   const company = await getCompanyByTicker(ticker);
   if (!company || !company.active) return null;
 
-  const [upcoming, history] = await Promise.all([
+  const [upcoming, history, earnings8Ks] = await Promise.all([
     query<EarningsEvent>(
       `select ${eventColumns()} from earnings_current
         where cik = $1 and status in ('estimated','confirmed')
@@ -113,9 +116,15 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
         limit 8`,
       [company.cik]
     ),
+    query<{ n: number }>(
+      `select count(*)::int as n from filings
+        where cik = $1 and form = '8-K' and items::text ~ '2\\.02'
+          and filing_date > now() - interval '18 months'`,
+      [company.cik]
+    ),
   ]);
 
-  return { company, upcoming, lastReported: history[0] ?? null, history };
+  return { company, upcoming, lastReported: history[0] ?? null, history, recentEarnings8Ks: earnings8Ks[0]?.n ?? 0 };
 }
 
 /**
