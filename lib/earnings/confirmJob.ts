@@ -291,7 +291,13 @@ export async function processFeedItems(
       }
       return page;
     };
-    if (!outcome.ok && PAGE_WORTHY.has(outcome.reason)) {
+    // On a reprocess, the page and the model are consulted again only when the
+    // parser's own verdict differs from last time. Otherwise the same text
+    // would be fetched and judged again for the same answer, and dead links
+    // on old items would eat the run's time window.
+    const priorRegexReason = reprocess ? (item.parsed?.reason ?? "").replace(/; llm: .+$/, "") : null;
+    const verdictUnchanged = reprocess && !outcome.ok && priorRegexReason === outcome.reason;
+    if (!outcome.ok && PAGE_WORTHY.has(outcome.reason) && !verdictUnchanged) {
       const opening = await readPage();
       if (opening) {
         description = `${description} ${opening}`.slice(0, 6000);
@@ -303,13 +309,10 @@ export async function processFeedItems(
     const fromEdgar = item.feed === "edgar-fts";
     const fromArchive = ARCHIVE_FEEDS.has(item.feed);
     const worthModel = !outcome.ok && (LLM_WORTHY.has(outcome.reason) || (fromArchive && outcome.reason === "no scheduling language in title"));
-    // Reprocessing is about the parser, not the model. An item that already
-    // has the model's verdict keeps it (the text has not changed), and the
-    // model is only asked when the new parser has changed its mind about the
-    // item: a different reason than last time, and one worth a model call.
-    const priorReason = reprocess ? item.parsed?.reason ?? "" : "";
-    const priorModelVerdict = reprocess ? item.parsed?.llmSaid ?? priorReason.match(/; llm: (.+)$/)?.[1] ?? null : null;
-    const regexChangedItsMind = !outcome.ok && LLM_WORTHY.has(outcome.reason) && priorReason.replace(/; llm: .+$/, "") !== outcome.reason;
+    // The model: an item that already has its verdict keeps it, and a
+    // reprocessed item is only sent when the parser changed its mind.
+    const priorModelVerdict = reprocess ? item.parsed?.llmSaid ?? (item.parsed?.reason ?? "").match(/; llm: (.+)$/)?.[1] ?? null : null;
+    const regexChangedItsMind = reprocess && !outcome.ok && LLM_WORTHY.has(outcome.reason) && priorRegexReason !== outcome.reason;
     if (!outcome.ok && worthModel && priorModelVerdict && !regexChangedItsMind) {
       outcome = { ok: false, reason: `${outcome.reason}; llm: ${priorModelVerdict}` };
     } else if (!outcome.ok && worthModel && (!reprocess || regexChangedItsMind) && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
