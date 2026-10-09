@@ -19,7 +19,20 @@ import { fetchPrnConferenceCalls, fetchReleaseOpening } from "./wireArchives";
 // GlobeNewswire's "earnings conference call" results are mostly results
 // releases, and the regex already rejects those correctly.
 export const ARCHIVE_FEEDS = new Set(["edgar-fts", "prn-calls"]);
-import { type ParsedAdvisory, dateMentioned, parseAdvisory, parseTickers } from "./confirm";
+
+// "Acme Reports Third Quarter 2026 Results", "Acme Announces Fiscal 2026
+// Fourth Quarter Financial Results". Not a schedule ("to report"), not
+// preliminary or selected figures, not a call or webcast notice.
+const RESULTS_HEADLINE = /\b(reports?|announces?|releases?|posts?|delivers?|publishes?)\b[^.]{0,80}\b(financial\s+results|results|earnings)\b/i;
+const NOT_RESULTS = /\b(to\s+(report|announce|release|host|discuss)|will\s+(report|announce|release|host)|preliminary|selected|unaudited\s+preliminary|conference\s+call|webcast|date|schedule[sd]?|guidance\s+only|investor\s+day)\b/i;
+export function isResultsHeadline(title: string): boolean {
+  return RESULTS_HEADLINE.test(title) && !NOT_RESULTS.test(title) && /\b(quarter|q[1-4]|fiscal|full[- ]year|year[- ]end|half[- ]year|first|second|third|fourth)\b/i.test(title);
+}
+/** The company part of a results headline: everything before the verb */
+function companyNameFromHeadline(title: string): string {
+  return title.split(/\b(reports?|announces?|releases?|posts?|delivers?|publishes?)\b/i)[0].replace(/[,:;-]+\s*$/, "").trim();
+}
+import { type ParsedAdvisory, dateMentioned, parseAdvisory, parseTickers, parseTimeOfDay } from "./confirm";
 import { getDayInfo } from "@/lib/tradingDays";
 import { parseISO } from "./fiscal";
 import { llmAvailable, parseAdvisoryWithModel } from "./llmParse";
@@ -316,6 +329,26 @@ export async function processFeedItems(
         outcome = { ok: false, reason: `llm date ${d} not stated in text` };
       } else if (d < todayET()) {
         outcome = { ok: false, reason: `date ${d} had passed when processed` };
+      }
+    }
+
+    // A results headline ("X Reports Third Quarter 2026 Results") is not an
+    // advisory, but it says the company has just reported: queue a refresh so
+    // the 8-K is picked up within minutes, and remember the release in case
+    // the filing lags (settleResultsHeadlines records the report from it).
+    if (!outcome.ok && isResultsHeadline(item.title)) {
+      const company = item.parsed?.cik
+        ? await query<{ cik: number }>(`select cik from companies where cik = $1 and active`, [item.parsed.cik]).then((r) => r[0] ?? null)
+        : await resolveCik({ companyName: companyNameFromHeadline(item.title), tickers: parseTickers(`${item.title}\n${description.slice(0, 3000)}`) } as unknown as ParsedAdvisory);
+      if (company) {
+        const releaseDay = new Date(published).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+        await query(`update companies set refresh_requested_at = coalesce(refresh_requested_at, now()) where cik = $1`, [company.cik]);
+        await query(`update feed_items set parse_status = 'ignored', parsed = coalesce(parsed, '{}'::jsonb) || $2::jsonb where id = $1`, [
+          item.id,
+          JSON.stringify({ reason: "results headline: refresh queued", resultsHeadline: "pending", resultsDate: releaseDay, cik: company.cik, timeOfDay: parseTimeOfDay(`${item.title} ${description.slice(0, 2000)}`) }),
+        ]);
+        stats.ignored += 1;
+        continue;
       }
     }
 

@@ -24,6 +24,7 @@ import { parseISO } from "./fiscal";
 import { type FeedStats, type ProcessStats, pollFeeds, processFeedItems, recentlyConfirmedTickers } from "./confirmJob";
 import { searchEdgarAdvisories, stageEdgarAdvisories } from "./edgarAdvisories";
 import { type IrSource, discoverIrSource, readIrSource } from "./irSites";
+import { checkExpectedReporters, refreshFlagged, settleResultsHeadlines, watchLiveFilings } from "./reportWatch";
 import { stageItems } from "./confirmJob";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
@@ -37,6 +38,8 @@ export type TickStats = {
   overdueFlagged: number;
   refreshed: number;
   refreshFailed: number;
+  reportWatch?: { expected: { checked: number; queued: number }; live: { entries: number; results: number; queued: number } };
+  resultsRecorded?: number;
   revalidated: number;
   feeds: FeedStats | null;
   advisories: ProcessStats | null;
@@ -150,7 +153,7 @@ async function flagOverdueEstimates(today: string, stats: TickStats): Promise<vo
         and exists (
           select 1 from earnings_events e
            where e.cik = c.cik and e.superseded_by is null
-             and e.status = 'estimated' and e.event_date < $1::date
+             and e.status in ('estimated', 'confirmed') and e.event_date < $1::date
              and not estimate_is_stale(e.period_end, e.report_form)
         )
       returning c.cik`,
@@ -376,7 +379,18 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     stats.feeds = await pollFeeds({ includeLists: true });
     stats.advisories = await processFeedItems();
     for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
+    // Companies that have just reported go to the front of the refresh queue
+    try {
+      stats.reportWatch = { expected: await checkExpectedReporters(today, { deadline: deadline - 120_000 }), live: await watchLiveFilings() };
+    } catch (err) {
+      console.error("[tick] report watch:", (err as Error).message);
+    }
     await refreshBatch(deadline - 45_000, today, stats, touched);
+    try {
+      stats.resultsRecorded = await settleResultsHeadlines();
+    } catch (err) {
+      console.error("[tick] results headlines:", (err as Error).message);
+    }
     // IR-site discovery takes what is left of the budget (a few companies per tick)
     try {
       await discoverIrSourcesBatch(deadline, stats);
@@ -517,6 +531,7 @@ export type FeedRunStats = {
   feeds: FeedStats;
   irSites: { polled: number; staged: number; failed: number } | null;
   advisories: ProcessStats;
+  reportWatch: { expected: { checked: number; queued: number }; live: { entries: number; results: number; queued: number }; refreshed: number; refreshFailed: number; resultsRecorded: number } | null;
   revalidated: number;
   elapsedMs: number;
 };
@@ -534,7 +549,28 @@ export async function runFeeds(): Promise<FeedRunStats> {
       console.error("[feeds] IR sites:", (err as Error).message);
     }
     const advisories = await processFeedItems();
+    // Just-reported companies: re-read the SEC for expected reporters and the
+    // live 8-K feed, refresh whoever is queued, then settle any results
+    // headline whose 8-K is still missing. Bounded so the run stays short.
+    let reportWatch: FeedRunStats["reportWatch"] = null;
+    const touched = new Set<string>();
+    try {
+      const expected = await checkExpectedReporters(todayET(), { deadline: started + 45_000 });
+      const live = await watchLiveFilings();
+      const refreshed = await refreshFlagged(25, started + 90_000);
+      for (const t of refreshed.tickers) touched.add(t);
+      const recorded = await settleResultsHeadlines();
+      reportWatch = { expected, live, refreshed: refreshed.refreshed, refreshFailed: refreshed.failed, resultsRecorded: recorded };
+    } catch (err) {
+      console.error("[feeds] report watch:", (err as Error).message);
+    }
     let revalidated = 0;
+    for (const ticker of touched) {
+      try {
+        revalidatePath(`/earnings/${ticker.toLowerCase()}`);
+        revalidated += 1;
+      } catch {}
+    }
     for (const ticker of await recentlyConfirmedTickers(startedISO)) {
       try {
         revalidatePath(`/earnings/${ticker.toLowerCase()}`);
@@ -546,7 +582,7 @@ export async function runFeeds(): Promise<FeedRunStats> {
         revalidatePath("/earnings");
       } catch {}
     }
-    const stats: FeedRunStats = { feeds, irSites, advisories, revalidated, elapsedMs: Date.now() - started };
+    const stats: FeedRunStats = { feeds, irSites, advisories, reportWatch, revalidated, elapsedMs: Date.now() - started };
     await query(`update job_runs set finished_at = now(), status = 'ok', stats = $2 where id = $1`, [run.id, JSON.stringify(stats)]);
     return stats;
   } catch (err) {
