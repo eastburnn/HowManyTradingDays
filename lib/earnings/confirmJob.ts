@@ -247,7 +247,9 @@ async function chooseQuarter(cik: number, parsed: ParsedAdvisory): Promise<Candi
 export async function processFeedItems(
   limit = 200,
   llmMaxPerRun = LLM_MAX_PER_RUN,
-  pageMaxPerRun = PAGE_MAX_PER_RUN
+  pageMaxPerRun = PAGE_MAX_PER_RUN,
+  /** Epoch ms after which no further item is started; what is left stays pending for the next run */
+  deadline?: number
 ): Promise<ProcessStats> {
   const stats: ProcessStats = { processed: 0, matched: 0, confirmed: 0, ignored: 0, failed: 0, llmCalls: 0, llmMatched: 0, pageReads: 0 };
   // New items first: after a parser change, older items are queued again
@@ -262,8 +264,11 @@ export async function processFeedItems(
   );
 
   for (const item of pending) {
+    if (deadline && Date.now() > deadline) break;
     stats.processed += 1;
     const published = item.published_at ? new Date(item.published_at).toISOString() : new Date().toISOString();
+    // An older item going back through the parser after a logic change.
+    const reprocess = Boolean(item.parsed?.reprocess);
     let description = item.parsed?.description ?? "";
     // An IR events feed is a structured list of upcoming calls, dated from
     // today and reaching into the following quarter.
@@ -298,12 +303,16 @@ export async function processFeedItems(
     const fromEdgar = item.feed === "edgar-fts";
     const fromArchive = ARCHIVE_FEEDS.has(item.feed);
     const worthModel = !outcome.ok && (LLM_WORTHY.has(outcome.reason) || (fromArchive && outcome.reason === "no scheduling language in title"));
-    // An item being reprocessed after a parser change keeps the model's
-    // earlier verdict: the text has not changed, so asking again buys nothing.
-    const priorModelVerdict = item.parsed?.reprocess ? item.parsed.llmSaid ?? item.parsed.reason?.match(/; llm: (.+)$/)?.[1] ?? null : null;
-    if (!outcome.ok && worthModel && priorModelVerdict) {
+    // Reprocessing is about the parser, not the model. An item that already
+    // has the model's verdict keeps it (the text has not changed), and the
+    // model is only asked when the new parser has changed its mind about the
+    // item: a different reason than last time, and one worth a model call.
+    const priorReason = reprocess ? item.parsed?.reason ?? "" : "";
+    const priorModelVerdict = reprocess ? item.parsed?.llmSaid ?? priorReason.match(/; llm: (.+)$/)?.[1] ?? null : null;
+    const regexChangedItsMind = !outcome.ok && LLM_WORTHY.has(outcome.reason) && priorReason.replace(/; llm: .+$/, "") !== outcome.reason;
+    if (!outcome.ok && worthModel && priorModelVerdict && !regexChangedItsMind) {
       outcome = { ok: false, reason: `${outcome.reason}; llm: ${priorModelVerdict}` };
-    } else if (!outcome.ok && worthModel && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
+    } else if (!outcome.ok && worthModel && (!reprocess || regexChangedItsMind) && llmAvailable() && stats.llmCalls < llmMaxPerRun) {
       const attempts = (item.parsed?.llmAttempts ?? 0) + 1;
       stats.llmCalls += 1;
       const llm = await parseAdvisoryWithModel(item.title, description, published);
@@ -344,7 +353,11 @@ export async function processFeedItems(
     // advisory, but it says the company has just reported: queue a refresh so
     // the 8-K is picked up within minutes, and remember the release in case
     // the filing lags (settleResultsHeadlines records the report from it).
-    if (!outcome.ok && isResultsHeadline(item.title)) {
+    // (Not for an old item being reprocessed: that report was dealt with
+    // long ago, and queuing its company again would only crowd the refresh
+    // queue that just-reported companies rely on.)
+    const freshEnough = !reprocess || Date.now() - new Date(published).getTime() < 3 * 86_400_000;
+    if (!outcome.ok && freshEnough && isResultsHeadline(item.title)) {
       const company = item.parsed?.cik
         ? await query<{ cik: number }>(`select cik from companies where cik = $1 and active`, [item.parsed.cik]).then((r) => r[0] ?? null)
         : await resolveCik({ companyName: companyNameFromHeadline(item.title), tickers: parseTickers(`${item.title}\n${description.slice(0, 3000)}`) } as unknown as ParsedAdvisory);

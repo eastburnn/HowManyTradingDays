@@ -117,6 +117,8 @@ export type LogicFlushStatus = LogicFlushState & {
 };
 
 const LOGIC_FLUSH_KEY = "logic_flush";
+/** Feed items taken per run; the time window given to processFeedItems is the real limit */
+const FEED_ITEMS_PER_RUN = 1500;
 /** Ignored and failed feed items are kept this long (the feed-items-cleanup job), so this is all there is to redo */
 const FEED_REPROCESS_DAYS = 30;
 
@@ -531,7 +533,9 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     const feedsStarted = new Date().toISOString();
     await runStep(stats, "EDGAR advisory sweep", () => sweepEdgarAdvisoriesDaily(today, stats));
     stats.feeds = (await runStep(stats, "wire feeds", () => pollFeeds({ includeLists: true }))) ?? null;
-    stats.advisories = (await runStep(stats, "feed parsing", () => processFeedItems())) ?? null;
+    // Bounded by time, not by count: new items are few and come first; what is
+    // left of the window works through any reprocess queue.
+    stats.advisories = (await runStep(stats, "feed parsing", () => processFeedItems(FEED_ITEMS_PER_RUN, undefined, undefined, started + 70_000))) ?? null;
     await runStep(stats, "confirmed tickers", async () => {
       for (const t of await recentlyConfirmedTickers(feedsStarted)) touched.add(t);
     });
@@ -765,7 +769,8 @@ export async function runFeeds(): Promise<FeedRunStats> {
     // Each step stands alone, as in the tick.
     const feeds = (await runStep(errors, "wire feeds", () => pollFeeds())) ?? NO_FEEDS;
     const irSites: FeedRunStats["irSites"] = (await runStep(errors, "IR sites", () => pollIrSourcesBatch())) ?? null;
-    const advisories = (await runStep(errors, "feed parsing", () => processFeedItems())) ?? NO_ADVISORIES;
+    // Bounded by time so the report watch below always gets its turn.
+    const advisories = (await runStep(errors, "feed parsing", () => processFeedItems(FEED_ITEMS_PER_RUN, undefined, undefined, started + 50_000))) ?? NO_ADVISORIES;
     // Just-reported companies: re-read the SEC for expected reporters and the
     // live 8-K feed, refresh whoever is queued, then settle any results
     // headline whose 8-K is still missing. Bounded so the run stays short.
