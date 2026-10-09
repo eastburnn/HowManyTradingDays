@@ -111,6 +111,49 @@ export async function fetchEdgarJson<T>(
   throw lastError;
 }
 
+/**
+ * Fetch an EDGAR document as text through the shared rate limiter. A complete
+ * submission file can run to megabytes of encoded attachments, so `maxBytes`
+ * stops reading once enough has arrived.
+ */
+export async function fetchEdgarText(url: string, maxBytes = Infinity): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await acquire();
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": SEC_USER_AGENT, "Accept-Encoding": "gzip, deflate" },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (res.status === 429 || res.status === 503) {
+        lastError = new Error(`EDGAR ${res.status} for ${url}`);
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      if (!res.ok) throw new Error(`EDGAR ${res.status} for ${url}`);
+      if (!res.body || maxBytes === Infinity) return await res.text();
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let text = "";
+      let bytes = 0;
+      while (bytes < maxBytes) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        text += decoder.decode(value, { stream: true });
+      }
+      await reader.cancel().catch(() => {});
+      return text;
+    } catch (err) {
+      lastError = err;
+      if (attempt === 2) break;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 /* ---------------------------------------------
    TICKER / EXCHANGE LIST
 ----------------------------------------------*/

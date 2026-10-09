@@ -58,7 +58,7 @@ export type CompanyEarnings = {
   lastReported: EarningsEvent | null;
   /** Reported releases, newest first (up to 8) */
   history: EarningsEvent[];
-  /** Earnings 8-Ks (Item 2.02) on file from the last 18 months */
+  /** Earnings 8-Ks on file from the last 18 months (Item 2.02, or verified from the exhibit) */
   recentEarnings8Ks: number;
 };
 
@@ -117,8 +117,9 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
       [company.cik]
     ),
     query<{ n: number }>(
+      // Every 8-K on file is a results release: Item 2.02, or verified from its exhibit
       `select count(*)::int as n from filings
-        where cik = $1 and form = '8-K' and items::text ~ '2\\.02'
+        where cik = $1 and form = '8-K'
           and filing_date > now() - interval '18 months'`,
       [company.cik]
     ),

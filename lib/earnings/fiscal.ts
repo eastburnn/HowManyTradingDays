@@ -102,6 +102,46 @@ export function filingDeadlineDays(form: ReportForm, category: FilerCategory): n
    BUILD OBSERVATIONS FROM FILINGS
 ----------------------------------------------*/
 
+/** An 8-K 2.02 sooner than this after quarter end is not that quarter's release */
+export const MIN_DAYS_AFTER_PERIOD_END = 5;
+
+/** Form 8-K is due four business days after its event: a week at most, with a weekend and a holiday */
+const MAX_EVENT_TO_FILING_DAYS = 7;
+
+/** Items that say nothing of a second, earlier event: the release, its Regulation FD twin, and the exhibit list */
+const RELEASE_ITEMS = new Set(["2.02", "7.01", "9.01"]);
+
+/**
+ * The day an 8-K's results came out. Normally that is its "date of report"
+ * (the event date), and the filing follows within four business days. When
+ * the filing trails the report date by more than that, the report date is
+ * kept only if nothing explains it better than a late filing:
+ *
+ *   - dated as of the quarter it covers (Community Trust Bancorp files on
+ *     July 15 with a report date of June 30);
+ *   - dated by an earlier event reported in the same 8-K (Uber's August 6
+ *     release carried a July 28 date for an Item 8.01 matter);
+ *   - the wrong year typed (Wabtec's July 2019 release, dated July 2018).
+ *
+ * In those cases the release went out with the filing, so the filing date
+ * stands in. `periodEnds` are the company's fiscal period ends.
+ */
+export function releaseDateOf(
+  f: Pick<EdgarFiling, "reportDate" | "filingDate" | "items">,
+  periodEnds?: ReadonlySet<string>
+): string {
+  if (!f.reportDate) return f.filingDate;
+  const lag = daysBetween(f.reportDate, f.filingDate);
+  if (lag < -1) return f.filingDate;
+  if (lag <= MAX_EVENT_TO_FILING_DAYS) return f.reportDate;
+  // "As of" dates are loose: a 52/53-week filer's May 30 quarter gets a May 31 report date
+  const asOfPeriodEnd = periodEnds ? [...periodEnds].some((end) => Math.abs(daysBetween(end, f.reportDate!)) < MIN_DAYS_AFTER_PERIOD_END) : false;
+  const otherEvent = f.items.some((i) => !RELEASE_ITEMS.has(i));
+  const yearsOff = Math.round(lag / 365.25);
+  const wrongYear = yearsOff >= 1 && Math.abs(lag - yearsOff * 365.25) <= 4;
+  return asOfPeriodEnd || otherEvent || wrongYear ? f.filingDate : f.reportDate;
+}
+
 type PeriodReport = {
   form: ReportForm;
   periodEnd: string;
@@ -114,6 +154,8 @@ type Release = {
   date: string;
   accession: string;
   acceptanceDateTime: string | null;
+  /** Furnished under Item 7.01/8.01 rather than 2.02 (see ObservationOptions.resultsAccessions) */
+  otherItem: boolean;
 };
 
 // Transition reports (10-KT / 10-QT) cover a stub period after a fiscal
@@ -218,6 +260,13 @@ export type ObservationOptions = {
    * from Item 2.02; without this they would have no history to estimate from.
    */
   periodicFallback?: boolean;
+  /**
+   * 8-Ks without Item 2.02 that are known to carry a results release. Urban
+   * Outfitters furnishes its quarterly release under Item 8.01 two weeks
+   * ahead of the 10-Q; item codes alone cannot tell that from a dividend
+   * notice, so the caller verifies the exhibit (resultsReleases.ts).
+   */
+  resultsAccessions?: ReadonlySet<string>;
 };
 
 export function buildObservations(
@@ -228,12 +277,14 @@ export function buildObservations(
   const periods = listFiscalPeriods(filings, fiscalYearEndMMDD);
   if (periods.length === 0) return [];
 
-  // Earnings releases: 8-K Item 2.02. The 8-K's reportDate is the event date.
+  // Earnings releases: 8-K Item 2.02, plus any 8-K verified to carry results.
+  const periodEnds = new Set(periods.map((p) => p.periodEnd));
   const releases: Release[] = [];
   for (const f of filings) {
-    if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
-    const date = f.reportDate ?? f.filingDate;
-    releases.push({ date, accession: f.accession, acceptanceDateTime: f.acceptanceDateTime });
+    if (f.form !== "8-K") continue;
+    const item202 = f.items.includes("2.02");
+    if (!item202 && !opts.resultsAccessions?.has(f.accession)) continue;
+    releases.push({ date: releaseDateOf(f, periodEnds), accession: f.accession, acceptanceDateTime: f.acceptanceDateTime, otherItem: !item202 });
   }
   releases.sort((a, b) => (a.date < b.date ? -1 : 1));
 
@@ -241,16 +292,19 @@ export function buildObservations(
 
   for (const period of periods) {
     // The release is the 8-K 2.02 closest to the periodic report's filing date,
-    // searched from just after the period end to three days after the report.
-    // "Closest to the report" skips preliminary 2.02s (e.g. early revenue
-    // updates) in favor of the actual results release.
-    const windowStart = period.periodEnd;
+    // searched from a few days after the period end (anything sooner is a
+    // preliminary) to three days after the report. "Closest to the report"
+    // skips preliminary 2.02s (e.g. early revenue updates) in favor of the
+    // actual results release.
+    const windowStart = addDaysISO(period.periodEnd, MIN_DAYS_AFTER_PERIOD_END);
     const windowEnd = addDaysISO(period.filedDate, 3);
     let best: Release | null = null;
     let bestDistance = Infinity;
     for (const r of releases) {
-      if (r.date <= windowStart) continue;
+      if (r.date < windowStart) continue;
       if (r.date > windowEnd) break;
+      // Results furnished under another item never trail the report itself
+      if (r.otherItem && r.date > period.filedDate) continue;
       const distance = Math.abs(daysBetween(r.date, period.filedDate));
       if (distance < bestDistance || (distance === bestDistance && r.date <= period.filedDate)) {
         best = r;

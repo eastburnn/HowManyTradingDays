@@ -1,11 +1,15 @@
 /**
- * Regression fixtures for the wire-advisory parser. Run:
+ * Regression fixtures for the wire-advisory parser, the results-release
+ * reader and the 8-K release-date rules. Run:
  *   npx tsx scripts/earnings/parse-fixtures.ts
  * Exits non-zero on any mismatch. Add a fixture whenever a real headline is
  * misparsed (see the dry-run's unmatched log).
  */
 
 import { parseAdvisory } from "@/lib/earnings/confirm";
+import type { EdgarFiling } from "@/lib/earnings/edgar";
+import { buildObservations, releaseDateOf } from "@/lib/earnings/fiscal";
+import { looksLikeResultsRelease } from "@/lib/earnings/resultsReleases";
 
 const PUBLISHED = "2026-10-05T12:00:00.000Z";
 
@@ -116,5 +120,91 @@ for (const f of FIXTURES) {
   if (!pass) failures += 1;
   console.log(`${pass ? "PASS" : "FAIL"}  ${f.title.slice(0, 70).padEnd(70)}  ${detail}`);
 }
+/* ---------------------------------------------
+   RESULTS RELEASES (8-K exhibits read for companies that skip Item 2.02)
+----------------------------------------------*/
+
+const RELEASES: { text: string; expect: boolean }[] = [
+  {
+    text: "Exhibit 99.1\nURBN Reports Record Q2 Sales\nPHILADELPHIA, PA, August 26, 2026 - Urban Outfitters, Inc. (NASDAQ:URBN) today announced net income of $143.9 million and earnings per diluted share of $1.58 for the three months ended July 31, 2026.",
+    expect: true,
+  },
+  {
+    // Older filings hard-wrap, so the headline spans lines
+    text: "MAGYAR BANCORP, INC. ANNOUNCES FIRST QUARTER FINANCIAL\nRESULTS\nNew Brunswick, New Jersey, January 25, 2024 - Magyar Bancorp (NASDAQ: MGYR) reported today the results of its operations\nfor the three months ended December 31, 2023. Net income was $1.7 million.",
+    expect: true,
+  },
+  {
+    text: "Exhibit 99.1\nCelsius Holdings, Inc. to Release Second Quarter 2022 Financial Results On Tuesday, August 9, 2022\nBOCA RATON, FL - Celsius Holdings, Inc. (Nasdaq: CELH) today announced that it will release its financial results for the second quarter ended June 30, 2022 on August 9. Revenue was $133 million in the first quarter.",
+    expect: false,
+  },
+  {
+    text: "URBAN OUTFITTERS, INC. Preliminary First Quarter Results\nPhiladelphia, PA - May 19, 2020 - Urban Outfitters, Inc. today announced a net loss of $138 million for the three months ended April 30, 2020.",
+    expect: false,
+  },
+  {
+    text: "Acme Bancorp Announces Quarterly Dividend\nAcme Bancorp today announced that its Board of Directors declared a quarterly cash dividend of $0.30 per share, reflecting strong earnings in the second quarter.",
+    expect: false,
+  },
+  {
+    text: "Fourth Quarter 2023 Investor Presentation\nFebruary 7, 2024\nThe Company reported earnings available for distribution of $0.68 per share for the fourth quarter.",
+    expect: false,
+  },
+  {
+    // Boilerplate names the Annual Report and a year end; nothing is reported
+    text: "Acme Completes Plant Expansion\nAcme Corp today announced the completion of its $40 million plant expansion. Risks are described in our Annual Report on Form 10-K for the year ended December 31, 2025, including under Results of Operations.",
+    expect: false,
+  },
+];
+
+for (const r of RELEASES) {
+  const got = looksLikeResultsRelease(r.text);
+  const pass = got === r.expect;
+  if (!pass) failures += 1;
+  console.log(`${pass ? "PASS" : "FAIL"}  ${r.text.replace(/\s+/g, " ").slice(0, 70).padEnd(70)}  ${got ? "results release" : "not a results release"}`);
+}
+
+/* ---------------------------------------------
+   RELEASE DATES AND MATCHING
+----------------------------------------------*/
+
+const filing = (form: string, filingDate: string, reportDate: string, items: string[] = [], accession = `${form}-${filingDate}`): EdgarFiling => ({
+  accession,
+  form,
+  filingDate,
+  reportDate,
+  acceptanceDateTime: null,
+  items,
+});
+
+const QUARTER_ENDS = new Set(["2026-06-30"]);
+const DATES: { name: string; got: string; want: string }[] = [
+  { name: "event date, filed the next day", got: releaseDateOf(filing("8-K", "2026-07-16", "2026-07-15", ["2.02", "9.01"]), QUARTER_ENDS), want: "2026-07-15" },
+  { name: "dated as of the quarter end (Community Trust)", got: releaseDateOf(filing("8-K", "2026-07-15", "2026-06-30", ["2.02", "7.01", "9.01"]), QUARTER_ENDS), want: "2026-07-15" },
+  { name: "dated by an earlier event in the same 8-K (Uber)", got: releaseDateOf(filing("8-K", "2026-08-06", "2026-07-28", ["2.02", "8.01", "9.01"]), QUARTER_ENDS), want: "2026-08-06" },
+  { name: "wrong year typed (Wabtec)", got: releaseDateOf(filing("8-K", "2026-07-30", "2025-07-30", ["2.02", "9.01"]), QUARTER_ENDS), want: "2026-07-30" },
+  { name: "plain 8-K filed late keeps its event date", got: releaseDateOf(filing("8-K", "2026-08-14", "2026-08-05", ["2.02", "9.01"]), QUARTER_ENDS), want: "2026-08-05" },
+];
+
+// One fiscal year of periodic reports, with a release per case for the June quarter
+const YEAR = [filing("10-K", "2026-02-27", "2025-12-31"), filing("10-Q", "2026-05-08", "2026-03-31"), filing("10-Q", "2026-08-07", "2026-06-30")];
+const juneQuarter = (extra: EdgarFiling[], verified: string[] = []) => {
+  const o = buildObservations([...YEAR, ...extra], "1231", { periodicFallback: true, resultsAccessions: new Set(verified) }).find((x) => x.periodEnd === "2026-06-30");
+  return o ? `${o.releaseDate} ${o.viaPeriodicReport ? "periodic" : "8-K"}` : "none";
+};
+const MATCHES: { name: string; got: string; want: string }[] = [
+  { name: "8-K dated as of the quarter end is matched on its filing date", got: juneQuarter([filing("8-K", "2026-07-15", "2026-06-30", ["2.02", "9.01"])]), want: "2026-07-15 8-K" },
+  { name: "2.02 a day after quarter end is a preliminary", got: juneQuarter([filing("8-K", "2026-07-01", "2026-07-01", ["2.02", "9.01"])]), want: "2026-08-07 periodic" },
+  { name: "Item 8.01 8-K counts only once verified", got: juneQuarter([filing("8-K", "2026-07-22", "2026-07-21", ["8.01", "9.01"], "furnished")]), want: "2026-08-07 periodic" },
+  { name: "verified Item 8.01 release (Urban Outfitters)", got: juneQuarter([filing("8-K", "2026-07-22", "2026-07-21", ["8.01", "9.01"], "furnished")], ["furnished"]), want: "2026-07-21 8-K" },
+  { name: "verified 8.01 filed after the 10-Q does not date the quarter", got: juneQuarter([filing("8-K", "2026-08-10", "2026-08-10", ["8.01", "9.01"], "furnished")], ["furnished"]), want: "2026-08-07 periodic" },
+];
+
+for (const c of [...DATES, ...MATCHES]) {
+  const pass = c.got === c.want;
+  if (!pass) failures += 1;
+  console.log(`${pass ? "PASS" : "FAIL"}  ${c.name.slice(0, 70).padEnd(70)}  ${c.got}${pass ? "" : ` (want ${c.want})`}`);
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nall fixtures pass");
 process.exit(failures ? 1 : 0);

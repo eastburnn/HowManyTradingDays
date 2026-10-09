@@ -101,10 +101,9 @@ export async function searchEdgarAdvisories(startISO: string, endISO: string): P
    DOCUMENT TEXT
 ----------------------------------------------*/
 
-export async function fetchDocumentText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { "User-Agent": SEC_USER_AGENT }, signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) throw new Error(`EDGAR doc ${res.status}: ${url}`);
-  let html = await res.text();
+/** Plain text of an EDGAR document, one line per block element */
+export function documentToText(raw: string): string {
+  let html = raw;
   // EDGAR wraps documents in an SGML envelope (<DOCUMENT><TYPE>…<TEXT>…</TEXT>)
   // whose unclosed tags would otherwise leak their contents into the text.
   const textStart = html.search(/<TEXT>/i);
@@ -123,6 +122,12 @@ export async function fetchDocumentText(url: string): Promise<string> {
     .replace(/[ \t]+/g, " ")
     .replace(/\s*\n\s*/g, "\n")
     .trim();
+}
+
+export async function fetchDocumentText(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { "User-Agent": SEC_USER_AGENT }, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(`EDGAR doc ${res.status}: ${url}`);
+  return documentToText(await res.text());
 }
 
 const SCHEDULING_HINT =

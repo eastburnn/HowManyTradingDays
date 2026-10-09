@@ -31,7 +31,7 @@ export function reportingProfile(input: {
   sic: string | null;
   /** Recent reported quarters, any order */
   history: Array<{ sourceType: string }>;
-  /** Earnings 8-Ks (Item 2.02) on file from the last 18 months */
+  /** Earnings 8-Ks on file from the last 18 months (Item 2.02, or verified from the exhibit) */
   recentEarnings8Ks: number;
 }): ReportingProfile {
   const { sic, history, recentEarnings8Ks } = input;

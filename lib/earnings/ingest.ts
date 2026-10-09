@@ -21,6 +21,7 @@ import {
   type EarningsObservation,
   type FiscalPeriod,
   type ReportForm,
+  MIN_DAYS_AFTER_PERIOD_END,
   addDaysISO,
   buildObservations,
   filingDeadlineDays,
@@ -28,11 +29,13 @@ import {
   listFiscalPeriods,
   parseISO,
   predictPeriodEnd,
+  releaseDateOf,
   timeOfDayFromAcceptance,
 } from "./fiscal";
 import { type ConfidenceTier, type Estimate, estimateReleaseDate } from "./estimator";
 import { withTransaction } from "./db";
 import { NO_RELEASE_SICS } from "./profile";
+import { findFurnishedResults } from "./resultsReleases";
 import { addDays, getDayInfo, toISODate } from "@/lib/tradingDays";
 
 /** Filings worth keeping: results releases, periodic reports, and late notices */
@@ -44,9 +47,6 @@ const REPORTED_HISTORY_YEARS = 10; // raised from 4 on Oct 4, 2026, to match the
 
 /** How many unreported quarters ahead to estimate */
 const ESTIMATE_QUARTERS_AHEAD = 2;
-
-/** An 8-K 2.02 sooner than this after quarter end is not that quarter's release */
-const MIN_DAYS_AFTER_PERIOD_END = 5;
 
 /**
  * An estimate whose quarter ended this long ago without a filing is stale:
@@ -67,6 +67,8 @@ export type RefreshOptions = EdgarClientOptions & {
   listing?: { ticker: string; exchange: string | null };
   /** "Today" in ET as YYYY-MM-DD; defaults to now */
   today?: string;
+  /** Most 8-K exhibits to read for results furnished without Item 2.02 (see resultsReleases.ts) */
+  maxResultsChecks?: number;
 };
 
 export type RefreshResult = {
@@ -244,8 +246,14 @@ async function upsertCompany(
   return ticker;
 }
 
-async function upsertFilings(client: PoolClient, cik: number, filings: EdgarFiling[]): Promise<number> {
-  const rows = filings.filter(isRelevantFiling);
+async function upsertFilings(
+  client: PoolClient,
+  cik: number,
+  filings: EdgarFiling[],
+  /** Results releases furnished without Item 2.02: kept alongside the 2.02s */
+  furnished: ReadonlySet<string>
+): Promise<number> {
+  const rows = filings.filter((f) => isRelevantFiling(f) || furnished.has(f.accession));
   if (rows.length === 0) return 0;
   // Item lists travel as comma-joined strings: unnest() would flatten a
   // nested text[][] parameter into single elements.
@@ -339,7 +347,9 @@ export type UnmatchedRelease = {
 export function findUnmatchedRelease(
   company: EdgarCompany,
   periods: FiscalPeriod[],
-  observations: EarningsObservation[]
+  observations: EarningsObservation[],
+  /** 8-Ks verified to carry results without Item 2.02 */
+  resultsAccessions: ReadonlySet<string> = new Set()
 ): UnmatchedRelease | null {
   if (periods.length === 0) return null;
   const last = periods[periods.length - 1];
@@ -353,16 +363,17 @@ export function findUnmatchedRelease(
   // delivery report, a revenue pre-announcement): no company closes its books
   // that fast, and across 60,000 observed releases none was that early.
   const earliest = addDaysISO(periodEnd, MIN_DAYS_AFTER_PERIOD_END);
+  const periodEnds = new Set([...periods.map((p) => p.periodEnd), periodEnd]);
   let best: EdgarFiling | null = null;
   for (const f of company.filings) {
-    if (f.form !== "8-K" || !f.items.includes("2.02")) continue;
-    const date = f.reportDate ?? f.filingDate;
+    if (f.form !== "8-K" || !(f.items.includes("2.02") || resultsAccessions.has(f.accession))) continue;
+    const date = releaseDateOf(f, periodEnds);
     if (date <= last.filedDate || date <= lastRelease || date < earliest) continue;
-    if (!best || date > (best.reportDate ?? best.filingDate)) best = f;
+    if (!best || date > releaseDateOf(best, periodEnds)) best = f;
   }
   if (!best) return null;
 
-  const releaseDate = best.reportDate ?? best.filingDate;
+  const releaseDate = releaseDateOf(best, periodEnds);
   return {
     ...target,
     periodEnd,
@@ -464,12 +475,17 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
   const company = await fetchCompany(cik, { cacheDir: opts.cacheDir, refresh: opts.refresh, sinceDate: "2015-01-01" });
   const active = isQuarterlyReporter(company) && commonSymbol(company, opts.listing) !== null;
   const periods = active ? listFiscalPeriods(company.filings, company.fiscalYearEnd) : [];
+  const reportsResults = !NO_RELEASE_SICS.has(company.sic ?? "");
+  // Results furnished under Item 7.01/8.01 instead of 2.02 (reads EDGAR for 8-Ks not seen before)
+  const furnished =
+    active && reportsResults ? await findFurnishedResults(company, { maxChecks: opts.maxResultsChecks }) : new Set<string>();
   const observations = active
     ? buildObservations(company.filings, company.fiscalYearEnd, {
-        periodicFallback: !NO_RELEASE_SICS.has(company.sic ?? ""),
+        periodicFallback: reportsResults,
+        resultsAccessions: furnished,
       })
     : [];
-  const unmatched = active ? findUnmatchedRelease(company, periods, observations) : null;
+  const unmatched = active ? findUnmatchedRelease(company, periods, observations, furnished) : null;
   const upcoming = active ? estimateUpcoming(company, periods, observations, today, unmatched) : [];
 
   const cutoffYear = parseISO(today).getFullYear() - REPORTED_HISTORY_YEARS;
@@ -481,7 +497,7 @@ export async function refreshCompany(cik: number, opts: RefreshOptions = {}): Pr
       return { cik: company.cik, ticker, active, filings: 0, reported: 0, estimated: 0 };
     }
 
-    const filings = await upsertFilings(client, company.cik, company.filings);
+    const filings = await upsertFilings(client, company.cik, company.filings, furnished);
 
     for (const o of reportedRows) {
       await recordEvent(client, {
