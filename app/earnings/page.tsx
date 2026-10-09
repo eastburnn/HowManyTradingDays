@@ -73,11 +73,18 @@ export default async function EarningsCalendarPage() {
           <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
             Earnings Calendar
           </h1>
+          {/* Half the length on phones, where the full paragraph pushes the search and calendar below the fold */}
           <p className="text-sm text-slate-400 leading-relaxed">
-            See upcoming earnings dates for every NYSE and Nasdaq company, with a countdown in trading days to
-            each report. Dates are estimated from each company&apos;s SEC filing history and upgraded to
-            confirmed once the company announces. Browse by month, scan the next 30 days or a full quarter, or
-            look up any ticker.
+            <span className="sm:hidden">
+              Upcoming earnings dates for every NYSE and Nasdaq company, with a countdown in trading days. Estimated
+              from SEC filings and confirmed once announced.
+            </span>
+            <span className="hidden sm:inline">
+              See upcoming earnings dates for every NYSE and Nasdaq company, with a countdown in trading days to
+              each report. Dates are estimated from each company&apos;s SEC filing history and upgraded to
+              confirmed once the company announces. Browse by month, scan the next 30 days or a full quarter, or
+              look up any ticker.
+            </span>
           </p>
         </header>
 

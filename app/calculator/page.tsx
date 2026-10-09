@@ -120,10 +120,17 @@ export default function CalculatorPage() {
           <h1 className={`${domine.className} text-3xl sm:text-4xl font-semibold tracking-tight text-balance`}>
             Trading Days Calculator
           </h1>
+          {/* Half the length on phones, where the full paragraph pushes the calendar below the fold */}
           <p className="text-sm text-slate-400 leading-relaxed">
-            Count U.S. stock market trading days and calendar days between today, or any start date, and a target
-            date. Pick a day on the calendar or jump to a month end, year end, or the next market holiday. Weekends
-            and NYSE/Nasdaq holidays are skipped, and early closes count as half days.
+            <span className="sm:hidden">
+              Count U.S. stock market trading days and calendar days between today, or any start date, and a target
+              date. Weekends and market holidays are skipped.
+            </span>
+            <span className="hidden sm:inline">
+              Count U.S. stock market trading days and calendar days between today, or any start date, and a target
+              date. Pick a day on the calendar or jump to a month end, year end, or the next market holiday. Weekends
+              and NYSE/Nasdaq holidays are skipped, and early closes count as half days.
+            </span>
           </p>
         </header>
 
