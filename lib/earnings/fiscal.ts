@@ -186,6 +186,22 @@ function projectedFiscalYearEnd(periodEnd: string, mmdd: string): string | null 
   return null;
 }
 
+/** A 52/53-week year ending the Sunday nearest December 31 can run to January 3 */
+const JANUARY_YEAR_END_SLACK_DAYS = 7;
+
+/**
+ * The year a fiscal year is named for: the calendar year it ends in, except
+ * that a year ending in the first days of January belongs to the year it
+ * covered. Johnson & Johnson's fiscal 2026 ends January 3, 2027, and its
+ * fiscal 2020 ended January 3, 2021; naming those 2027 and 2021 would give
+ * the company two fiscal 2023s and no 2026, and a (year, quarter) key that
+ * changes whenever EDGAR's declared year end crosses December 31.
+ */
+export function fiscalYearOf(fiscalYearEnd: string): number {
+  const d = parseISO(fiscalYearEnd);
+  return d.getMonth() === 0 && d.getDate() <= JANUARY_YEAR_END_SLACK_DAYS ? d.getFullYear() - 1 : d.getFullYear();
+}
+
 /**
  * Assign a fiscal quarter to a period end given the fiscal-year-end date it
  * rolls up to. Uses day distance (not month arithmetic) so 52/53-week
@@ -247,7 +263,7 @@ export function listFiscalPeriods(filings: EdgarFiling[], fiscalYearEndMMDD?: st
     }
     const quarter = period.form === "10-K" ? 4 : quarterFor(period.periodEnd, fye);
     if (!quarter) continue;
-    out.push({ ...period, fiscalYear: parseISO(fye).getFullYear(), quarter });
+    out.push({ ...period, fiscalYear: fiscalYearOf(fye), quarter });
   }
   return out;
 }

@@ -185,6 +185,21 @@ export async function fetchExchangeListings(
    SUBMISSIONS (full filing history for a CIK)
 ----------------------------------------------*/
 
+/**
+ * EDGAR's declared fiscal year end ("MMDD"), when it can be believed. A real
+ * year end falls on a month end or, on a 52/53-week calendar, within a week
+ * of one. Brown & Brown's "0119" and Sun Communities' "0513" sit beside
+ * December 31 10-Ks: data-entry slips, and projecting periods onto them
+ * labels every quarter wrongly. Null for those and for malformed values.
+ */
+export function usableFiscalYearEnd(mmdd: string | null | undefined): string | null {
+  if (!mmdd || !/^\d{4}$/.test(mmdd)) return null;
+  const month = Number(mmdd.slice(0, 2));
+  const day = Number(mmdd.slice(2));
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return day <= 7 || day >= 24 ? mmdd : null;
+}
+
 export type FilerCategory =
   | "large-accelerated"
   | "accelerated"
@@ -309,7 +324,7 @@ export async function fetchCompany(
     exchanges: main.exchanges ?? [],
     category: parseFilerCategory(main.category),
     categoryRaw: main.category ?? "",
-    fiscalYearEnd: main.fiscalYearEnd || null,
+    fiscalYearEnd: usableFiscalYearEnd(main.fiscalYearEnd),
     sic: main.sic || null,
     sicDescription: main.sicDescription || null,
     stateOfIncorporation: main.stateOfIncorporation || null,

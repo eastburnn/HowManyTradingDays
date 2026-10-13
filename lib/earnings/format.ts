@@ -3,6 +3,7 @@
  */
 
 import type { EarningsEvent } from "./queries";
+import { fiscalYearOf } from "./fiscal";
 
 export function parseISODate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
@@ -251,9 +252,8 @@ export function fiscalCalendar(
   const start = new Date(2001, month - 1, day + 1);
   const range = is5253Week ? `52/53-week year ending near ${monthDay(end)}` : `${monthDay(start)} – ${monthDay(end)}`;
   if (!currentYearEnd) return { range, current: null };
-  const yearEnd = parseISODate(currentYearEnd);
   return {
     range,
-    current: `Fiscal year ${yearEnd.getFullYear()} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`,
+    current: `Fiscal year ${fiscalYearOf(currentYearEnd)} ${currentYearEnd < today ? "ended" : "ends"} ${formatMediumDate(currentYearEnd)}`,
   };
 }

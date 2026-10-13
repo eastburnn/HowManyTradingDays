@@ -8,8 +8,10 @@
 
 import { parseAdvisory } from "@/lib/earnings/confirm";
 import type { EdgarFiling } from "@/lib/earnings/edgar";
-import { buildObservations, releaseDateOf } from "@/lib/earnings/fiscal";
+import { buildObservations, fiscalYearOf, listFiscalPeriods, releaseDateOf } from "@/lib/earnings/fiscal";
 import { looksLikeResultsRelease } from "@/lib/earnings/resultsReleases";
+import { usableFiscalYearEnd } from "@/lib/earnings/edgar";
+import { isSecBusinessDay } from "@/lib/earnings/secCalendar";
 
 const PUBLISHED = "2026-10-05T12:00:00.000Z";
 
@@ -204,6 +206,47 @@ for (const c of [...DATES, ...MATCHES]) {
   const pass = c.got === c.want;
   if (!pass) failures += 1;
   console.log(`${pass ? "PASS" : "FAIL"}  ${c.name.slice(0, 70).padEnd(70)}  ${c.got}${pass ? "" : ` (want ${c.want})`}`);
+}
+
+/* ---------------------------------------------
+   FISCAL LABELS
+   A 52/53-week year ending in early January is named for the year before,
+   EDGAR's declared year end is believed only when it looks like one, and
+   the SEC's calendar differs from the market's.
+----------------------------------------------*/
+
+const label = (periods: EdgarFiling[], declared: string | null) =>
+  listFiscalPeriods(periods, usableFiscalYearEnd(declared)).map((p) => `${p.fiscalYear}Q${p.quarter}`).join(" ");
+
+// Johnson & Johnson: fiscal 2020 ended Jan 3, 2021; fiscal 2025 ended Dec 28, 2025; EDGAR declares "0103" for fiscal 2026
+const JNJ = [
+  filing("10-K", "2021-02-22", "2021-01-03"),
+  filing("10-K", "2026-02-17", "2025-12-28"),
+  filing("10-Q", "2026-04-28", "2026-03-29"),
+  filing("10-Q", "2026-07-28", "2026-06-28"),
+];
+// Brown & Brown: calendar year 10-Ks, EDGAR declares "0119" by mistake
+const BRO = [filing("10-K", "2026-02-20", "2025-12-31"), filing("10-Q", "2026-04-28", "2026-03-31"), filing("10-Q", "2026-07-28", "2026-06-30")];
+
+const LABELS: { name: string; got: string; want: string }[] = [
+  { name: "early-January year end names the year before", got: label(JNJ, "0103"), want: "2020Q4 2025Q4 2026Q1 2026Q2" },
+  { name: "a declared year end of Jan 19 is ignored", got: label(BRO, "0119"), want: "2025Q4 2026Q1 2026Q2" },
+  { name: "a declared year end of May 13 is ignored", got: label(BRO, "0513"), want: "2025Q4 2026Q1 2026Q2" },
+  { name: "fiscal year of Jan 3, 2027", got: String(fiscalYearOf("2027-01-03")), want: "2026" },
+  { name: "fiscal year of Jan 31, 2027 (a retailer)", got: String(fiscalYearOf("2027-01-31")), want: "2027" },
+  { name: "usable: month end", got: String(usableFiscalYearEnd("1231")), want: "1231" },
+  { name: "usable: 52/53-week nominal date", got: String(usableFiscalYearEnd("0928")), want: "0928" },
+  { name: "usable: malformed", got: String(usableFiscalYearEnd("13")), want: "null" },
+  { name: "SEC closed on Columbus Day 2026", got: String(isSecBusinessDay(new Date(2026, 9, 12))), want: "false" },
+  { name: "SEC open the day after", got: String(isSecBusinessDay(new Date(2026, 9, 13))), want: "true" },
+  { name: "SEC closed on Veterans Day 2026", got: String(isSecBusinessDay(new Date(2026, 10, 11))), want: "false" },
+  { name: "SEC open on Good Friday 2027", got: String(isSecBusinessDay(new Date(2027, 2, 26))), want: "true" },
+  { name: "SEC closed on a Saturday", got: String(isSecBusinessDay(new Date(2026, 9, 10))), want: "false" },
+];
+for (const c of LABELS) {
+  const ok = c.got === c.want;
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "} ${c.name.padEnd(60)} ${c.got}${ok ? "" : `  (want ${c.want})`}`);
 }
 
 console.log(failures ? `\n${failures} FAILED` : "\nall fixtures pass");
