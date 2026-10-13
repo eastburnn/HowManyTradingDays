@@ -38,6 +38,7 @@ import { type IrSource, discoverIrSource, readIrSource } from "./irSites";
 import { checkExpectedReporters, refreshFlagged, settleResultsHeadlines, watchLiveFilings } from "./reportWatch";
 import { stageItems } from "./confirmJob";
 import { type LogicVersions, computeLogicVersions } from "./logicHash";
+import { isSecBusinessDay } from "./secCalendar";
 
 const RELEVANT_FORMS = new Set(["8-K", "10-Q", "10-K", "NT 10-Q", "NT 10-K"]);
 const STALE_AFTER_DAYS = 7; // every active company refreshes at least this often
@@ -56,7 +57,9 @@ export type TickStats = {
   feeds: FeedStats | null;
   advisories: ProcessStats | null;
   edgarAdvisories: { candidates: number; staged: number } | null;
-  listings: { missing: number; deactivated: string[]; reactivated: string[] } | null;
+  listings: { missing: number; deactivated: string[]; reactivated: string[]; unknown: number } | null;
+  /** Newly listed companies added this tick, and how many are still waiting (see addNewListings) */
+  newListings?: { added: string[]; notYetReporting: number; waiting: number };
   irDiscovered: { checked: number; found: string[] } | null;
   /** The logic flush in progress, if any (see syncLogicFlush) */
   logicFlush: LogicFlushStatus | null;
@@ -271,9 +274,10 @@ async function ingestDailyIndexes(today: string, stats: TickStats): Promise<void
       continue;
     }
     if (rows === null) {
-      // Not published (yet). Mark past market holidays done; keep waiting on
-      // recent business days — the SEC posts the index with a lag.
-      if (!getDayInfo(d).isTradingDay && iso < today) processed.add(iso);
+      // Not published (yet). Mark past federal holidays done (EDGAR is closed
+      // on Columbus Day though the market trades); keep waiting on recent
+      // business days — the SEC posts the index with a lag.
+      if (!isSecBusinessDay(d) && iso < today) processed.add(iso);
       continue;
     }
     const ciks = [...new Set(rows.map((r) => r.cik))];
@@ -328,11 +332,17 @@ async function flagOverdueEstimates(today: string, stats: TickStats): Promise<vo
  * company. A renamed symbol is harmless: the refresh adopts EDGAR's new
  * ticker before the second sweep. Only companies this sweep deactivated are
  * ever reactivated by it (listing_missing_since marks them).
+ *
+ * The same list is how companies arrive: a registrant on NYSE or Nasdaq that
+ * we hold no row for (an IPO, a spin-off, the new holding company of a SPAC
+ * merger, a transfer from another exchange) is queued here and added by
+ * addNewListings.
  */
 async function sweepListingsDaily(today: string, stats: TickStats): Promise<void> {
   const last = await getState<string>("listing_sweep_last_day");
   if (last === today) return;
-  const tickers = [...new Set((await fetchExchangeListings()).map((l) => l.ticker.toUpperCase()))];
+  const listings = await fetchExchangeListings();
+  const tickers = [...new Set(listings.map((l) => l.ticker.toUpperCase()))];
   if (tickers.length < 1000) throw new Error(`exchange list looks truncated (${tickers.length} symbols)`);
 
   const missing = await query<{ cik: number }>(
@@ -350,8 +360,79 @@ async function sweepListingsDaily(today: string, stats: TickStats): Promise<void
     `update companies set active = false
       where active and listing_missing_since < now() - interval '36 hours' returning ticker`
   );
-  stats.listings = { missing: missing.length, deactivated: deactivated.map((r) => r.ticker), reactivated: reactivated.map((r) => r.ticker) };
+
+  // Registrants we have never seen. Primary listing per CIK = the first row
+  // the SEC lists (share classes follow), as in the backfill.
+  const primary = new Map<number, { ticker: string; exchange: string | null }>();
+  for (const l of listings) {
+    if (l.exchange !== "NYSE" && l.exchange !== "Nasdaq") continue;
+    if (!primary.has(l.cik)) primary.set(l.cik, { ticker: l.ticker, exchange: l.exchange });
+  }
+  const known = new Set((await query<{ cik: number }>(`select cik from companies`)).map((r) => Number(r.cik)));
+  const waiting = new Map(((await getState<NewListing[]>(NEW_LISTINGS_KEY)) ?? []).map((l) => [l.cik, l]));
+  const unknown: NewListing[] = [...primary.entries()]
+    .filter(([cik]) => !known.has(cik))
+    .map(([cik, l]) => ({ cik, ...l, since: waiting.get(cik)?.since ?? today, triedOn: waiting.get(cik)?.triedOn }));
+  await setState(NEW_LISTINGS_KEY, unknown);
+
+  stats.listings = {
+    missing: missing.length,
+    deactivated: deactivated.map((r) => r.ticker),
+    reactivated: reactivated.map((r) => r.ticker),
+    unknown: unknown.length,
+  };
   await setState("listing_sweep_last_day", today);
+}
+
+/* ---------------------------------------------
+   2d. NEW LISTINGS (every tick, from the daily sweep's queue)
+----------------------------------------------*/
+
+type NewListing = { cik: number; ticker: string; exchange: string | null; since: string; triedOn?: string };
+const NEW_LISTINGS_KEY = "new_listings";
+const NEW_LISTINGS_PER_TICK = 8;
+const NEW_LISTINGS_BUDGET_MS = 30_000;
+/** A listing still not added after this many days is reported by the health check */
+const NEW_LISTING_MAX_WAIT_DAYS = 3;
+
+/**
+ * Add the companies the listing sweep found on the exchange list but not in
+ * our universe. Each gets the same full refresh as any other company, so it
+ * arrives with its filing history, reported dates and next estimate. One that
+ * has not filed a 10-Q or 10-K yet (a fresh IPO) is stored inactive; its first
+ * periodic report shows up in the daily index and activates it. A failure is
+ * retried the next day, not the next tick, so one bad registrant cannot make
+ * the step fail every fifteen minutes.
+ */
+export async function addNewListings(today: string, stats: Pick<TickStats, "stepErrors" | "newListings">, touched: Set<string>): Promise<void> {
+  const queue = (await getState<NewListing[]>(NEW_LISTINGS_KEY)) ?? [];
+  const due = queue.filter((l) => l.triedOn !== today).slice(0, NEW_LISTINGS_PER_TICK);
+  if (!due.length) return;
+
+  const stopAt = Date.now() + NEW_LISTINGS_BUDGET_MS;
+  const done = new Set<number>();
+  const added: string[] = [];
+  let notYetReporting = 0;
+  for (const l of due) {
+    if (Date.now() > stopAt) break;
+    try {
+      const r = await refreshCompany(l.cik, { listing: { ticker: l.ticker, exchange: l.exchange }, today });
+      done.add(l.cik);
+      if (r.active) {
+        added.push(r.ticker);
+        touched.add(r.ticker);
+      } else {
+        notYetReporting += 1;
+      }
+    } catch (err) {
+      l.triedOn = today;
+      stepError(stats, "new listings", new Error(`${l.ticker} (CIK ${l.cik}): ${(err as Error).message}`));
+    }
+  }
+  const left = queue.filter((l) => !done.has(l.cik));
+  await setState(NEW_LISTINGS_KEY, left);
+  stats.newListings = { added, notYetReporting, waiting: left.length };
+  if (added.length) console.log(`[jobs] new listings added: ${added.join(", ")}`);
 }
 
 /* ---------------------------------------------
@@ -530,6 +611,7 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
     await runStep(stats, "daily index", () => ingestDailyIndexes(today, stats));
     await runStep(stats, "overdue estimates", () => flagOverdueEstimates(today, stats));
     await runStep(stats, "listing sweep", () => sweepListingsDaily(today, stats));
+    await runStep(stats, "new listings", () => addNewListings(today, stats, touched));
     const feedsStarted = new Date().toISOString();
     await runStep(stats, "EDGAR advisory sweep", () => sweepEdgarAdvisoriesDaily(today, stats));
     stats.feeds = (await runStep(stats, "wire feeds", () => pollFeeds({ includeLists: true }))) ?? null;
@@ -601,6 +683,8 @@ export type Health = {
   /** Investor feeds only the Mac poller can read (bot-walled from the server), and how many it read in the last 48 hours */
   walledFeeds: number;
   walledFeedsFresh: number;
+  /** Companies on the exchange list that are not in our universe yet */
+  newListingsWaiting: number;
   /** A logic flush in progress: what is still to redo */
   logicFlush: { company: string; feeds: string; companiesPending: number; feedItemsPending: number; companyStartedAt: string | null; feedsStartedAt: string | null } | null;
 };
@@ -653,11 +737,11 @@ export async function checkHealth(): Promise<Health> {
   const lastOk = row.last_ok_tick ? new Date(row.last_ok_tick) : null;
   if (!lastOk || Date.now() - lastOk.getTime() > 2 * 3600_000) problems.push("no successful tick in the last 2 hours");
 
-  // The index for business day D is expected by D+1; allow weekends/holidays.
+  // The index for SEC business day D is expected by D+1; allow weekends and federal holidays.
   if (lastIndexDay) {
     let expected = parseISO(today);
     expected = addDays(expected, -1);
-    while (!getDayInfo(expected).isTradingDay) expected = addDays(expected, -1);
+    while (!isSecBusinessDay(expected)) expected = addDays(expected, -1);
     expected = addDays(expected, -1); // one extra day of slack for SEC posting lag
     if (lastIndexDay < toISODate(expected)) problems.push(`daily index stalled at ${lastIndexDay}`);
   } else {
@@ -667,7 +751,8 @@ export async function checkHealth(): Promise<Health> {
   const active = Number(row.active);
   const overdue = Number(row.overdue);
   if (active > 0 && overdue > Math.max(20, active * 0.02)) problems.push(`${overdue} overdue estimates`);
-  if (getDayInfo(parseISO(today)).isTradingDay && Number(row.filings_24h) === 0 && lastOk) {
+  // Filings arrive on the SEC's calendar, not the market's: none is expected on Columbus Day.
+  if (isSecBusinessDay(parseISO(today)) && Number(row.filings_24h) === 0 && lastOk) {
     const etHour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(new Date()));
     if (etHour >= 12) problems.push("no new filings ingested in 24 hours");
   }
@@ -701,6 +786,14 @@ export async function checkHealth(): Promise<Health> {
 
   // Alert emails: once any have ever confirmed a date, a week of silence means the inbound path broke.
   if (Number(row.ir_email_ever) > 0 && Number(row.ir_emails_7d) === 0) problems.push("no investor alert emails received in 7 days");
+
+  // A newly listed company that is not getting added.
+  const newListings = (await getState<NewListing[]>(NEW_LISTINGS_KEY)) ?? [];
+  const waitLimit = toISODate(addDays(parseISO(today), -NEW_LISTING_MAX_WAIT_DAYS));
+  const stuckListings = newListings.filter((l) => l.since < waitLimit);
+  if (stuckListings.length) {
+    problems.push(`${stuckListings.length} new listing(s) not added after ${NEW_LISTING_MAX_WAIT_DAYS} days: ${stuckListings.slice(0, 5).map((l) => l.ticker).join(", ")}`);
+  }
 
   // A logic flush that is not finishing.
   let logicFlush: Health["logicFlush"] = null;
@@ -739,6 +832,7 @@ export async function checkHealth(): Promise<Health> {
     irEmailsLast7d: Number(row.ir_emails_7d),
     walledFeeds: walled,
     walledFeedsFresh: walledFresh,
+    newListingsWaiting: newListings.length,
     logicFlush,
   };
 }
