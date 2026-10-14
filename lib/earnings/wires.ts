@@ -81,6 +81,20 @@ function textOf(block: string, tag: string): string {
   return decodeEntities(v).replace(/\s+/g, " ").trim();
 }
 
+/**
+ * A feed item's link as an absolute URL. Q4 feeds give file links as paths
+ * ("/files/doc_news/2026/Oct/TCBI-Q3-2026-Earnings-Call-Announcement.pdf"),
+ * which nothing downstream could fetch; the feed's own URL supplies the host.
+ */
+export function resolveFeedLink(link: string | null, feedUrl: string): string | null {
+  if (!link) return null;
+  try {
+    return new URL(link.trim(), feedUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
 export function parseRss(xml: string): FeedItem[] {
   const items: FeedItem[] = [];
   for (const m of xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)) {

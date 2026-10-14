@@ -14,6 +14,7 @@ import { usableFiscalYearEnd } from "@/lib/earnings/edgar";
 import { isSecBusinessDay } from "@/lib/earnings/secCalendar";
 import { releaseLink } from "@/lib/earnings/inboundEmail";
 import { releaseOpening } from "@/lib/earnings/wireArchives";
+import { resolveFeedLink } from "@/lib/earnings/wires";
 
 const PUBLISHED = "2026-10-05T12:00:00.000Z";
 
@@ -267,6 +268,9 @@ const EMAILS: { name: string; got: string; want: string }[] = [
   { name: "an email with only an unsubscribe link has no release link", got: String(releaseLink({ html: `<a href="https://x.example.com/unsubscribe">Unsubscribe</a>` })), want: "null" },
   { name: "page opening starts at the headline, past the navigation", got: releaseOpening(PAGE, "Ouster Announces Date for Third Quarter 2026 Earnings Call").includes("November 3, 2026") ? "has date" : "no date", want: "has date" },
   { name: "page opening without a headline falls back to the top", got: releaseOpening(PAGE).includes("November 3, 2026") ? "has date" : "no date", want: "no date" },
+  { name: "a feed link given as a path gets the feed's host", got: String(resolveFeedLink("/files/doc_news/2026/Oct/TCBI-Q3.pdf", "https://investors.texascapitalbank.com/rss/pressrelease.aspx")), want: "https://investors.texascapitalbank.com/files/doc_news/2026/Oct/TCBI-Q3.pdf" },
+  { name: "an absolute feed link is kept", got: String(resolveFeedLink("https://ir.example.com/news/1", "https://ir.example.com/rss/pressrelease.aspx")), want: "https://ir.example.com/news/1" },
+  { name: "plain PDF text anchors at the headline too", got: releaseOpening("INVESTOR CONTACT Jane Doe TEXAS CAPITAL BANCSHARES, INC. ANNOUNCES DATE FOR Q3 2026 OPERATING RESULTS DALLAS, October 7, 2026. Texas Capital today announced results after market on Wednesday, October 21, 2026.", "Texas Capital Bancshares, Inc. Announces Date for Q3 2026 Operating Results").includes("October 21, 2026") ? "has date" : "no date", want: "has date" },
 ];
 for (const c of EMAILS) {
   const ok = c.got === c.want;

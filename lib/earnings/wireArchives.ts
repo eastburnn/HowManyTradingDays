@@ -10,6 +10,7 @@
  * sentence are kept.
  */
 
+import { extractText, getDocumentProxy } from "unpdf";
 import { SEC_USER_AGENT } from "./edgar";
 import { decodeEntities, type FeedItem } from "./wires";
 
@@ -17,15 +18,19 @@ const PAUSE_MS = 1500;
 let lastRequestAt = 0;
 
 async function politeFetch(url: string): Promise<string> {
+  return (await politeFetchResponse(url)).text();
+}
+
+async function politeFetchResponse(url: string): Promise<Response> {
   const wait = lastRequestAt + PAUSE_MS - Date.now();
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastRequestAt = Date.now();
   const res = await fetch(url, {
-    headers: { "User-Agent": SEC_USER_AGENT, Accept: "text/html" },
+    headers: { "User-Agent": SEC_USER_AGENT, Accept: "text/html, application/pdf;q=0.9, */*;q=0.5" },
     signal: AbortSignal.timeout(25_000),
   });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return res.text();
+  return res;
 }
 
 function clean(html: string): string {
@@ -121,7 +126,25 @@ export async function fetchGnwSearch(keyword: string, page = 1): Promise<FeedIte
 ----------------------------------------------*/
 
 export async function fetchReleaseOpening(url: string, title?: string): Promise<string> {
-  return releaseOpening(await politeFetch(url), title);
+  return openingFromResponse(await politeFetchResponse(url), url, title);
+}
+
+/** Most pages read are at most a few hundred KB; a PDF release is under a few MB */
+const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+
+/**
+ * The opening of a release from an HTTP response, whether the link was a
+ * page or a PDF. Many companies' feeds link the release itself as a PDF
+ * (Texas Capital, Masco, Silgan), and the date lives nowhere else.
+ */
+export async function openingFromResponse(res: Response, url: string, title?: string): Promise<string> {
+  const type = (res.headers.get("content-type") ?? "").toLowerCase();
+  const isPdf = type.includes("application/pdf") || /\.pdf(\?|$)/i.test(url);
+  if (!isPdf) return releaseOpening(await res.text(), title);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw new Error(`${url}: PDF too large (${bytes.byteLength} bytes)`);
+  const { text } = await extractText(await getDocumentProxy(bytes), { mergePages: true });
+  return releaseOpening(text, title);
 }
 
 /**

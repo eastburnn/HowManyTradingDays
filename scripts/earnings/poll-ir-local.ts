@@ -17,7 +17,7 @@
 import { closePool, query } from "@/lib/earnings/db";
 import { type IrSource, findViaInvestorLink, readIrSource, recordIrSource } from "@/lib/earnings/irSites";
 import { stageItems } from "@/lib/earnings/confirmJob";
-import { releaseOpening } from "@/lib/earnings/wireArchives";
+import { openingFromResponse } from "@/lib/earnings/wireArchives";
 import { SEC_USER_AGENT } from "@/lib/earnings/edgar";
 import { todayET } from "@/lib/earnings/ingest";
 import { latestReleaseText } from "@/lib/earnings/jobs";
@@ -72,15 +72,16 @@ const CONCURRENCY = i >= 0 ? Number(process.argv[i + 1]) : 6;
         where feed like 'ir-%' and parse_status = 'failed' and link is not null
           and parsed ? 'pageFailed' and not parsed ? 'localPage'
           and fetched_at > now() - interval '10 days'
+          and coalesce(published_at, fetched_at) > now() - interval '10 days'
         order by id desc limit $1`,
       [PAGES_PER_RUN]
     );
     const pageTally = { read: 0, failed: 0 };
     for (const p of pages) {
       try {
-        const res = await fetch(p.link, { headers: { "User-Agent": SEC_USER_AGENT, Accept: "text/html" }, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+        const res = await fetch(p.link, { headers: { "User-Agent": SEC_USER_AGENT, Accept: "text/html, application/pdf;q=0.9, */*;q=0.5" }, redirect: "follow", signal: AbortSignal.timeout(15_000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const opening = releaseOpening(await res.text(), p.title);
+        const opening = await openingFromResponse(res, p.link, p.title);
         if (opening.length < 200) throw new Error("page has no readable text");
         await query(
           `update feed_items set parse_status = 'pending',

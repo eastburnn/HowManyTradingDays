@@ -148,6 +148,20 @@ function mayStartFlush(): boolean {
 
 /** Put recently ignored and failed feed items back in the parser's queue; returns how many */
 async function requeueFeedItems(version: string): Promise<number> {
+  // Items whose link was stored as a path (Q4 feeds link files that way; the
+  // feed's host was not added before Oct 14, 2026) get the host now and lose
+  // their stored verdict, so the parser treats them as never judged and
+  // reads the page. Idempotent: afterwards no such item remains.
+  await query(
+    `update feed_items f
+        set link = regexp_replace(s.releases_url, '^(https?://[^/]+).*$', '\\1') || f.link,
+            parsed = coalesce(f.parsed, '{}'::jsonb) - 'reason' - 'llmSaid' - 'pageFailed' - 'localPage'
+       from ir_sources s
+      where f.feed like 'ir-%' and f.link like '/%' and f.parse_status in ('ignored', 'failed')
+        and f.fetched_at > now() - ($1 || ' days')::interval
+        and s.cik = (f.parsed->>'cik')::int and s.releases_url like 'http%'`,
+    [FEED_REPROCESS_DAYS]
+  );
   // Results headlines have already done their work (queued a refresh, or
   // recorded the report); matched items are confirmations and stay as they are.
   const rows = await query<{ id: number }>(

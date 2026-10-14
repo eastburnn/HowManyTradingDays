@@ -24,7 +24,7 @@
 
 import { SEC_USER_AGENT } from "./edgar";
 import { QUARTER_TOKEN, dateMentioned } from "./confirm";
-import { parseRss, type FeedItem } from "./wires";
+import { parseRss, type FeedItem, resolveFeedLink } from "./wires";
 import { query } from "./db";
 
 export type IrPlatform = "q4" | "investis" | "rss" | "none" | "blocked";
@@ -458,7 +458,7 @@ export async function readIrSource(src: IrSource, todayISO: string): Promise<IrP
         console.error(`[ir] ${src.host}${path}: HTTP ${r.status} ${r.type || ""} (not a feed)`);
         continue;
       }
-      const items = parseRss(r.text).map((i) => ({ ...i, cik: src.cik }));
+      const items = parseRss(r.text).map((i) => ({ ...i, link: resolveFeedLink(i.link, url), cik: src.cik }));
       if (kind === "events") result.events.push(...eventsToAdvisories(items, src.cik, todayISO));
       else result.releases.push(...items);
     } catch (err) {
