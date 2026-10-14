@@ -12,6 +12,8 @@ import { buildObservations, fiscalYearOf, listFiscalPeriods, releaseDateOf } fro
 import { looksLikeResultsRelease } from "@/lib/earnings/resultsReleases";
 import { usableFiscalYearEnd } from "@/lib/earnings/edgar";
 import { isSecBusinessDay } from "@/lib/earnings/secCalendar";
+import { releaseLink } from "@/lib/earnings/inboundEmail";
+import { releaseOpening } from "@/lib/earnings/wireArchives";
 
 const PUBLISHED = "2026-10-05T12:00:00.000Z";
 
@@ -243,6 +245,35 @@ const LABELS: { name: string; got: string; want: string }[] = [
   { name: "SEC open on Good Friday 2027", got: String(isSecBusinessDay(new Date(2027, 2, 26))), want: "true" },
   { name: "SEC closed on a Saturday", got: String(isSecBusinessDay(new Date(2026, 9, 10))), want: "false" },
 ];
+/* ---------------------------------------------
+   ALERT EMAILS AND RELEASE PAGES
+   A headline-only alert keeps its release link, and a company page's
+   opening starts at the release, not the site's navigation.
+----------------------------------------------*/
+
+const NOTIFIED_ALERT = `<html><body><p>October 13, 2026 7:00 AM EDT</p><p>Ouster Announces Date for Third Quarter 2026 Earnings Call</p>
+<p><a href="https://investors.ouster.com/news-releases/news-release-details/ouster-announces-date?utm_source=alert&amp;utm_medium=email">View this release</a></p>
+<p>You are subscribed. <a href="https://investors.ouster.com/">Visit the website</a> | <a href="https://investors.ouster.com/unsubscribe?id=1">Unsubscribe</a></p></body></html>`;
+const Q4_ALERT = `<table><tr><td><a href="https://ir.example.com/news/news-details/2026/Q3-Call/default.aspx">Q3 Call</a> <a href="https://ir.example.com/news/news-details/2026/Q3-Call/default.aspx">Read More</a></td></tr>
+<tr><td><a href="https://ir.example.com/resources/investor-email-alerts/default.aspx?unsubscribe=1">Manage alerts</a></td></tr></table>`;
+const PAGE = `<html><head><title>Ouster Announces Date for Third Quarter 2026 Earnings Call | Ouster</title></head><body>
+<nav>${"Products Solutions Investors News Events Governance ".repeat(60)}</nav>
+<main><h1>Ouster Announces Date for Third Quarter 2026 Earnings Call</h1><p>October 13, 2026</p>
+<p>Company to Report Q3 2026 Results on November 3, 2026</p><p>Ouster today announced that it will report its financial results after the market closes on Tuesday, November 3, 2026.</p></main></body></html>`;
+
+const EMAILS: { name: string; got: string; want: string }[] = [
+  { name: "Notified alert keeps its View this release link", got: String(releaseLink({ html: NOTIFIED_ALERT })), want: "https://investors.ouster.com/news-releases/news-release-details/ouster-announces-date?utm_source=alert&utm_medium=email" },
+  { name: "Q4 alert keeps its Read More link", got: String(releaseLink({ html: Q4_ALERT })), want: "https://ir.example.com/news/news-details/2026/Q3-Call/default.aspx" },
+  { name: "an email with only an unsubscribe link has no release link", got: String(releaseLink({ html: `<a href="https://x.example.com/unsubscribe">Unsubscribe</a>` })), want: "null" },
+  { name: "page opening starts at the headline, past the navigation", got: releaseOpening(PAGE, "Ouster Announces Date for Third Quarter 2026 Earnings Call").includes("November 3, 2026") ? "has date" : "no date", want: "has date" },
+  { name: "page opening without a headline falls back to the top", got: releaseOpening(PAGE).includes("November 3, 2026") ? "has date" : "no date", want: "no date" },
+];
+for (const c of EMAILS) {
+  const ok = c.got === c.want;
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "} ${c.name.padEnd(60)} ${ok ? "" : `${c.got}  (want ${c.want})`}`);
+}
+
 for (const c of LABELS) {
   const ok = c.got === c.want;
   if (!ok) failures += 1;

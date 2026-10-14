@@ -112,6 +112,26 @@ function links(m: InboundMessage): string[] {
   return [...out].filter((u) => !/unsubscribe|optout|opt-out|preferences/i.test(u));
 }
 
+/**
+ * The release an alert email points at. Most alert services (Notified, Q4)
+ * send only the headline and a "View this release" link; without the link
+ * the parser has nothing but the subject line, and "Ouster Announces Date
+ * for Third Quarter 2026 Earnings Call" carries no date. The link named for
+ * the release wins; failing that, the first link that looks like a news or
+ * investor page and is not an unsubscribe or a social link.
+ */
+export function releaseLink(m: InboundMessage): string | null {
+  const anchors = [...(m.html ?? "").matchAll(/<a\b[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((a) => ({
+    href: a[1].replace(/&amp;/g, "&"),
+    text: stripHtml(a[2]).toLowerCase(),
+  }));
+  const named = anchors.find((a) => /\b(view|read)\b.*\b(release|more|article|story|announcement|news)\b|\bfull (press )?release\b/.test(a.text));
+  if (named) return named.href;
+  const skip = /unsubscribe|optout|opt-out|preferences|manage|privacy|terms|facebook\.|twitter\.|linkedin\.|x\.com|youtube\.|instagram\.|mailto:/i;
+  const candidates = [...anchors.map((a) => a.href), ...links(m)].filter((u) => !skip.test(u));
+  return candidates.find((u) => /news|press|release|event|investor|\/\/ir\./i.test(u)) ?? null;
+}
+
 /** Double opt-in and similar: a person has to click, so these go to the inbox, not the parser. */
 export function isSubscriptionPrompt(subject: string, text: string): boolean {
   const s = `${subject}\n${text.slice(0, 1500)}`;
@@ -210,7 +230,7 @@ export async function handleInboundEmail(m: InboundMessage, opts: { dry?: boolea
   const item: FeedItem = {
     guid,
     title: subject || text.split("\n")[0].slice(0, 200),
-    link: null,
+    link: releaseLink(m),
     description: text.slice(0, 4000),
     publishedAt: m.date ? new Date(m.date).toISOString() : new Date().toISOString(),
     cik: company?.cik,

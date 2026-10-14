@@ -17,9 +17,13 @@
 import { closePool, query } from "@/lib/earnings/db";
 import { type IrSource, findViaInvestorLink, readIrSource, recordIrSource } from "@/lib/earnings/irSites";
 import { stageItems } from "@/lib/earnings/confirmJob";
+import { releaseOpening } from "@/lib/earnings/wireArchives";
+import { SEC_USER_AGENT } from "@/lib/earnings/edgar";
 import { todayET } from "@/lib/earnings/ingest";
 import { latestReleaseText } from "@/lib/earnings/jobs";
 
+/** Release pages the server could not read, to read from here per run */
+const PAGES_PER_RUN = 40;
 /** Companies without a feed to re-check per run, and how long before one is due again */
 const DISCOVER_PER_RUN = 15;
 const DISCOVER_AFTER_DAYS = 21;
@@ -60,6 +64,38 @@ const CONCURRENCY = i >= 0 ? Number(process.argv[i + 1]) : 6;
   console.log("done", JSON.stringify(tally));
 
   if (BLOCKED_SET) {
+    // Alert emails and IR feed items whose release page the server could not
+    // read (parsed.pageFailed): most such sites answer a home connection.
+    // The page's opening is appended and the item goes back to the parser.
+    const pages = await query<{ id: number; title: string; link: string; parsed: { description?: string } }>(
+      `select id, title, link, parsed from feed_items
+        where feed like 'ir-%' and parse_status = 'failed' and link is not null
+          and parsed ? 'pageFailed' and not parsed ? 'localPage'
+          and fetched_at > now() - interval '10 days'
+        order by id desc limit $1`,
+      [PAGES_PER_RUN]
+    );
+    const pageTally = { read: 0, failed: 0 };
+    for (const p of pages) {
+      try {
+        const res = await fetch(p.link, { headers: { "User-Agent": SEC_USER_AGENT, Accept: "text/html" }, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const opening = releaseOpening(await res.text(), p.title);
+        if (opening.length < 200) throw new Error("page has no readable text");
+        await query(
+          `update feed_items set parse_status = 'pending',
+                  parsed = (parsed - 'reason' - 'llmSaid' - 'llmAttempts' - 'pageFailed') || $2::jsonb
+            where id = $1`,
+          [p.id, JSON.stringify({ description: `${p.parsed?.description ?? ""} ${opening}`.slice(0, 6000), localPage: "ok" })]
+        );
+        pageTally.read += 1;
+      } catch (err) {
+        await query(`update feed_items set parsed = parsed || $2::jsonb where id = $1`, [p.id, JSON.stringify({ localPage: `failed: ${(err as Error).message.slice(0, 120)}` })]);
+        pageTally.failed += 1;
+      }
+    }
+    console.log("pages", JSON.stringify(pageTally));
+
     // Companies that report earnings but still have no feed on file, least recently checked first.
     const todo = await query<{ cik: number; ticker: string; name: string }>(
       `select c.cik, c.ticker, c.name from companies c left join ir_sources s on s.cik = c.cik

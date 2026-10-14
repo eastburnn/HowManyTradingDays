@@ -120,12 +120,27 @@ export async function fetchGnwSearch(keyword: string, page = 1): Promise<FeedIte
    RELEASE PAGE — only to recover a ticker the summary lacked
 ----------------------------------------------*/
 
-export async function fetchReleaseOpening(url: string): Promise<string> {
-  const html = await politeFetch(url);
+export async function fetchReleaseOpening(url: string, title?: string): Promise<string> {
+  return releaseOpening(await politeFetch(url), title);
+}
+
+/**
+ * The opening of a release from its page. The body starts at the dateline
+ * ("CITY, State, Oct. 2, 2026 /PRNewswire/", "(GLOBE NEWSWIRE)", or
+ * "--(BUSINESS WIRE)--" on a company's own site); a company page without one
+ * starts at the headline, past the site's navigation, which on an investor
+ * site can run longer than the release itself.
+ */
+export function releaseOpening(html: string, title?: string): string {
   const body = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ");
-  // The release body starts at the dateline ("CITY, State, Oct. 2, 2026 /PRNewswire/",
-  // "(GLOBE NEWSWIRE)", or "--(BUSINESS WIRE)--" on a company's own site)
   const text = clean(body);
-  const at = text.search(/\/PRNewswire\/|\(GLOBE NEWSWIRE\)|\(BUSINESS WIRE\)/);
+  let at = text.search(/\/PRNewswire\/|\(GLOBE NEWSWIRE\)|\(BUSINESS WIRE\)/);
+  if (at < 0 && title) {
+    const headline = clean(title).slice(0, 80).toLowerCase();
+    const lower = text.toLowerCase();
+    // The headline also appears in the page title and navigation; the body is the last occurrence
+    const idx = headline ? lower.lastIndexOf(headline) : -1;
+    if (idx >= 0) at = idx;
+  }
   return at >= 0 ? text.slice(Math.max(0, at - 200), at + 2500) : text.slice(0, 2500);
 }

@@ -182,8 +182,10 @@ export async function resolveCik(parsed: ParsedAdvisory): Promise<{ cik: number;
     const target = norm(parsed.companyName);
     const firstWord = target.split(" ")[0] ?? "";
     if (target.length < 3 || firstWord.length < 2) return null;
+    // The prefilter compares letters and digits only: "BigBear.ai" must find
+    // "BigBear.ai Holdings, Inc." although its normalized first word has no dot.
     const rows = await query<{ cik: number; ticker: string; name: string }>(
-      `select cik, ticker, name from companies where active and name ilike $1`,
+      `select cik, ticker, name from companies where active and regexp_replace(lower(name), '[^a-z0-9]+', '', 'g') like $1`,
       [`%${firstWord}%`]
     );
     const keyed = rows.map((r) => ({ cik: r.cik, ticker: r.ticker, key: norm(r.name) }));
@@ -255,7 +257,7 @@ export async function processFeedItems(
   // New items first: after a parser change, older items are queued again
   // (parsed.reprocess, see requeueFeedItems in jobs.ts) and must not delay
   // a confirmation that has just arrived.
-  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; quarterRetries?: number; cik?: number; reprocess?: string; reason?: string; llmSaid?: string } | null }>(
+  const pending = await query<{ id: number; feed: string; title: string; link: string | null; published_at: string | null; parsed: { description?: string; llmAttempts?: number; quarterRetries?: number; cik?: number; reprocess?: string; reason?: string; llmSaid?: string; localPage?: string; pageFailed?: string } | null }>(
     `select id, feed, title, link, published_at::text, parsed from feed_items
       where parse_status = 'pending'
         and (parsed->>'retryAfter' is null or (parsed->>'retryAfter')::timestamptz <= now())
@@ -279,15 +281,21 @@ export async function processFeedItems(
     // The release page, read at most once per item and only when the wire's
     // summary left a piece missing.
     let page: string | null = null;
+    // A page the server could not read (a bot-walled investor site) is noted
+    // so the Mac poller, which those sites answer, can read it and queue the
+    // item again with the page appended (parsed.localPage).
+    let pageFailed: string | null = null;
     const readPage = async (): Promise<string> => {
       if (page !== null) return page;
       page = "";
+      if (item.parsed?.localPage === "ok") return page;
       if (!pageReadable(item.link, item.feed) || stats.pageReads >= pageMaxPerRun) return page;
       stats.pageReads += 1;
       try {
-        page = await fetchReleaseOpening(item.link);
+        page = await fetchReleaseOpening(item.link, item.title);
       } catch (err) {
-        console.error(`[advisories] could not read ${item.link}:`, (err as Error).message);
+        pageFailed = (err as Error).message.slice(0, 200);
+        console.error(`[advisories] could not read ${item.link}:`, pageFailed);
       }
       return page;
     };
@@ -382,7 +390,7 @@ export async function processFeedItems(
       await query(`update feed_items set parse_status = $2, parsed = coalesce(parsed, '{}'::jsonb) || $3::jsonb where id = $1`, [
         item.id,
         review ? "failed" : "ignored",
-        JSON.stringify({ reason: outcome.reason }),
+        JSON.stringify({ reason: outcome.reason, ...(pageFailed ? { pageFailed } : {}) }),
       ]);
       if (review) stats.failed += 1;
       else stats.ignored += 1;
