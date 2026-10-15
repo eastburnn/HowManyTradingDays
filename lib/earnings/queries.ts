@@ -2,6 +2,7 @@
  * Read models for the earnings pages. Server-only.
  */
 
+import { cache } from "react";
 import { query } from "./db";
 import type { RangeRow } from "./calendar";
 import type { ConfidenceTier } from "./estimator";
@@ -96,7 +97,11 @@ export async function getCompanyByTicker(ticker: string): Promise<Company | null
   return rows[0] ?? null;
 }
 
-export async function getCompanyEarnings(ticker: string): Promise<CompanyEarnings | null> {
+/**
+ * A ticker page asks for this twice per request (generateMetadata and the
+ * page itself); React's cache makes that one set of queries per render.
+ */
+export const getCompanyEarnings = cache(async function getCompanyEarnings(ticker: string): Promise<CompanyEarnings | null> {
   const company = await getCompanyByTicker(ticker);
   if (!company || !company.active) return null;
 
@@ -126,7 +131,7 @@ export async function getCompanyEarnings(ticker: string): Promise<CompanyEarning
   ]);
 
   return { company, upcoming, lastReported: history[0] ?? null, history, recentEarnings8Ks: earnings8Ks[0]?.n ?? 0 };
-}
+});
 
 /**
  * Every current event — estimated, confirmed or reported — dated within a

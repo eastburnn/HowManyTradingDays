@@ -691,6 +691,8 @@ export type Health = {
   withUpcoming: number;
   filingsLast24h: number;
   feedItemsLast6h: number;
+  /** The newest item each core wire feed produced */
+  wireFeeds: { feed: string; lastItemAt: string | null }[];
   advisoriesConfirmedLast7d: number;
   contactFailedLast24h: number;
   irEmailsLast7d: number;
@@ -704,6 +706,8 @@ export type Health = {
 };
 
 /** A tick step counts as failing when it failed in most of the recent ticks */
+/** Feeds the site cannot do without; each is watched on its own */
+const CORE_WIRE_FEEDS = ["prn-global", "prn-calls", "gnw-earnings", "gnw-us"];
 const STEP_FAIL_WINDOW = 8;
 const STEP_FAIL_THRESHOLD = 6;
 /** The Mac poller runs every two hours while the Mac is awake; two days of silence is a problem */
@@ -776,6 +780,26 @@ export async function checkHealth(): Promise<Health> {
     problems.push("no wire feed items fetched in 6 hours");
   }
 
+  // One wire going quiet while the others flow is just as bad and easier to
+  // miss: GlobeNewswire answered 403 for five days in October 2026 before
+  // anyone noticed. A core feed with nothing since the previous trading day
+  // is a problem.
+  const wireRows = await query<{ feed: string; last_item_at: string | null }>(
+    `select f.feed, (select max(fetched_at)::text from feed_items i where i.feed = f.feed) as last_item_at
+       from unnest($1::text[]) as f(feed)`,
+    [CORE_WIRE_FEEDS]
+  );
+  const previousTradingDay = (() => {
+    let d = addDays(parseISO(today), -1);
+    while (!getDayInfo(d).isTradingDay) d = addDays(d, -1);
+    return toISODate(d);
+  })();
+  const wireFeeds = wireRows.map((r) => ({ feed: r.feed, lastItemAt: r.last_item_at }));
+  for (const w of wireFeeds) {
+    const lastDay = w.lastItemAt ? new Date(w.lastItemAt).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null;
+    if (!lastDay || lastDay < previousTradingDay) problems.push(`wire feed ${w.feed} silent since ${lastDay ?? "ever"}`);
+  }
+
   // A contact message that could not be emailed is waiting in the database.
   if (Number(row.contact_failed_24h) > 0) problems.push(`${row.contact_failed_24h} contact message(s) failed to send`);
 
@@ -841,6 +865,7 @@ export async function checkHealth(): Promise<Health> {
     withUpcoming: Number(row.with_upcoming),
     filingsLast24h: Number(row.filings_24h),
     feedItemsLast6h: Number(row.feed_items_6h),
+    wireFeeds,
     advisoriesConfirmedLast7d: Number(row.confirmed_7d),
     contactFailedLast24h: Number(row.contact_failed_24h),
     irEmailsLast7d: Number(row.ir_emails_7d),
