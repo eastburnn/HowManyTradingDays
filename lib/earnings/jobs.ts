@@ -684,6 +684,8 @@ export async function runTick(budgetMs: number): Promise<TickStats> {
 export type Health = {
   ok: boolean;
   problems: string[];
+  /** Known problems being handled outside the pipeline (a wire asked for access); listed, not failing, until their acknowledgment expires */
+  acknowledged: string[];
   lastOkTick: string | null;
   lastIndexDay: string | null;
   overdueEstimates: number;
@@ -706,6 +708,9 @@ export type Health = {
 };
 
 /** A tick step counts as failing when it failed in most of the recent ticks */
+export type HealthAck = { pattern: string; until: string; note?: string };
+export const HEALTH_ACK_KEY = "health_ack";
+
 /** Feeds the site cannot do without; each is watched on its own */
 const CORE_WIRE_FEEDS = ["prn-global", "prn-calls", "gnw-earnings", "gnw-us"];
 const STEP_FAIL_WINDOW = 8;
@@ -855,9 +860,21 @@ export async function checkHealth(): Promise<Health> {
     }
   }
 
+  // A problem someone is already handling (waiting on GlobeNewswire to allow
+  // the reader) would otherwise fail the hourly check, and email, until it is
+  // resolved. An acknowledgment (scripts/earnings/health-ack.ts) keeps it
+  // listed without failing, and expires, so it comes back if forgotten.
+  const acks = ((await getState<HealthAck[]>(HEALTH_ACK_KEY)) ?? []).filter((a) => a.until > new Date().toISOString());
+  const acknowledged = problems.filter((p) => acks.some((a) => p.includes(a.pattern)));
+  const open = problems.filter((p) => !acknowledged.includes(p));
+
   return {
-    ok: problems.length === 0,
-    problems,
+    ok: open.length === 0,
+    problems: open,
+    acknowledged: acknowledged.map((p) => {
+      const a = acks.find((x) => p.includes(x.pattern))!;
+      return `${p} (acknowledged until ${a.until.slice(0, 10)}${a.note ? `: ${a.note}` : ""})`;
+    }),
     lastOkTick: row.last_ok_tick,
     lastIndexDay,
     overdueEstimates: overdue,
